@@ -1,0 +1,26 @@
+name: english_study
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  kakao_flutter_sdk: ^1.9.7+3 
+  kakao_flutter_sdk_user: ^1.4.3
+  flutter_naver_login: ^1.7.0
+  jwt_decoder: ^2.0.1
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

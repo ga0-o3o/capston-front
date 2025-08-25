@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "264597317",
+    "project_id": "englishword-1a0e2",
+    "storage_bucket": "englishword-1a0e2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:264597317:android:d4726d4b752f921b58182c",
+        "android_client_info": {
+          "package_name": "com.example.english_study"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5LVDDfko7TrZhoj9FcAVF5h5jIx_hHU4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:264597317:android:29621caba0fb1eac58182c",
+        "android_client_info": {
+          "package_name": "com.example.english_word_study"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5LVDDfko7TrZhoj9FcAVF5h5jIx_hHU4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
