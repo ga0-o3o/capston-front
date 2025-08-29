@@ -87,6 +87,27 @@ class ApiService {
     // 서버에서 메시지 내려주면 그대로 노출
     throw Exception('사용자 추가 실패: ${res.statusCode} - ${res.body}');
   }
+
+  /// 카카오 로그인 후 서버에 사용자 정보 보내는 코드 ...... 새로 추가 한 코드
+static Future<bool> saveKakaoUser({
+  required String id,
+  required String name,
+}) async {
+  // Spring Boot 컨트롤러 경로
+  final uri = Uri.parse('$baseUrl/user/save');
+
+  // POST 요청
+  final res = await _post(uri, {
+    'id': 'KAKAO$id', // 기존 Service 로직과 동일하게 KAKAO prefix 추가
+    'name': name,
+  });
+
+  if (res.statusCode == 200) {
+    return true; // 성공
+  }
+
+  throw Exception('카카오 사용자 저장 실패: ${res.statusCode} - ${res.body}');
+}
 }
 
 /// 서버 User 응답과 매핑되는 간단 DTO
