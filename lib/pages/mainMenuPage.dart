@@ -21,7 +21,7 @@ class MainMenuPage extends StatelessWidget {
                 children: [
                   Image.asset(
                     'assets/images/title.png',
-                    height: 40, // 로고 높이
+                    height: 60,
                     fit: BoxFit.contain,
                   ),
                   IconButton(
@@ -40,7 +40,7 @@ class MainMenuPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 10),
 
             // 버튼 목록
             Expanded(

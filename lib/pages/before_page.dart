@@ -83,7 +83,7 @@ class BeforePage extends StatelessWidget {
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
             ),
-
+            const SizedBox(height: 10),
             // sdffdfhp
             ElevatedButton(
               onPressed: () {

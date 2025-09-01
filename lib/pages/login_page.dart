@@ -9,9 +9,6 @@ import 'dart:html' as html;
 import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
 
-import 'package:english_study/api_service.dart'; // ApiService 임포트 (카카오 로그인 성공 후 서버로 사용자 정보 전송하기 위한 코드)
-
-
 const String springBaseUrl = 'http://192.168.0.12:8080'; // ← 본인의 스프링 서버 IP:PORT
 
 class LoginPage extends StatefulWidget {
@@ -118,18 +115,6 @@ class _LoginPageState extends State<LoginPage> {
 
       User user = await UserApi.instance.me();
 
-      // 카카오 로그인 성공 후에 서버로 사용자 정보 전송하는 함수 실행.
-      try { 
-      await ApiService.saveKakaoUser(
-        id: user.id.toString(),
-        name: user.kakaoAccount?.profile?.nickname ?? '사용자',
-      );
-      print('서버 저장 성공');
-    } catch (e) {
-      print('서버 저장 실패: $e');
-    }
-
-
       setState(() {
         _isLoading = false;
       });
@@ -184,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const Text(
-                'Log in on HiLite :)',
+                'Log in on HiLight :)',
                 style: TextStyle(fontSize: 26, color: Colors.black),
               ),
               const SizedBox(height: 20),
