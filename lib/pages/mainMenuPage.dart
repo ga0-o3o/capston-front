@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'game_menu_page.dart';
 
 class MainMenuPage extends StatelessWidget {
   final String userName;
@@ -54,9 +55,15 @@ class MainMenuPage extends StatelessWidget {
                     const SizedBox(height: 16),
                     _menuButton(context, '🎮 게임', () {
                       // 게임 페이지로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GameMenuPage(),
+                        ),
+                      );
                     }),
                     const SizedBox(height: 16),
-                    _menuButton(context, '📊 학습 통계', () {
+                    _menuButton(context, '📊 스테이터스', () {
                       // 통계 페이지로 이동
                     }),
                     const SizedBox(height: 16),

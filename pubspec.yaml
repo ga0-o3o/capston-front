@@ -14,6 +14,7 @@ dependencies:
   flutter_naver_login: ^1.7.0
   jwt_decoder: ^2.0.1
   http: ^1.2.0
+  flame: ^1.17.0
 
 dev_dependencies:
   flutter_test:
