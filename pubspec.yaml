@@ -11,7 +11,6 @@ dependencies:
     sdk: flutter
   kakao_flutter_sdk: ^1.9.7+3 
   kakao_flutter_sdk_user: ^1.4.3
-  flutter_naver_login: ^1.7.0
   jwt_decoder: ^2.0.1
   http: ^1.2.0
   flame: ^1.17.0

@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'signup_page.dart';
 import 'mainMenuPage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk_user.dart';
-import 'package:flutter_naver_login/flutter_naver_login.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
 import 'package:http/http.dart' as http;
 import 'package:jwt_decoder/jwt_decoder.dart';
 
@@ -37,64 +34,6 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _isLoading = false;
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    final token = Uri.base.queryParameters['token'];
-    if (token != null && !JwtDecoder.isExpired(token)) {
-      final decoded = JwtDecoder.decode(token);
-      final userName = decoded['name'] ?? '사용자';
-
-      html.window.localStorage['flutter_user_name'] = userName;
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => MainMenuPage(userName: userName)),
-        );
-      });
-    }
-  }
-
-  Future<void> _loginWithNaver() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    if (kIsWeb) {
-      const clientId = 'kYXXRpu46xAUm1Bx3xWr';
-      final redirectUri = '$springBaseUrl/naver/callback';
-      const state = 'RANDOM_STRING';
-
-      final authUrl =
-          'https://nid.naver.com/oauth2.0/authorize?response_type=code'
-          '&client_id=$clientId&redirect_uri=$redirectUri&state=$state';
-
-      html.window.location.href = authUrl;
-    } else {
-      final result = await FlutterNaverLogin.logIn();
-      if (result.status == NaverLoginStatus.loggedIn) {
-        final userName = result.account?.name ?? '사용자';
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => MainMenuPage(userName: userName)),
-        );
-      } else if (result.status == NaverLoginStatus.cancelledByUser) {
-        setState(() {
-          _errorMessage = '네이버 로그인 취소';
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = '네이버 로그인 실패';
-          _isLoading = false;
-        });
-      }
-    }
   }
 
   Future<void> _loginWithKakao() async {
@@ -298,30 +237,6 @@ class _LoginPageState extends State<LoginPage> {
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF1F3551),
                   fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 150),
-                child: ElevatedButton.icon(
-                  icon: SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: Image.asset('assets/images/naver_logo.png'),
-                  ),
-                  label: const Text(
-                    '네이버 로그인',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: _loginWithNaver,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF03C75A),
-                    foregroundColor: Colors.black,
-                    minimumSize: const Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(height: 8),

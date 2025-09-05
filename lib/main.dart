@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html;
 import 'pages/before_page.dart';
 import 'pages/mainMenuPage.dart';
-import 'pages/naver_login_page.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,38 +12,11 @@ Future<void> main() async {
     javaScriptAppKey: 'b867d8e54f51ac5b0d1d08f7a5d25bca',
   );
 
-  String? initialUserName;
-
-  if (kIsWeb) {
-    final uri = Uri.parse(html.window.location.href);
-    final token = uri.queryParameters['token'];
-
-    if (token != null && token.isNotEmpty) {
-      // 토큰 만료 체크
-      if (!JwtDecoder.isExpired(token)) {
-        try {
-          final decoded = JwtDecoder.decode(token);
-          initialUserName = decoded['name']?.toString() ?? '사용자';
-          html.window.localStorage['naver_user_name'] = initialUserName;
-        } catch (e) {
-          // 토큰 파싱 오류
-          initialUserName = null;
-        }
-      } else {
-        // 토큰 만료 시 localStorage 삭제
-        html.window.localStorage.remove('naver_user_name');
-        initialUserName = null;
-      }
-    }
-  }
-
-  runApp(MyApp(initialUserName: initialUserName));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final String? initialUserName;
-
-  const MyApp({super.key, this.initialUserName});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -58,11 +27,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         scaffoldBackgroundColor: const Color(0xFFF6F0E9),
       ),
-      home:
-          initialUserName != null
-              ? MainMenuPage(userName: initialUserName!)
-              : const BeforePage(),
-      routes: {'/naver-login': (context) => const NaverLoginPage()},
+      home: const BeforePage(),
     );
   }
 }
