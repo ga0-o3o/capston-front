@@ -4,8 +4,7 @@ import 'package:http/http.dart' as http;
 import 'login_page.dart';
 
 class SignupPage extends StatefulWidget {
-  final String verifiedEmail; // EmailVerifyPage에서 전달받은 이메일
-  const SignupPage({super.key, required this.verifiedEmail}); // required 추가
+  const SignupPage({super.key});
 
   @override
   State<SignupPage> createState() => _SignupPageState();
@@ -23,7 +22,6 @@ class _SignupPageState extends State<SignupPage> {
     final id = _idController.text.trim();
     final pw = _pwController.text.trim();
     final name = _nameController.text.trim();
-    final email = widget.verifiedEmail; // 전달받은 이메일 사용
 
     if (id.isEmpty || pw.isEmpty || name.isEmpty) {
       setState(() => _errorMessage = "모든 필드를 입력해주세요.");
@@ -39,15 +37,10 @@ class _SignupPageState extends State<SignupPage> {
       final response = await http.post(
         Uri.parse("http://localhost:8080/api/user/signup"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "id": id,
-          "pw": pw,
-          "name": name,
-          "email": email, // 이메일 포함
-        }),
+        body: jsonEncode({"id": id, "pw": pw, "name": name}),
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         showDialog(
           context: context,

@@ -1,13 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'signup_page.dart';
-import 'emailVerify_page.dart';
 import 'mainMenuPage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk_user.dart';
 import 'package:http/http.dart' as http;
-import 'package:jwt_decoder/jwt_decoder.dart';
-
-const String springBaseUrl = 'http://192.168.0.12:8080'; // ← 본인의 스프링 서버 IP:PORT
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,26 +13,62 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
   String? _errorMessage;
 
-  Future<void> _loginWithEmail() async {
+  // ID + PW 로그인
+  Future<void> _loginWithId() async {
+    final id = _idController.text.trim();
+    final pw = _passwordController.text.trim();
+
+    if (id.isEmpty || pw.isEmpty) {
+      setState(() => _errorMessage = "아이디와 비밀번호를 입력해주세요.");
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    // 여기서 실제 서버 인증 로직 추가 가능
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final response = await http.post(
+        Uri.parse("http://localhost:8080/api/user/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"id": id, "pw": pw}),
+      );
 
-    setState(() {
-      _isLoading = false;
-    });
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final name = data['name'] ?? id;
+
+        // 로그인 성공 시 스낵바 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("환영합니다, $name 님!"),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // 페이지 이동 (스낵바가 잠깐 보여진 후)
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => MainMenuPage(userName: id)),
+          );
+        });
+      }
+    } catch (e) {
+      setState(() => _errorMessage = "오류 발생: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
+  // 카카오 로그인
   Future<void> _loginWithKakao() async {
     setState(() {
       _isLoading = true;
@@ -55,9 +87,7 @@ class _LoginPageState extends State<LoginPage> {
 
       User user = await UserApi.instance.me();
 
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -86,7 +116,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _idController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -99,7 +129,6 @@ class _LoginPageState extends State<LoginPage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // 상단 캐릭터 이미지
               Center(
                 child: Image.asset(
                   'assets/images/covering_cat1.gif',
@@ -135,12 +164,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   child: Column(
                     children: [
+                      // 아이디 입력
                       TextField(
-                        controller: _emailController,
+                        controller: _idController,
                         decoration: InputDecoration(
-                          labelText: '이메일',
+                          labelText: '아이디',
                           prefixIcon: Icon(
-                            Icons.email,
+                            Icons.person,
                             color: Color(0xFF4E6E99),
                           ),
                           filled: true,
@@ -163,9 +193,9 @@ class _LoginPageState extends State<LoginPage> {
                             color: Color(0xFF4E6E99),
                           ),
                         ),
-                        keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 12),
+                      // 비밀번호 입력
                       TextField(
                         controller: _passwordController,
                         decoration: InputDecoration(
@@ -210,7 +240,7 @@ class _LoginPageState extends State<LoginPage> {
                             width: 200,
                             height: 48,
                             child: ElevatedButton(
-                              onPressed: _loginWithEmail,
+                              onPressed: _loginWithId,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF4E6E99),
                                 foregroundColor: Colors.white,
@@ -269,7 +299,7 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const EmailVerifyPage()),
+                    MaterialPageRoute(builder: (_) => const SignupPage()),
                   );
                 },
                 child: const Text(

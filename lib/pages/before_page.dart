@@ -1,6 +1,6 @@
+import 'package:english_study/pages/signup_page.dart';
 import 'package:flutter/material.dart';
 import 'login_page.dart';
-import 'emailVerify_page.dart';
 import 'users_page.dart';
 
 class BeforePage extends StatelessWidget {
@@ -61,7 +61,7 @@ class BeforePage extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const EmailVerifyPage(),
+                    builder: (_) => const SignupPage(),
                   ), // 회원가입 페이지로 이동
                 );
               },
