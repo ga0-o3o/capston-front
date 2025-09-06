@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'login_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -34,9 +35,16 @@ class _SignupPageState extends State<SignupPage> {
     });
 
     try {
+      // ✅ 저장된 토큰 꺼내오기
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+
       final response = await http.post(
         Uri.parse("http://localhost:8080/api/user/signup"),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          if (token != null) "Authorization": "Bearer $token", // ✅ 토큰 넣기
+        },
         body: jsonEncode({"id": id, "pw": pw, "name": name}),
       );
 

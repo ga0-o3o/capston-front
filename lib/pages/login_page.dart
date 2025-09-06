@@ -4,6 +4,7 @@ import 'signup_page.dart';
 import 'mainMenuPage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk_user.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -42,6 +43,16 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // ✅ 서버에서 내려주는 토큰 꺼내기 (예: {"token": "...", "name": "..."} )
+        final token = data['token'];
+        final name = data['name'] ?? id;
+
+        // ✅ 토큰을 SharedPreferences에 저장
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('jwt_token', token);
+
         // 로그인 성공 시 스낵바 표시
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
