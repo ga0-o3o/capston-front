@@ -16,7 +16,7 @@ class GameMenuPage extends StatelessWidget {
     "제시어 영작하기",
     "끝말 잇기",
     "빙고 게임",
-    "단아 타워 쌓기",
+    "단어 타워 쌓기",
   ];
 
   @override

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'signup_page.dart';
+import 'emailVerify_page.dart';
 import 'mainMenuPage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk_user.dart';
 import 'package:http/http.dart' as http;
@@ -268,7 +269,7 @@ class _LoginPageState extends State<LoginPage> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const SignupPage()),
+                    MaterialPageRoute(builder: (_) => const EmailVerifyPage()),
                   );
                 },
                 child: const Text(
