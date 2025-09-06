@@ -42,13 +42,10 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final name = data['name'] ?? id;
-
         // 로그인 성공 시 스낵바 표시
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("환영합니다, $name 님!"),
+            content: Text("환영합니다, $id 님!"),
             duration: const Duration(seconds: 2),
           ),
         );
