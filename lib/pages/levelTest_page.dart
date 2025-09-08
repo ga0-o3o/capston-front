@@ -109,49 +109,60 @@ class _LevelTestPageState extends State<LevelTestPage> {
     int totalQuestions = _words.length;
     double scorePercent = (_correctCount / totalQuestions) * 100;
 
-    if (scorePercent >= 95 && _currentLevelIndex < _levels.length - 1) {
-      // 다음 단계로 이동
-      showDialog(
-        context: context,
-        builder:
-            (_) => AlertDialog(
-              title: const Text('레벨 통과!'),
-              content: Text(
-                '이번 단계 맞춘 개수: $_correctCount / $totalQuestions\n점수: ${scorePercent.toStringAsFixed(1)}%\n다음 단계로 이동합니다.',
-              ),
-              actions: [
-                TextButton(
+    // 공통 스타일
+    const dialogBackgroundColor = Color(0xFFE8E0FF); // 옅은 보라빛
+    const titleTextStyle = TextStyle(
+      fontSize: 22,
+      fontWeight: FontWeight.bold,
+      color: Colors.deepPurple,
+    );
+    const contentTextStyle = TextStyle(
+      fontSize: 20,
+      fontWeight: FontWeight.w500,
+    );
+
+    String resultMessage =
+        scorePercent >= 90
+            ? '${scorePercent.toStringAsFixed(1)}점으로 통과!'
+            : '${scorePercent.toStringAsFixed(1)}점으로 미통과';
+
+    // 다음 단계로 이동 가능 여부
+    bool canNextLevel =
+        scorePercent >= 90 && _currentLevelIndex < _levels.length - 1;
+
+    showDialog(
+      context: context,
+      builder:
+          (_) => AlertDialog(
+            backgroundColor: dialogBackgroundColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              canNextLevel ? '레벨 통과!' : '레벨 테스트 종료',
+              style: titleTextStyle,
+              textAlign: TextAlign.center,
+            ),
+            content: Text(
+              '이번 단계 맞춘 개수: $_correctCount / $totalQuestions\n'
+              '점수: ${scorePercent.toStringAsFixed(1)}%\n'
+              '$resultMessage',
+              style: contentTextStyle,
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              Center(
+                child: TextButton(
                   onPressed: () {
                     Navigator.pop(context);
                     setState(() => _levelSelected = false); // 레벨 선택 화면으로
                   },
-                  child: const Text('확인'),
+                  child: const Text('확인', style: TextStyle(fontSize: 18)),
                 ),
-              ],
-            ),
-      );
-    } else {
-      // 통과 실패 또는 마지막 단계
-      showDialog(
-        context: context,
-        builder:
-            (_) => AlertDialog(
-              title: const Text('레벨 테스트 종료'),
-              content: Text(
-                '이번 단계 맞춘 개수: $_correctCount / $totalQuestions\n점수: ${scorePercent.toStringAsFixed(1)}%',
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() => _levelSelected = false); // 레벨 선택 화면으로
-                  },
-                  child: const Text('확인'),
-                ),
-              ],
-            ),
-      );
-    }
+            ],
+          ),
+    );
   }
 
   @override
@@ -220,8 +231,28 @@ class _LevelTestPageState extends State<LevelTestPage> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 10),
-            ElevatedButton(onPressed: _checkAnswer, child: const Text('확인')),
+            const SizedBox(height: 40), // 버튼 위 간격 충분히 띄움
+            SizedBox(
+              width: double.infinity, // 버튼 가로 폭 전체
+              height: 50, // 버튼 높이
+              child: ElevatedButton(
+                onPressed: _checkAnswer,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4E6E99), // 파스텔 톤 파랑
+                  foregroundColor: Colors.white, // 글자 색
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12), // 둥근 모서리
+                  ),
+                ),
+                child: const Text(
+                  '확인',
+                  style: TextStyle(
+                    fontSize: 20, // 글자 크기
+                    fontWeight: FontWeight.bold, // 글자 굵게
+                  ),
+                ),
+              ),
+            ),
             if (_feedback != null)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
