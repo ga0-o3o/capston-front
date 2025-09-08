@@ -181,14 +181,42 @@ class _LevelTestPageState extends State<LevelTestPage> {
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
           children: List.generate(_levels.length, (index) {
-            return ElevatedButton(
-              onPressed: () => _selectLevel(index),
-              child: Text(_levels[index]),
+            return GestureDetector(
+              onTap: () => _selectLevel(index),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 버튼 배경 이미지
+                  Image.asset(
+                    'assets/images/button.png',
+                    width: 180,
+                    height: 180,
+                    fit: BoxFit.cover,
+                  ),
+                  // 버튼 위 텍스트
+                  Text(
+                    _levels[index],
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 3,
+                          color: Colors.black,
+                          offset: Offset(1, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             );
           }),
         ),
       );
     }
+
     // 로딩 화면
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
