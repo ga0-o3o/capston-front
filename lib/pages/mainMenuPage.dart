@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'game_menu_page.dart';
+import 'levelTest_page.dart';
 
 class MainMenuPage extends StatelessWidget {
   final String userName;
@@ -14,7 +15,7 @@ class MainMenuPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 상단 로고 이미지 + 햄버거 메뉴
+            // 상단 로고 + 사용자 프로필 + 햄버거 메뉴
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: Row(
@@ -25,17 +26,44 @@ class MainMenuPage extends StatelessWidget {
                     height: 60,
                     fit: BoxFit.contain,
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.menu,
-                      size: 28,
-                      color: Colors.black87,
-                    ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('메뉴 버튼 클릭됨')),
-                      );
-                    },
+
+                  Row(
+                    children: [
+                      // 사용자 프로필 (이모티콘 동그라미)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UserInfoPage(userName: userName),
+                            ),
+                          );
+                        },
+                        child: CircleAvatar(
+                          backgroundColor: Colors.blue[200],
+                          radius: 20,
+                          child: const Text(
+                            "👤", // 이모티콘 (원하는 거 넣어도 됨)
+                            style: TextStyle(fontSize: 20),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // 햄버거 메뉴 버튼
+                      IconButton(
+                        icon: const Icon(
+                          Icons.menu,
+                          size: 28,
+                          color: Colors.black87,
+                        ),
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('메뉴 버튼 클릭됨')),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -54,11 +82,20 @@ class MainMenuPage extends StatelessWidget {
                     }),
                     const SizedBox(height: 16),
                     _menuButton(context, '🎮 게임', () {
-                      // 게임 페이지로 이동
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const GameMenuPage(),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 16),
+                    _menuButton(context, '📈 레벨 테스트', () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const LevelTestPage(), // 레벨 테스트 페이지
                         ),
                       );
                     }),
@@ -105,6 +142,26 @@ class MainMenuPage extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// 👉 사용자 정보 페이지
+class UserInfoPage extends StatelessWidget {
+  final String userName;
+
+  const UserInfoPage({Key? key, required this.userName}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("사용자 정보")),
+      body: Center(
+        child: Text(
+          "안녕하세요, $userName 님!",
+          style: const TextStyle(fontSize: 20),
         ),
       ),
     );

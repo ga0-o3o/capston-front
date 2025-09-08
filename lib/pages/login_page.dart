@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'signup_page.dart';
-import 'mainMenuPage.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk_user.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'signup_page.dart';
+import 'mainMenuPage.dart';
+import 'levelTest_Page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,9 +17,42 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedToken();
+  }
+
+  // 이미 로그인된 토큰이 있는지 확인
+  Future<void> _checkSavedToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    final expiry = prefs.getInt('token_expiry');
+
+    if (token != null && expiry != null) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (now < expiry) {
+        // 토큰 유효 → 바로 메인 메뉴로 이동
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainMenuPage(userName: '사용자')),
+        );
+      }
+    }
+  }
+
+  // 토큰 저장 (만료 시간 1시간)
+  Future<void> _saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('jwt_token', token);
+    await prefs.setInt(
+      'token_expiry',
+      DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    );
+  }
 
   // ID + PW 로그인
   Future<void> _loginWithId() async {
@@ -44,33 +78,28 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
-        // ✅ 서버에서 내려주는 토큰 꺼내기 (예: {"token": "...", "name": "..."} )
         final token = data['token'];
-        final name = data['name'] ?? id;
+        final nickname = data['nickname'] ?? id;
 
-        // ✅ 토큰을 SharedPreferences에 저장
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', token);
+        await _saveToken(token);
 
-        // 로그인 성공 시 스낵바 표시
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("환영합니다, $id 님!"),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("환영합니다, $nickname 님!")));
 
-        // 페이지 이동 (스낵바가 잠깐 보여진 후)
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => MainMenuPage(userName: id)),
+            MaterialPageRoute(builder: (_) => MainMenuPage(userName: nickname)),
           );
         });
+      } else if (response.statusCode == 400) {
+        setState(() => _errorMessage = "아이디 또는 비밀번호가 틀립니다.");
+      } else {
+        setState(() => _errorMessage = "로그인 실패: 서버 오류(${response.statusCode})");
       }
     } catch (e) {
-      setState(() => _errorMessage = "오류 발생: $e");
+      setState(() => _errorMessage = "네트워크 오류: $e");
     } finally {
       setState(() => _isLoading = false);
     }
@@ -94,6 +123,9 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       User user = await UserApi.instance.me();
+
+      // 여기선 JWT 토큰이 아니라 Kakao 토큰
+      await _saveToken(token.accessToken);
 
       setState(() => _isLoading = false);
 
@@ -137,14 +169,15 @@ class _LoginPageState extends State<LoginPage> {
         child: SingleChildScrollView(
           child: Column(
             children: [
+              const SizedBox(height: 30),
               Center(
                 child: Image.asset(
                   'assets/images/covering_cat1.gif',
                   width: 200,
                   height: 200,
-                  fit: BoxFit.contain,
                 ),
               ),
+              const SizedBox(height: 20),
               const Text(
                 'Log in on HiLight :)',
                 style: TextStyle(fontSize: 26, color: Colors.black),
@@ -152,157 +185,10 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 20),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 48),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // 아이디 입력
-                      TextField(
-                        controller: _idController,
-                        decoration: InputDecoration(
-                          labelText: '아이디',
-                          prefixIcon: Icon(
-                            Icons.person,
-                            color: Color(0xFF4E6E99),
-                          ),
-                          filled: true,
-                          fillColor: Color(0xFFF0EDEE),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide(color: Color(0xFFBDA68B)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide(
-                              color: Color(0xFF4E6E99),
-                              width: 2,
-                            ),
-                          ),
-                          floatingLabelStyle: TextStyle(
-                            color: Color(0xFF4E6E99),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // 비밀번호 입력
-                      TextField(
-                        controller: _passwordController,
-                        decoration: InputDecoration(
-                          labelText: '비밀번호',
-                          prefixIcon: Icon(
-                            Icons.lock,
-                            color: Color(0xFF4E6E99),
-                          ),
-                          filled: true,
-                          fillColor: Color(0xFFF0EDEE),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide(color: Color(0xFFBDA68B)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(30),
-                            borderSide: BorderSide(
-                              color: Color(0xFF4E6E99),
-                              width: 2,
-                            ),
-                          ),
-                          floatingLabelStyle: TextStyle(
-                            color: Color(0xFF4E6E99),
-                          ),
-                        ),
-                        obscureText: true,
-                      ),
-                      if (_errorMessage != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                      _isLoading
-                          ? const CircularProgressIndicator()
-                          : SizedBox(
-                            width: 200,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: _loginWithId,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF4E6E99),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: const Text(
-                                '로그인',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                          ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                '-- SNS 계정으로 로그인 --',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1F3551),
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 150),
-                child: ElevatedButton.icon(
-                  icon: SizedBox(
-                    height: 24,
-                    width: 24,
-                    child: Image.asset('assets/images/kakao_logo.png'),
-                  ),
-                  label: const Text(
-                    '카카오톡 로그인',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: _loginWithKakao,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFE812),
-                    foregroundColor: Colors.black,
-                    minimumSize: const Size(double.infinity, 48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
+                child: _buildLoginForm(),
               ),
               const SizedBox(height: 20),
+              _buildSNSLogin(),
               TextButton(
                 onPressed: () {
                   Navigator.push(
@@ -315,7 +201,6 @@ class _LoginPageState extends State<LoginPage> {
                   style: TextStyle(
                     color: Color(0xFF1F3551),
                     fontWeight: FontWeight.bold,
-                    fontSize: 16,
                   ),
                 ),
               ),
@@ -323,6 +208,107 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLoginForm() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          TextField(
+            controller: _idController,
+            decoration: _inputDecoration('아이디', Icons.person),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: _inputDecoration('비밀번호', Icons.lock),
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+          ],
+          const SizedBox(height: 20),
+          _isLoading
+              ? const CircularProgressIndicator()
+              : SizedBox(
+                width: 200,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _loginWithId,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4E6E99),
+                  ),
+                  child: const Text('로그인'),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: const Color(0xFF4E6E99)),
+      filled: true,
+      fillColor: const Color(0xFFF0EDEE),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(30),
+        borderSide: const BorderSide(color: Color(0xFFBDA68B)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(30),
+        borderSide: const BorderSide(color: Color(0xFF4E6E99), width: 2),
+      ),
+      floatingLabelStyle: const TextStyle(color: Color(0xFF4E6E99)),
+    );
+  }
+
+  Widget _buildSNSLogin() {
+    return Column(
+      children: [
+        const Text(
+          '-- SNS 계정으로 로그인 --',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 150),
+          child: ElevatedButton.icon(
+            icon: SizedBox(
+              height: 24,
+              width: 24,
+              child: Image.asset('assets/images/kakao_logo.png'),
+            ),
+            label: const Text('카카오톡 로그인'),
+            onPressed: _loginWithKakao,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFFE812),
+              foregroundColor: Colors.black,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

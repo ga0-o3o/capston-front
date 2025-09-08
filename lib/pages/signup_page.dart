@@ -19,6 +19,7 @@ class _SignupPageState extends State<SignupPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // ✅ 회원가입 함수
   Future<void> _signup() async {
     final id = _idController.text.trim();
     final pw = _pwController.text.trim();
@@ -35,7 +36,6 @@ class _SignupPageState extends State<SignupPage> {
     });
 
     try {
-      // ✅ 저장된 토큰 꺼내오기
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token');
 
@@ -43,7 +43,7 @@ class _SignupPageState extends State<SignupPage> {
         Uri.parse("http://localhost:8080/api/user/signup"),
         headers: {
           "Content-Type": "application/json",
-          if (token != null) "Authorization": "Bearer $token", // ✅ 토큰 넣기
+          if (token != null) "Authorization": "Bearer $token",
         },
         body: jsonEncode({"id": id, "pw": pw, "name": name}),
       );
@@ -70,6 +70,10 @@ class _SignupPageState extends State<SignupPage> {
                 ],
               ),
         );
+      } else if (response.statusCode == 400) {
+        setState(() {
+          _errorMessage = "이미 사용자가 있는 ID입니다.";
+        });
       } else {
         setState(() {
           _errorMessage =
@@ -132,10 +136,13 @@ class _SignupPageState extends State<SignupPage> {
                             ),
                           ),
                           const SizedBox(height: 20),
+
+                          // 아이디 입력
                           TextField(
                             controller: _idController,
                             decoration: const InputDecoration(labelText: "아이디"),
                           ),
+
                           const SizedBox(height: 12),
                           TextField(
                             controller: _pwController,
@@ -149,6 +156,7 @@ class _SignupPageState extends State<SignupPage> {
                             controller: _nameController,
                             decoration: const InputDecoration(labelText: "이름"),
                           ),
+
                           const SizedBox(height: 20),
                           _isLoading
                               ? const Center(child: CircularProgressIndicator())
@@ -166,6 +174,7 @@ class _SignupPageState extends State<SignupPage> {
                                   child: const Text("회원가입"),
                                 ),
                               ),
+
                           if (_errorMessage != null)
                             Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -174,6 +183,7 @@ class _SignupPageState extends State<SignupPage> {
                                 style: const TextStyle(color: Colors.red),
                               ),
                             ),
+
                           const SizedBox(height: 12),
                           Center(
                             child: ElevatedButton(
