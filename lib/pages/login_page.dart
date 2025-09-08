@@ -189,21 +189,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 20),
               _buildSNSLogin(),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SignupPage()),
-                  );
-                },
-                child: const Text(
-                  '회원가입',
-                  style: TextStyle(
-                    color: Color(0xFF1F3551),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -256,8 +241,18 @@ class _LoginPageState extends State<LoginPage> {
                   onPressed: _loginWithId,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4E6E99),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15), // 둥근 네모
+                    ),
                   ),
-                  child: const Text('로그인'),
+                  child: const Text(
+                    '로그인',
+                    style: TextStyle(
+                      fontSize: 18, // 글자 크기
+                      fontWeight: FontWeight.bold, // 굵게
+                    ),
+                  ),
                 ),
               ),
         ],
@@ -293,18 +288,45 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 8),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 150),
-          child: ElevatedButton.icon(
-            icon: SizedBox(
-              height: 24,
-              width: 24,
-              child: Image.asset('assets/images/kakao_logo.png'),
+          padding: const EdgeInsets.symmetric(horizontal: 150), // 버튼 좌우 공간 조절
+          child: SizedBox(
+            width: 250, // 화면 가로 전체 사용
+            height: 40, // 버튼 높이
+            child: ElevatedButton.icon(
+              icon: SizedBox(
+                height: 24, // 로고 크기
+                width: 24,
+                child: Image.asset('assets/images/kakao_logo.png'),
+              ),
+              label: const Text(
+                '카카오톡 로그인',
+                style: TextStyle(fontSize: 18), // 글자 크기
+              ),
+              onPressed: _loginWithKakao,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFE812),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10), // 둥근 네모
+                ),
+              ),
             ),
-            label: const Text('카카오톡 로그인'),
-            onPressed: _loginWithKakao,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFFE812),
-              foregroundColor: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SignupPage()),
+            );
+          },
+          child: const Text(
+            '회원가입',
+            style: TextStyle(
+              color: Color(0xFF1F3551),
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
             ),
           ),
         ),

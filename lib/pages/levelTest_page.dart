@@ -106,16 +106,19 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   void _finishLevel() {
-    double score = _correctCount / _words.length;
+    int totalQuestions = _words.length;
+    double scorePercent = (_correctCount / totalQuestions) * 100;
 
-    if (score >= 0.7 && _currentLevelIndex < _levels.length - 1) {
+    if (scorePercent >= 95 && _currentLevelIndex < _levels.length - 1) {
       // 다음 단계로 이동
       showDialog(
         context: context,
         builder:
             (_) => AlertDialog(
               title: const Text('레벨 통과!'),
-              content: Text('${_levels[_currentLevelIndex]} 통과! 다음 단계로 이동합니다.'),
+              content: Text(
+                '이번 단계 맞춘 개수: $_correctCount / $totalQuestions\n점수: ${scorePercent.toStringAsFixed(1)}%\n다음 단계로 이동합니다.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -134,7 +137,9 @@ class _LevelTestPageState extends State<LevelTestPage> {
         builder:
             (_) => AlertDialog(
               title: const Text('레벨 테스트 종료'),
-              content: Text('이번 단계 점수: ${(score * 100).toStringAsFixed(1)}%'),
+              content: Text(
+                '이번 단계 맞춘 개수: $_correctCount / $totalQuestions\n점수: ${scorePercent.toStringAsFixed(1)}%',
+              ),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -154,7 +159,11 @@ class _LevelTestPageState extends State<LevelTestPage> {
     // 레벨 선택 화면
     if (!_levelSelected) {
       return Scaffold(
-        appBar: AppBar(title: const Text('레벨 선택')),
+        backgroundColor: const Color(0xFFF6F0E9), // 배경 색상
+        appBar: AppBar(
+          title: const Text('레벨 선택'),
+          backgroundColor: const Color(0xFF4E6E99), // AppBar 색상
+        ),
         body: GridView.count(
           crossAxisCount: 3,
           padding: const EdgeInsets.all(16),
@@ -169,7 +178,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
         ),
       );
     }
-
     // 로딩 화면
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -189,7 +197,11 @@ class _LevelTestPageState extends State<LevelTestPage> {
     // 문제 화면
     final word = _words[_currentIndex];
     return Scaffold(
-      appBar: AppBar(title: Text('레벨: ${_levels[_currentLevelIndex]}')),
+      backgroundColor: const Color(0xFFF6F0E9), // 배경 색상
+      appBar: AppBar(
+        title: Text('레벨: ${_levels[_currentLevelIndex]}'),
+        backgroundColor: const Color(0xFF4E6E99), // AppBar 색상
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
