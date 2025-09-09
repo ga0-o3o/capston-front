@@ -16,6 +16,32 @@ class _UserInfoPageState extends State<UserInfoPage> {
   String userName = '';
   String nickname = '';
   String userRank = '';
+  String selectedCharacter = 'char1';
+
+  // 캐릭터 목록 (이미지 URL 또는 Asset 경로)
+  final List<String> characters = [
+    'assets/images/char/char0.png',
+    'assets/images/char/char1.png',
+    'assets/images/char/char2.png',
+    'assets/images/char/char3.png',
+    'assets/images/char/char4.png',
+    'assets/images/char/char5.png',
+    'assets/images/char/char6.png',
+  ];
+
+  // 해제된 캐릭터 규칙
+  final Map<String, List<int>> rankUnlocks = {
+    "Beginner": [0],
+    "A1": [0, 1],
+    "A2": [0, 1, 2],
+    "B1": [0, 1, 2, 3],
+    "B2": [0, 1, 2, 3, 4],
+    "C1": [0, 1, 2, 3, 4, 5],
+    "C2": [0, 1, 2, 3, 4, 5, 6],
+  };
+
+  // 해제된 캐릭터 (기본으로 char0은 무조건 해제)
+  Set<int> unlockedCharacters = {0};
 
   @override
   void initState() {
@@ -31,6 +57,17 @@ class _UserInfoPageState extends State<UserInfoPage> {
       userName = prefs.getString('user_name') ?? '사용자';
       nickname = prefs.getString('user_nickname') ?? '닉네임 없음';
       userRank = prefs.getString('user_rank') ?? 'Beginner';
+      selectedCharacter =
+          prefs.getString('user_character') ?? 'assets/images/char/char0.png';
+
+      // 랭크 기반으로 캐릭터 잠금 해제
+      unlockedCharacters = rankUnlocks[userRank]?.toSet() ?? {0};
+
+      // SharedPreferences에도 저장 (다음 실행 시 유지되도록)
+      prefs.setStringList(
+        'unlocked_characters',
+        unlockedCharacters.map((e) => e.toString()).toList(),
+      );
     });
   }
 
@@ -118,6 +155,83 @@ class _UserInfoPageState extends State<UserInfoPage> {
     );
   }
 
+  // 캐릭터 선택
+  Future<void> _selectCharacter() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+          ),
+          itemCount: characters.length,
+          itemBuilder: (context, index) {
+            final charPath = characters[index];
+            final isUnlocked = unlockedCharacters.contains(index);
+
+            return GestureDetector(
+              onTap:
+                  isUnlocked
+                      ? () async {
+                        Navigator.pop(context);
+                        setState(() {
+                          selectedCharacter = charPath;
+                        });
+                        await prefs.setString('user_character', charPath);
+
+                        // 서버로 업데이트
+                        final token = prefs.getString('jwt_token');
+                        final userId = prefs.getString('user_id') ?? "";
+                        if (token != null && userId.isNotEmpty) {
+                          final uri = Uri.parse(
+                            "http://localhost:8080/api/user/nickname",
+                          );
+                          final response = await http.put(
+                            uri,
+                            headers: {
+                              "Content-Type": "application/json",
+                              "Authorization": "Bearer $token",
+                            },
+                            body: jsonEncode({
+                              "id": userId,
+                              "nickname": nickname,
+                              "character": charPath,
+                            }),
+                          );
+                          print("캐릭터 변경 응답: ${response.statusCode}");
+                        }
+                      }
+                      : null, // 잠겨있으면 선택 불가
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Opacity(
+                    opacity: isUnlocked ? 1.0 : 0.4, // 잠겨있으면 흐리게
+                    child: CircleAvatar(
+                      backgroundImage: AssetImage(charPath),
+                      radius: 40,
+                    ),
+                  ),
+                  if (!isUnlocked)
+                    const Icon(
+                      Icons.lock,
+                      color: Colors.black54,
+                      size: 30,
+                    ), // 잠금 표시
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -129,6 +243,16 @@ class _UserInfoPageState extends State<UserInfoPage> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            // CircleAvatar 부분
+            GestureDetector(
+              onTap: _selectCharacter, // 클릭 시 함수 실행
+              child: CircleAvatar(
+                radius: 50,
+                backgroundColor: Colors.grey.shade300,
+                backgroundImage: AssetImage(selectedCharacter), // 선택된 캐릭터 반영
+              ),
+            ),
+
             const SizedBox(height: 16),
             Text(
               userName,
