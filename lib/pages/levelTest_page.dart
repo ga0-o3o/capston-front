@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -106,6 +107,10 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   void _finishLevel() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token'); // 서버 JWT
+    final userId = prefs.getString('user_id');
+
     int totalQuestions = _words.length;
     double scorePercent = (_correctCount / totalQuestions) * 100;
 
@@ -117,40 +122,39 @@ class _LevelTestPageState extends State<LevelTestPage> {
     bool canNextLevel =
         scorePercent >= 90 && _currentLevelIndex < _levels.length - 1;
 
-    // SharedPreferences 준비
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('jwt_token');
-    final currentRank = prefs.getString('user_rank') ?? 'Beginner';
-    final id = prefs.getString('user_id');
-
-    // 디버깅용 출력
     print('---- 레벨 테스트 종료 ----');
     print('scorePercent: $scorePercent');
-    print('currentLevelIndex: $_currentLevelIndex, currentRank: $currentRank');
 
-    // 레벨 테스트 종료 후 랭크 업데이트
-    if (scorePercent >= 90 && token != null && id != null) {
-      final newRank = _levels[_currentLevelIndex]; // 통과한 레벨을 새 랭크로 지정
+    if (scorePercent >= 90 && token != null) {
+      final newRank = _levels[_currentLevelIndex];
+      final uri = Uri.parse("http://localhost:8080/api/user/update-rank");
+
+      print("📝 POST 요청 준비: userId=$userId, newRank=$newRank");
 
       try {
-        final response = await http.put(
-          Uri.parse("http://localhost:8080/api/user/nickname"),
+        final response = await http.post(
+          uri,
           headers: {
             "Content-Type": "application/json",
-            "Authorization": "Bearer $token",
+            "Authorization": "Bearer $token", // 로그인 시 받은 토큰 사용
           },
-          body: jsonEncode({"id": id, "userRank": newRank}),
+          body: jsonEncode({"id": userId, "userRank": newRank}),
         );
 
+        print('PUT 요청 상태 코드: ${response.statusCode}');
         if (response.statusCode == 200) {
-          await prefs.setString('user_rank', newRank); // SharedPreferences에도 저장
+          await prefs.setString('user_rank', newRank);
           print("✅ 랭크 업데이트 성공: $newRank");
+        } else if (response.statusCode == 403) {
+          print("❌ 권한 거부 403 - 서버에서 JWT 검증 실패 가능");
         } else {
-          print("❌ 랭크 업데이트 실패: ${response.statusCode}");
+          print("❌ PUT 요청 실패: ${response.statusCode}");
         }
       } catch (e) {
         print("⚠️ 랭크 업데이트 중 오류: $e");
       }
+    } else if (token == null) {
+      print("❌ 토큰 없음, 로그인 필요");
     }
 
     // 결과 다이얼로그

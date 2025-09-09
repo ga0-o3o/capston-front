@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'game_menu_page.dart';
 import 'levelTest_page.dart';
+import 'userInfo_page.dart';
 
 class MainMenuPage extends StatelessWidget {
   final String userName;
@@ -142,26 +143,6 @@ class MainMenuPage extends StatelessWidget {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// 👉 사용자 정보 페이지
-class UserInfoPage extends StatelessWidget {
-  final String userName;
-
-  const UserInfoPage({Key? key, required this.userName}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("사용자 정보")),
-      body: Center(
-        child: Text(
-          "안녕하세요, $userName 님!",
-          style: const TextStyle(fontSize: 20),
         ),
       ),
     );

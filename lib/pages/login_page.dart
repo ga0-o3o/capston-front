@@ -54,6 +54,24 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  // 사용자 랭크 저장
+  Future<void> _saveRank(String rank) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_rank', rank);
+  }
+
+  // 닉네임 저장
+  Future<void> _saveNickname(String nickname) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_nickname', nickname);
+  }
+
+  // 이름 저장
+  Future<void> _saveName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_name', name);
+  }
+
   // ID 저장
   Future<void> _saveID(String id) async {
     final prefs = await SharedPreferences.getInstance();
@@ -86,10 +104,15 @@ class _LoginPageState extends State<LoginPage> {
         final data = jsonDecode(response.body);
         final token = data['token'];
         final user = data['user'];
-        final name = user['name'] ?? id;
+        final name = user['name'];
+        final nickname = user['nickname'];
+        final rank = user['userRank'] ?? 'Beginner';
 
         await _saveToken(token);
         await _saveID(id);
+        await _saveRank(rank);
+        await _saveName(name);
+        await _saveNickname(nickname);
 
         ScaffoldMessenger.of(
           context,
