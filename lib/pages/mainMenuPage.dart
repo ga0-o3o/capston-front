@@ -36,7 +36,7 @@ class MainMenuPage extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => UserInfoPage(userName: userName),
+                              builder: (_) => const UserInfoPage(),
                             ),
                           );
                         },
