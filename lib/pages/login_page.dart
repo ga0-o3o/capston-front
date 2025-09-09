@@ -79,18 +79,19 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'];
-        final nickname = data['nickname'] ?? id;
+        final user = data['user'];
+        final name = user['name'] ?? id;
 
         await _saveToken(token);
 
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("환영합니다, $nickname 님!")));
+        ).showSnackBar(SnackBar(content: Text("환영합니다, $name 님!")));
 
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => MainMenuPage(userName: nickname)),
+            MaterialPageRoute(builder: (_) => MainMenuPage(userName: name)),
           );
         });
       } else if (response.statusCode == 400) {
