@@ -2,11 +2,33 @@ import 'package:flutter/material.dart';
 import 'game_menu_page.dart';
 import 'levelTest_page.dart';
 import 'userInfo_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class MainMenuPage extends StatelessWidget {
+class MainMenuPage extends StatefulWidget {
   final String userName;
 
   MainMenuPage({Key? key, required this.userName}) : super(key: key);
+
+  @override
+  State<MainMenuPage> createState() => _MainMenuPageState();
+}
+
+class _MainMenuPageState extends State<MainMenuPage> {
+  String selectedCharacter = 'assets/images/char/char0.png';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSelectedCharacter();
+  }
+
+  Future<void> _loadSelectedCharacter() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      selectedCharacter =
+          prefs.getString('user_character') ?? 'assets/images/char/char0.png';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,25 +54,30 @@ class MainMenuPage extends StatelessWidget {
                     children: [
                       // 사용자 프로필 (이모티콘 동그라미)
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          // UserInfoPage로 이동 후 돌아오면 캐릭터 새로 불러오기
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (_) => const UserInfoPage(),
                             ),
                           );
+                          _loadSelectedCharacter();
                         },
-                        child: CircleAvatar(
-                          backgroundColor: Colors.blue[200],
-                          radius: 20,
-                          child: const Text(
-                            "👤", // 이모티콘 (원하는 거 넣어도 됨)
-                            style: TextStyle(fontSize: 20),
+                        child: Container(
+                          padding: const EdgeInsets.all(3), // 테두리 두께
+                          decoration: BoxDecoration(
+                            color: Colors.white, // 테두리 색상
+                            shape: BoxShape.circle,
+                          ),
+                          child: CircleAvatar(
+                            radius: 30,
+                            backgroundImage: AssetImage(selectedCharacter),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
 
+                      const SizedBox(width: 12),
                       // 햄버거 메뉴 버튼
                       IconButton(
                         icon: const Icon(

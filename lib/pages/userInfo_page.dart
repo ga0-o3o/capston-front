@@ -157,8 +157,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
   // 캐릭터 선택
   Future<void> _selectCharacter() async {
-    final prefs = await SharedPreferences.getInstance();
-
     showModalBottomSheet(
       context: context,
       builder: (context) {
@@ -177,52 +175,25 @@ class _UserInfoPageState extends State<UserInfoPage> {
             return GestureDetector(
               onTap:
                   isUnlocked
-                      ? () async {
+                      ? () {
                         Navigator.pop(context);
                         setState(() {
-                          selectedCharacter = charPath;
+                          selectedCharacter = charPath; // 화면에만 반영
                         });
-                        await prefs.setString('user_character', charPath);
-
-                        // 서버로 업데이트
-                        final token = prefs.getString('jwt_token');
-                        final userId = prefs.getString('user_id') ?? "";
-                        if (token != null && userId.isNotEmpty) {
-                          final uri = Uri.parse(
-                            "http://localhost:8080/api/user/nickname",
-                          );
-                          final response = await http.put(
-                            uri,
-                            headers: {
-                              "Content-Type": "application/json",
-                              "Authorization": "Bearer $token",
-                            },
-                            body: jsonEncode({
-                              "id": userId,
-                              "nickname": nickname,
-                              "character": charPath,
-                            }),
-                          );
-                          print("캐릭터 변경 응답: ${response.statusCode}");
-                        }
                       }
                       : null, // 잠겨있으면 선택 불가
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   Opacity(
-                    opacity: isUnlocked ? 1.0 : 0.4, // 잠겨있으면 흐리게
+                    opacity: isUnlocked ? 1.0 : 0.4,
                     child: CircleAvatar(
                       backgroundImage: AssetImage(charPath),
-                      radius: 40,
+                      radius: 60,
                     ),
                   ),
                   if (!isUnlocked)
-                    const Icon(
-                      Icons.lock,
-                      color: Colors.black54,
-                      size: 30,
-                    ), // 잠금 표시
+                    const Icon(Icons.lock, color: Colors.black54, size: 30),
                 ],
               ),
             );
@@ -246,10 +217,17 @@ class _UserInfoPageState extends State<UserInfoPage> {
             // CircleAvatar 부분
             GestureDetector(
               onTap: _selectCharacter, // 클릭 시 함수 실행
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.grey.shade300,
-                backgroundImage: AssetImage(selectedCharacter), // 선택된 캐릭터 반영
+              child: Container(
+                padding: const EdgeInsets.all(5), // 테두리 두께
+                decoration: BoxDecoration(
+                  color: Colors.white, // 테두리 색상
+                  shape: BoxShape.circle,
+                ),
+                child: CircleAvatar(
+                  radius: 80, // 캐릭터 크기
+                  backgroundColor: Colors.grey.shade300,
+                  backgroundImage: AssetImage(selectedCharacter), // 선택된 캐릭터
+                ),
               ),
             ),
 
