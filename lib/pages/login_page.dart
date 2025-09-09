@@ -54,6 +54,12 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  // ID 저장
+  Future<void> _saveID(String id) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_id', id);
+  }
+
   // ID + PW 로그인
   Future<void> _loginWithId() async {
     final id = _idController.text.trim();
@@ -83,6 +89,7 @@ class _LoginPageState extends State<LoginPage> {
         final name = user['name'] ?? id;
 
         await _saveToken(token);
+        await _saveID(id);
 
         ScaffoldMessenger.of(
           context,

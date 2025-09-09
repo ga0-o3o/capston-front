@@ -105,49 +105,77 @@ class _LevelTestPageState extends State<LevelTestPage> {
     }
   }
 
-  void _finishLevel() {
+  void _finishLevel() async {
     int totalQuestions = _words.length;
     double scorePercent = (_correctCount / totalQuestions) * 100;
-
-    // 공통 스타일
-    const dialogBackgroundColor = Color(0xFFE8E0FF); // 옅은 보라빛
-    const titleTextStyle = TextStyle(
-      fontSize: 22,
-      fontWeight: FontWeight.bold,
-      color: Colors.deepPurple,
-    );
-    const contentTextStyle = TextStyle(
-      fontSize: 20,
-      fontWeight: FontWeight.w500,
-    );
 
     String resultMessage =
         scorePercent >= 90
             ? '${scorePercent.toStringAsFixed(1)}점으로 통과!'
             : '${scorePercent.toStringAsFixed(1)}점으로 미통과';
 
-    // 다음 단계로 이동 가능 여부
     bool canNextLevel =
         scorePercent >= 90 && _currentLevelIndex < _levels.length - 1;
 
+    // SharedPreferences 준비
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    final currentRank = prefs.getString('user_rank') ?? 'Beginner';
+    final id = prefs.getString('user_id');
+
+    // 디버깅용 출력
+    print('---- 레벨 테스트 종료 ----');
+    print('scorePercent: $scorePercent');
+    print('currentLevelIndex: $_currentLevelIndex, currentRank: $currentRank');
+
+    // 레벨 테스트 종료 후 랭크 업데이트
+    if (scorePercent >= 90 && token != null && id != null) {
+      final newRank = _levels[_currentLevelIndex]; // 통과한 레벨을 새 랭크로 지정
+
+      try {
+        final response = await http.put(
+          Uri.parse("http://localhost:8080/api/user/nickname"),
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer $token",
+          },
+          body: jsonEncode({"id": id, "userRank": newRank}),
+        );
+
+        if (response.statusCode == 200) {
+          await prefs.setString('user_rank', newRank); // SharedPreferences에도 저장
+          print("✅ 랭크 업데이트 성공: $newRank");
+        } else {
+          print("❌ 랭크 업데이트 실패: ${response.statusCode}");
+        }
+      } catch (e) {
+        print("⚠️ 랭크 업데이트 중 오류: $e");
+      }
+    }
+
+    // 결과 다이얼로그
     showDialog(
       context: context,
       builder:
           (_) => AlertDialog(
-            backgroundColor: dialogBackgroundColor,
+            backgroundColor: const Color(0xFFE8E0FF),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
             title: Text(
               canNextLevel ? '레벨 통과!' : '레벨 테스트 종료',
-              style: titleTextStyle,
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+              ),
               textAlign: TextAlign.center,
             ),
             content: Text(
               '이번 단계 맞춘 개수: $_correctCount / $totalQuestions\n'
               '점수: ${scorePercent.toStringAsFixed(1)}%\n'
               '$resultMessage',
-              style: contentTextStyle,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
               textAlign: TextAlign.center,
             ),
             actions: [
@@ -155,7 +183,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
                 child: TextButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    setState(() => _levelSelected = false); // 레벨 선택 화면으로
+                    setState(() => _levelSelected = false);
                   },
                   child: const Text('확인', style: TextStyle(fontSize: 18)),
                 ),
