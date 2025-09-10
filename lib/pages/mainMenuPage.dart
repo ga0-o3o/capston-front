@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'game_menu_page.dart';
 import 'levelTest_page.dart';
 import 'userInfo_page.dart';
+import 'status_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MainMenuPage extends StatefulWidget {
@@ -130,6 +131,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     const SizedBox(height: 16),
                     _menuButton(context, '📊 스테이터스', () {
                       // 통계 페이지로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => const StudyGraphPage(), // 레벨 테스트 페이지
+                        ),
+                      );
                     }),
                     const SizedBox(height: 16),
                     _menuButton(context, '⚙️ 설정', () {
