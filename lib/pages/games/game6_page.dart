@@ -76,9 +76,12 @@ class Game6 extends FlameGame {
   VoidCallback? onGameOut;
   bool gameOutCalled = false; // 중복 호출 방지
 
+  ui.Image? bgImage;
+
   @override
   Future<void> onLoad() async {
     super.onLoad();
+
     final characters = [
       'assets/images/game/part6/cake1.png',
       'assets/images/game/part6/cake2.png',
@@ -86,6 +89,15 @@ class Game6 extends FlameGame {
       'assets/images/game/part6/cake4.png',
       'assets/images/game/part6/cake5.png',
     ];
+
+    // 배경 이미지 로드
+    final data = await rootBundle.load(
+      'assets/images/game/part6/background.png',
+    );
+    final bytes = data.buffer.asUint8List();
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    bgImage = frame.image;
 
     double gameAreaHeight = 440;
     towerX = size.x / 2 - FlyingBlock.width / 2;
@@ -225,31 +237,39 @@ class Game6 extends FlameGame {
   }
 
   void _renderBackground(Canvas canvas) {
-    double skyHeight = size.y;
-    Rect rect = Rect.fromLTWH(0, 0, size.x, skyHeight);
+    if (bgImage == null) return;
 
-    Color topColor =
-        Color.lerp(
-          Color(0xFF87CEEB),
-          Color(0xFF00172D),
-          (-yOffset / 1000).clamp(0.0, 1.0),
-        )!;
-    Color bottomColor =
-        Color.lerp(
-          Color(0xFF4E6E99),
-          Color(0xFF000010),
-          (-yOffset / 1000).clamp(0.0, 1.0),
-        )!;
+    double screenHeight = 500;
+    double bgWidth = size.x;
 
-    Paint paint =
-        Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [topColor, bottomColor],
-          ).createShader(rect);
+    // 배경 세로 길이를 충분히 늘리기
+    double bgHeightOriginal =
+        bgImage!.height.toDouble() * (bgWidth / bgImage!.width.toDouble());
 
-    canvas.drawRect(rect, paint);
+    // 최소 화면 + 타워 최대 예상 높이 만큼 늘리기
+    double extendedHeight = max(
+      bgHeightOriginal,
+      screenHeight + 2000,
+    ); // 2000은 충분히 큰 값
+
+    Rect destRect = Rect.fromLTWH(
+      0,
+      screenHeight - extendedHeight + yOffset,
+      bgWidth,
+      extendedHeight,
+    );
+
+    canvas.drawImageRect(
+      bgImage!,
+      Rect.fromLTWH(
+        0,
+        0,
+        bgImage!.width.toDouble(),
+        bgImage!.height.toDouble(),
+      ),
+      destRect,
+      Paint(),
+    );
   }
 }
 
