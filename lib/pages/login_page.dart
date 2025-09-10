@@ -153,30 +153,50 @@ class _LoginPageState extends State<LoginPage> {
         token = await UserApi.instance.loginWithKakaoAccount();
       }
 
-      User user = await UserApi.instance.me();
+      print("✅ 카카오 로그인 성공 → 토큰 발급됨");
 
-      // 여기선 JWT 토큰이 아니라 Kakao 토큰
-      await _saveToken(token.accessToken);
+      User kakaoUser = await UserApi.instance.me();
+      final kakaoId = kakaoUser.id.toString();
+      final kakaoName = kakaoUser.kakaoAccount?.profile?.nickname ?? "사용자";
+      print("👤 카카오 사용자 정보: id=$kakaoId, name=$kakaoName, token=$token");
 
-      setState(() => _isLoading = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '환영합니다, ${user.kakaoAccount?.profile?.nickname ?? "사용자"}님!',
-          ),
-        ),
+      // 👉 서버에 저장 요청 (DB 저장 + JWT 토큰 발급)
+      final response = await http.post(
+        Uri.parse("http://localhost:8080/user/save"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"id": kakaoId, "name": kakaoName}),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => MainMenuPage(
-                userName: user.kakaoAccount?.profile?.nickname ?? '사용자',
-              ),
-        ),
-      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+        final id = data['id'];
+        final name = data['name'];
+        final nickname = data['nickname'];
+        final rank = data['rank'] ?? 'Beginner';
+
+        // SharedPreferences 저장
+        await _saveToken(token);
+        await _saveID(id);
+        await _saveName(name);
+        await _saveNickname(nickname);
+        await _saveRank(rank);
+
+        setState(() => _isLoading = false);
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("환영합니다, $name 님!")));
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainMenuPage(userName: name)),
+        );
+      } else {
+        setState(
+          () => _errorMessage = "카카오 로그인 후 서버 저장 실패: ${response.statusCode}",
+        );
+      }
     } catch (error) {
       setState(() {
         _isLoading = false;

@@ -155,49 +155,110 @@ class _UserInfoPageState extends State<UserInfoPage> {
     );
   }
 
-  // 캐릭터 선택
   Future<void> _selectCharacter() async {
-    showModalBottomSheet(
+    String tempSelected = selectedCharacter; // 임시 선택 변수
+
+    await showModalBottomSheet(
       context: context,
       builder: (context) {
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemCount: characters.length,
-          itemBuilder: (context, index) {
-            final charPath = characters[index];
-            final isUnlocked = unlockedCharacters.contains(index);
+        return Column(
+          children: [
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemCount: characters.length,
+                itemBuilder: (context, index) {
+                  final charPath = characters[index];
+                  final isUnlocked = unlockedCharacters.contains(index);
 
-            return GestureDetector(
-              onTap:
-                  isUnlocked
-                      ? () {
-                        Navigator.pop(context);
-                        setState(() {
-                          selectedCharacter = charPath; // 화면에만 반영
-                        });
-                      }
-                      : null, // 잠겨있으면 선택 불가
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Opacity(
-                    opacity: isUnlocked ? 1.0 : 0.4,
-                    child: CircleAvatar(
-                      backgroundImage: AssetImage(charPath),
-                      radius: 60,
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(60),
+                    onTap:
+                        isUnlocked
+                            ? () {
+                              setState(() {
+                                tempSelected = charPath;
+                              });
+                            }
+                            : null,
+                    splashColor: Colors.blue.withOpacity(0.3),
+                    highlightColor: Colors.transparent,
+                    child: AnimatedScale(
+                      scale:
+                          tempSelected == charPath
+                              ? 1.1
+                              : 1.0, // 선택된 캐릭터만 살짝 커짐
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 캐릭터 이미지
+                          Opacity(
+                            opacity: isUnlocked ? 1.0 : 0.4,
+                            child: CircleAvatar(
+                              backgroundImage: AssetImage(charPath),
+                              radius: 60,
+                            ),
+                          ),
+
+                          // 잠긴 캐릭터 문구
+                          if (!isUnlocked)
+                            Container(
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(60),
+                              ),
+                              child: Text(
+                                // index로 필요한 랭크 조회
+                                '레벨 테스트\n${rankUnlocks.entries.firstWhere((entry) => entry.value.contains(index), orElse: () => MapEntry('Unknown', [index])).key}\n통과 필요',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+
+                          // 선택 표시
+                          if (tempSelected == charPath && isUnlocked)
+                            const Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: 30,
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (!isUnlocked)
-                    const Icon(Icons.lock, color: Colors.black54, size: 30),
-                ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton(
+                onPressed: () async {
+                  // 최종 선택 저장
+                  setState(() {
+                    selectedCharacter = tempSelected;
+                  });
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('user_character', selectedCharacter);
+                  Navigator.pop(context);
+                },
+                child: const Text('변경'),
+              ),
+            ),
+          ],
         );
       },
     );
