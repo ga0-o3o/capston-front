@@ -31,6 +31,7 @@ class FlyingBlock {
   });
 
   void update(double dt) {
+    // X 이동
     if ((x - targetX).abs() > 0.1) {
       double step = 200 * dt;
       if ((x + step - targetX).abs() > (x - targetX).abs()) {
@@ -40,11 +41,13 @@ class FlyingBlock {
       }
     }
 
+    // Y 이동
     double dy = targetY - y;
     if (dy.abs() > 0.1) {
       y += dy * 5 * dt;
     }
 
+    // 목표 위치 도착
     if ((x - targetX).abs() < 0.1 && (y - targetY).abs() < 0.1) {
       x = targetX;
       y = targetY;
@@ -61,13 +64,11 @@ class Game6 extends FlameGame {
   double towerY = 0;
   int towerHeight = 0;
 
-  double inputTopY = 0; // 게임 영역 기준 입력창 top 위치
-  double yOffset = 0;
+  int pendingBlocks = 0; // 정답 입력으로 대기 중인 블록 수
 
+  double yOffset = 0; // 카메라 이동
   List<ui.Image> blockImages = [];
   final Random _random = Random();
-
-  // 카메라 제어
   double cameraSpeed = 0;
   double elapsedTime = 0;
 
@@ -84,9 +85,8 @@ class Game6 extends FlameGame {
       'assets/images/game/part6/cake5.png',
     ];
 
-    // tower 시작 위치를 게임 영역 맨 아래 중앙으로 설정
     towerX = size.x / 2 - FlyingBlock.width / 2;
-    towerY = size.y - FlyingBlock.height; // 컨테이너 bottom 기준
+    towerY = size.y - FlyingBlock.height;
 
     for (var path in characters) {
       final data = await rootBundle.load(path);
@@ -97,17 +97,23 @@ class Game6 extends FlameGame {
     }
   }
 
+  // 블록 생성 함수
   void addBlockToTower() {
     double targetY;
     if (towerBlocks.isEmpty) {
       targetY = towerY;
     } else {
-      targetY = towerBlocks.last.y - FlyingBlock.height; // 이전 블록 바로 위
+      targetY = towerBlocks.last.y - FlyingBlock.height;
     }
 
     ui.Image img = blockImages[_random.nextInt(blockImages.length)];
+    double startX = size.x / 2 - FlyingBlock.width / 2 - 300;
+    double startY = 0;
+
     flyingBlocks.add(
-      FlyingBlock(targetX: towerX, targetY: targetY, image: img),
+      FlyingBlock(targetX: towerX, targetY: targetY, image: img)
+        ..x = startX
+        ..y = startY,
     );
   }
 
@@ -129,36 +135,21 @@ class Game6 extends FlameGame {
 
     flyingBlocks.removeWhere((b) => b.finished && b.addedToTower);
 
-    void _triggerGameOver() {
-      towerBlocks.clear();
-      flyingBlocks.clear();
-      if (onGameOut != null) onGameOut!();
+    // 대기 중인 블록이 있으면 추가
+    if (flyingBlocks.isEmpty && pendingBlocks > 0) {
+      pendingBlocks--;
+      addBlockToTower();
     }
 
-    // --- 카메라 & 게임 오버 조건 ---
+    // 카메라 이동
     if (elapsedTime > 5) {
       double initialSpeed = 15;
       double speedIncrease = 10;
       cameraSpeed = initialSpeed + ((elapsedTime ~/ 30) * speedIncrease);
-
       yOffset += cameraSpeed * dt;
-
-      // 게임 영역 top
-      double gameAreaTop = 0; // GameWidget 상단 기준
-
-      if (towerBlocks.isNotEmpty) {
-        double highestBlockY = towerBlocks.map((b) => b.y).reduce(min);
-
-        double topRelative = highestBlockY - yOffset;
-
-        // 타워 최고가 게임 영역 top보다 낮으면 게임 아웃
-        if (topRelative + FlyingBlock.height < gameAreaTop) {
-          _triggerGameOver();
-        }
-      }
     }
 
-    // 기존 중심 맞춤 로직
+    // 화면 중앙 맞춤
     if (towerBlocks.length > 5) {
       double highestY = towerBlocks.map((b) => b.y).reduce(min);
       double desiredYOffset = size.y / 2 - highestY - FlyingBlock.height / 2;
@@ -175,12 +166,12 @@ class Game6 extends FlameGame {
     _renderBackground(canvas);
 
     // 게임 영역 클리핑
-    Rect gameArea = Rect.fromLTWH(0, 0, size.x, 500); // 500은 GameWidget 높이
+    Rect gameArea = Rect.fromLTWH(0, 0, size.x, 500); // GameWidget 높이
     canvas.save();
     canvas.clipRect(gameArea);
     canvas.translate(0, yOffset);
 
-    // 기존 블록 그리기
+    // 타워 블록 렌더링
     for (var block in towerBlocks) {
       final rect = Rect.fromLTWH(
         block.x,
@@ -201,6 +192,7 @@ class Game6 extends FlameGame {
       );
     }
 
+    // 날아오는 블록 렌더링
     for (var block in flyingBlocks) {
       final rect = Rect.fromLTWH(
         block.x,
@@ -373,7 +365,13 @@ class _Game6PageState extends State<Game6Page> {
             : currentWord!["koreanMeaning"].toString().toLowerCase();
 
     if (controller.text.trim().toLowerCase() == answer) {
-      game.addBlockToTower();
+      // 이전 블록이 날아가는 중이면 pendingBlocks에 추가
+      if (game.flyingBlocks.isEmpty) {
+        game.addBlockToTower();
+      } else {
+        game.pendingBlocks++;
+      }
+
       _nextQuestion();
 
       if (gameTimer == null) {
@@ -415,47 +413,45 @@ class _Game6PageState extends State<Game6Page> {
         backgroundColor: const Color(0xFF4E6E99),
         title: const Text("개인 단어 타워 (솔로 모드)"),
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start, // 위쪽 정렬
+          children: [
+            // 총 시간
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [Text("총 시간: ${totalTime}s")],
             ),
-          ),
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(16),
-            height: 80,
-            width: double.infinity,
-            color: Colors.black12,
-            child: Center(
-              child: Text(
-                currentWord != null
-                    ? (showKorean
-                        ? currentWord!["koreanMeaning"] ?? "단어 없음"
-                        : currentWord!["wordEn"] ?? "단어 없음")
-                    : "단어 없음",
-                style: const TextStyle(fontSize: 24),
+            const SizedBox(height: 8),
+
+            // 문제 영역
+            Container(
+              padding: const EdgeInsets.all(16),
+              height: 80,
+              width: double.infinity,
+              color: Colors.black12,
+              child: Center(
+                child: Text(
+                  currentWord != null
+                      ? (showKorean
+                          ? currentWord!["koreanMeaning"] ?? "단어 없음"
+                          : currentWord!["wordEn"] ?? "단어 없음")
+                      : "단어 없음",
+                  style: const TextStyle(fontSize: 24),
+                ),
               ),
             ),
-          ),
-          // Game6Page build 부분
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32.0,
-                  vertical: 16.0,
-                ),
+            const SizedBox(height: 16),
+
+            // 게임 영역
+            Expanded(
+              child: Center(
                 child: ClipRect(
-                  // <-- 여기서 클리핑
                   child: Container(
-                    width: double.infinity, // 원하는 너비
-                    height: 500, // 원하는 높이
+                    width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.black12, // 게임 영역 배경
+                      color: Colors.black12,
                       border: Border.all(color: Colors.black, width: 5),
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -464,11 +460,10 @@ class _Game6PageState extends State<Game6Page> {
                 ),
               ),
             ),
-          ),
 
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
+            const SizedBox(height: 16),
+            // 정답 입력창
+            TextField(
               controller: controller,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
@@ -476,8 +471,8 @@ class _Game6PageState extends State<Game6Page> {
               ),
               onSubmitted: (_) => checkAnswer(),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
