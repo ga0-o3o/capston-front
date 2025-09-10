@@ -6,31 +6,31 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../loading_page.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 
 // ------------------ 날아오는 블록 ------------------
 class FlyingBlock {
-  static const double width = 100;
-  static const double height = 50;
+  static const double width = 120;
+  static const double height = 60;
   double x = -width;
   double y = 400;
   double speed = 200;
 
   final double targetX;
   final double targetY;
-  final Color color; // 날아오는 블록 색상 고정
+  final ui.Image image; // 색상 대신 이미지
 
   bool finished = false;
   bool addedToTower = false;
-  Rect rect = Rect.fromLTWH(-width, 400, width, height);
 
   FlyingBlock({
     required this.targetX,
     required this.targetY,
-    required this.color,
+    required this.image,
   });
 
   void update(double dt) {
-    // X축 이동
     if ((x - targetX).abs() > 0.1) {
       double step = speed * dt;
       if ((x + step - targetX).abs() > (x - targetX).abs()) {
@@ -40,20 +40,14 @@ class FlyingBlock {
       }
     }
 
-    // Y축 이동 (부드럽게)
     double dy = targetY - y;
     if (dy.abs() > 0.1) {
       y += dy * 5 * dt;
     }
 
-    // rect 업데이트
-    rect = Rect.fromLTWH(x, y, width, height);
-
-    // 멈춤 조건
     if ((x - targetX).abs() < 0.1 && (y - targetY).abs() < 0.1) {
       x = targetX;
       y = targetY;
-      rect = Rect.fromLTWH(x, y, width, height);
       finished = true;
     }
   }
@@ -62,9 +56,7 @@ class FlyingBlock {
 // ------------------ 게임 로직 ------------------
 class Game6 extends FlameGame {
   List<FlyingBlock> flyingBlocks = [];
-  List<Rect> towerBlocks = [];
-  List<Color> towerBlockColors = []; // 탑 블록 색상 저장
-
+  List<FlyingBlock> towerBlocks = []; // Rect 대신 FlyingBlock으로
   double towerX = 0;
   double towerY = 0;
   int towerHeight = 0;
@@ -72,20 +64,40 @@ class Game6 extends FlameGame {
   double yOffset = 0;
   double targetYOffset = 0;
 
-  // 사용할 블록 색상 목록
-  List<Color> blockColors = [
-    const Color(0xFFE9DED4),
-    const Color(0xFF4E6E99),
-    const Color(0xFFF0EDEE),
-  ];
-
+  List<ui.Image> blockImages = [];
   final Random _random = Random();
 
+  @override
+  Future<void> onLoad() async {
+    super.onLoad();
+    final characters = [
+      'assets/images/game/part6/cake1.png',
+      'assets/images/game/part6/cake2.png',
+      'assets/images/game/part6/cake3.png',
+      'assets/images/game/part6/cake4.png',
+      'assets/images/game/part6/cake5.png',
+    ];
+
+    for (var path in characters) {
+      final data = await rootBundle.load(path);
+      final bytes = data.buffer.asUint8List();
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      blockImages.add(frame.image);
+    }
+  }
+
   void addBlockToTower() {
-    double targetY = towerY - FlyingBlock.height * towerHeight;
-    Color blockColor = blockColors[_random.nextInt(blockColors.length)];
+    double targetY;
+    if (towerBlocks.isEmpty) {
+      targetY = towerY; // 첫 블록
+    } else {
+      targetY = towerBlocks.last.y - FlyingBlock.height + 1; // 살짝 겹치게 1px 보정
+    }
+
+    ui.Image img = blockImages[_random.nextInt(blockImages.length)];
     flyingBlocks.add(
-      FlyingBlock(targetX: towerX, targetY: targetY, color: blockColor),
+      FlyingBlock(targetX: towerX, targetY: targetY, image: img),
     );
   }
 
@@ -99,15 +111,10 @@ class Game6 extends FlameGame {
 
       if (block.finished && !block.addedToTower) {
         // 탑에 추가
-        towerBlocks.add(
-          Rect.fromLTWH(
-            block.targetX,
-            block.targetY,
-            FlyingBlock.width,
-            FlyingBlock.height,
-          ),
-        );
-        towerBlockColors.add(block.color);
+        towerBlocks.add(block);
+        block.addedToTower = true;
+        towerHeight++;
+
         block.addedToTower = true;
         towerHeight++;
       }
@@ -117,7 +124,7 @@ class Game6 extends FlameGame {
 
     // 카메라 시점 계산
     if (towerBlocks.length > 5) {
-      double highestY = towerBlocks.map((b) => b.top).reduce(min);
+      double highestY = towerBlocks.map((b) => b.y).reduce(min);
       targetYOffset = size.y / 2 - highestY - FlyingBlock.height / 2;
       targetYOffset = min(0, targetYOffset);
       if ((targetYOffset - yOffset).abs() > 1) {
@@ -130,20 +137,51 @@ class Game6 extends FlameGame {
 
   @override
   void render(Canvas canvas) {
-    // 배경 렌더링
     _renderBackground(canvas);
 
     canvas.save();
     canvas.translate(0, yOffset);
 
-    // 탑 블록 렌더링
-    for (int i = 0; i < towerBlocks.length; i++) {
-      canvas.drawRect(towerBlocks[i], Paint()..color = towerBlockColors[i]);
+    // 쌓인 블록 렌더링
+    for (var block in towerBlocks) {
+      final rect = Rect.fromLTWH(
+        block.x,
+        block.y,
+        FlyingBlock.width,
+        FlyingBlock.height,
+      );
+      canvas.drawImageRect(
+        block.image,
+        Rect.fromLTWH(
+          0,
+          0,
+          block.image.width.toDouble(),
+          block.image.height.toDouble(),
+        ),
+        rect,
+        Paint(),
+      );
     }
 
     // 날아오는 블록 렌더링
     for (var block in flyingBlocks) {
-      canvas.drawRect(block.rect, Paint()..color = block.color);
+      final rect = Rect.fromLTWH(
+        block.x,
+        block.y,
+        FlyingBlock.width,
+        FlyingBlock.height,
+      );
+      canvas.drawImageRect(
+        block.image,
+        Rect.fromLTWH(
+          0,
+          0,
+          block.image.width.toDouble(),
+          block.image.height.toDouble(),
+        ),
+        rect,
+        Paint(),
+      );
     }
 
     canvas.restore();
