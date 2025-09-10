@@ -171,6 +171,7 @@ class Game6 extends FlameGame {
     }
 
     // ------------------ 게임 오버 조건 ------------------
+    // ------------------ 게임 오버 조건 ------------------
     if (!gameOutCalled && towerBlocks.isNotEmpty) {
       double highestBlockTop = towerBlocks
           .map((b) => b.y + yOffset)
@@ -242,22 +243,12 @@ class Game6 extends FlameGame {
     double screenHeight = 500;
     double bgWidth = size.x;
 
-    // 배경 세로 길이를 충분히 늘리기
-    double bgHeightOriginal =
+    // background.png 높이
+    double bgHeight =
         bgImage!.height.toDouble() * (bgWidth / bgImage!.width.toDouble());
 
-    // 최소 화면 + 타워 최대 예상 높이 만큼 늘리기
-    double extendedHeight = max(
-      bgHeightOriginal,
-      screenHeight + 2000,
-    ); // 2000은 충분히 큰 값
-
-    Rect destRect = Rect.fromLTWH(
-      0,
-      screenHeight - extendedHeight + yOffset,
-      bgWidth,
-      extendedHeight,
-    );
+    // 배경 위치
+    double bgY = screenHeight - bgHeight + yOffset;
 
     canvas.drawImageRect(
       bgImage!,
@@ -267,7 +258,7 @@ class Game6 extends FlameGame {
         bgImage!.width.toDouble(),
         bgImage!.height.toDouble(),
       ),
-      destRect,
+      Rect.fromLTWH(0, bgY, bgWidth, bgHeight),
       Paint(),
     );
   }
