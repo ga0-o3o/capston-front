@@ -1,8 +1,186 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../loading_page.dart';
 
+// ------------------ 날아오는 블록 ------------------
+class FlyingBlock {
+  static const double width = 100;
+  static const double height = 50;
+  double x = -width;
+  double y = 400;
+  double speed = 200;
+
+  final double targetX;
+  final double targetY;
+  final Color color; // 날아오는 블록 색상 고정
+
+  bool finished = false;
+  bool addedToTower = false;
+  Rect rect = Rect.fromLTWH(-width, 400, width, height);
+
+  FlyingBlock({
+    required this.targetX,
+    required this.targetY,
+    required this.color,
+  });
+
+  void update(double dt) {
+    // X축 이동
+    if ((x - targetX).abs() > 0.1) {
+      double step = speed * dt;
+      if ((x + step - targetX).abs() > (x - targetX).abs()) {
+        x = targetX;
+      } else {
+        x += step;
+      }
+    }
+
+    // Y축 이동 (부드럽게)
+    double dy = targetY - y;
+    if (dy.abs() > 0.1) {
+      y += dy * 5 * dt;
+    }
+
+    // rect 업데이트
+    rect = Rect.fromLTWH(x, y, width, height);
+
+    // 멈춤 조건
+    if ((x - targetX).abs() < 0.1 && (y - targetY).abs() < 0.1) {
+      x = targetX;
+      y = targetY;
+      rect = Rect.fromLTWH(x, y, width, height);
+      finished = true;
+    }
+  }
+}
+
+// ------------------ 게임 로직 ------------------
+class Game6 extends FlameGame {
+  List<FlyingBlock> flyingBlocks = [];
+  List<Rect> towerBlocks = [];
+  List<Color> towerBlockColors = []; // 탑 블록 색상 저장
+
+  double towerX = 0;
+  double towerY = 0;
+  int towerHeight = 0;
+
+  double yOffset = 0;
+  double targetYOffset = 0;
+
+  // 사용할 블록 색상 목록
+  List<Color> blockColors = [
+    const Color(0xFFE9DED4),
+    const Color(0xFF4E6E99),
+    const Color(0xFFF0EDEE),
+  ];
+
+  final Random _random = Random();
+
+  void addBlockToTower() {
+    double targetY = towerY - FlyingBlock.height * towerHeight;
+    Color blockColor = blockColors[_random.nextInt(blockColors.length)];
+    flyingBlocks.add(
+      FlyingBlock(targetX: towerX, targetY: targetY, color: blockColor),
+    );
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+
+    // 블록 이동 업데이트
+    for (var block in flyingBlocks) {
+      block.update(dt);
+
+      if (block.finished && !block.addedToTower) {
+        // 탑에 추가
+        towerBlocks.add(
+          Rect.fromLTWH(
+            block.targetX,
+            block.targetY,
+            FlyingBlock.width,
+            FlyingBlock.height,
+          ),
+        );
+        towerBlockColors.add(block.color);
+        block.addedToTower = true;
+        towerHeight++;
+      }
+    }
+
+    flyingBlocks.removeWhere((b) => b.finished && b.addedToTower);
+
+    // 카메라 시점 계산
+    if (towerBlocks.length > 5) {
+      double highestY = towerBlocks.map((b) => b.top).reduce(min);
+      targetYOffset = size.y / 2 - highestY - FlyingBlock.height / 2;
+      targetYOffset = min(0, targetYOffset);
+      if ((targetYOffset - yOffset).abs() > 1) {
+        yOffset += (targetYOffset - yOffset) * dt * 5;
+      } else {
+        yOffset = targetYOffset;
+      }
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    // 배경 렌더링
+    _renderBackground(canvas);
+
+    canvas.save();
+    canvas.translate(0, yOffset);
+
+    // 탑 블록 렌더링
+    for (int i = 0; i < towerBlocks.length; i++) {
+      canvas.drawRect(towerBlocks[i], Paint()..color = towerBlockColors[i]);
+    }
+
+    // 날아오는 블록 렌더링
+    for (var block in flyingBlocks) {
+      canvas.drawRect(block.rect, Paint()..color = block.color);
+    }
+
+    canvas.restore();
+  }
+
+  void _renderBackground(Canvas canvas) {
+    double skyHeight = size.y;
+    Rect rect = Rect.fromLTWH(0, 0, size.x, skyHeight);
+
+    // yOffset에 따라 색상 변화
+    // yOffset이 0일 때 밝은 하늘, yOffset 음수로 내려갈수록 어두운 우주 느낌
+    Color topColor =
+        Color.lerp(
+          Color(0xFF87CEEB),
+          Color(0xFF00172D),
+          (-yOffset / 1000).clamp(0.0, 1.0),
+        )!;
+    Color bottomColor =
+        Color.lerp(
+          Color(0xFF4E6E99),
+          Color(0xFF000010),
+          (-yOffset / 1000).clamp(0.0, 1.0),
+        )!;
+
+    Paint paint =
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [topColor, bottomColor],
+          ).createShader(rect);
+
+    canvas.drawRect(rect, paint);
+  }
+}
+
+// ------------------ 게임 페이지 ------------------
 class Game6Page extends StatefulWidget {
   const Game6Page({Key? key}) : super(key: key);
 
@@ -11,134 +189,194 @@ class Game6Page extends StatefulWidget {
 }
 
 class _Game6PageState extends State<Game6Page> {
-  String mode = ""; // "", "solo", "multi"
   List<Map<String, dynamic>> words = [];
-  int currentWordIndex = 0;
+  Map<String, dynamic>? currentWord;
+  bool showKorean = true;
+
   final TextEditingController controller = TextEditingController();
+  String? userId;
+  String? token;
+  bool isLoading = true;
+
+  late Game6 game;
+  final Random _random = Random();
+
+  int totalTime = 120;
+  int questionNumber = 0;
+  Timer? gameTimer;
+  bool gameOver = false;
 
   @override
   void initState() {
     super.initState();
-    fetchWords("A1"); // 테스트: A1 레벨 단어 불러오기
+    game = Game6();
+    _loadUserIdAndWords();
   }
 
-  Future<void> fetchWords(String level) async {
-    final url = Uri.parse("http://localhost:8080/api/v1/wordbook?level=$level");
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      setState(() {
-        words = List<Map<String, dynamic>>.from(jsonDecode(response.body));
-      });
+  @override
+  void dispose() {
+    controller.dispose();
+    gameTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadUserIdAndWords() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedToken = prefs.getString('jwt_token');
+    final storedUserId = prefs.getString('user_id');
+
+    if (storedUserId == null || storedToken == null) {
+      print("User ID 또는 Token 없음");
+      setState(() => isLoading = false);
+      return;
     }
+
+    setState(() {
+      userId = storedUserId;
+      token = storedToken;
+    });
+
+    await fetchWords(storedUserId, storedToken);
+  }
+
+  Future<void> fetchWords(String userId, String token) async {
+    final url = Uri.parse("http://localhost:8080/api/personal-words/$userId");
+    final response = await http.get(
+      url,
+      headers: {"Authorization": "Bearer $token"},
+    );
+
+    if (response.statusCode == 200) {
+      final list = List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      setState(() {
+        words = list;
+        _nextQuestion();
+        isLoading = false;
+      });
+      _startGameTimer();
+    } else {
+      print("단어 조회 실패: ${response.statusCode}");
+      setState(() => isLoading = false);
+    }
+  }
+
+  void _startGameTimer() {
+    gameTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (gameOver) {
+        timer.cancel();
+        return;
+      }
+
+      totalTime--;
+
+      if (totalTime <= 0) {
+        gameOver = true;
+        timer.cancel();
+        _showGameOverDialog();
+      }
+
+      setState(() {});
+    });
+  }
+
+  void _nextQuestion() {
+    if (words.isEmpty) return;
+    currentWord = words[_random.nextInt(words.length)];
+    showKorean = _random.nextBool();
+    questionNumber++;
   }
 
   void checkAnswer() {
-    if (controller.text.trim().toLowerCase() ==
-        words[currentWordIndex]["wordEn"].toString().toLowerCase()) {
-      // 정답 → 블록 쌓기 로직 호출
-      print("정답! 블록 추가");
-      setState(() {
-        currentWordIndex = (currentWordIndex + 1) % words.length;
-      });
-    } else {
-      print("오답!");
+    if (currentWord == null || gameOver) return;
+
+    final answer =
+        showKorean
+            ? currentWord!["wordEn"].toString().toLowerCase()
+            : currentWord!["koreanMeaning"].toString().toLowerCase();
+
+    if (controller.text.trim().toLowerCase() == answer) {
+      game.addBlockToTower();
+      _nextQuestion();
     }
+
     controller.clear();
+    setState(() {});
+  }
+
+  void _showGameOverDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => AlertDialog(
+            title: const Text("게임 종료"),
+            content: Text("총 쌓인 블록: ${game.towerHeight}"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
+                child: const Text("확인"),
+              ),
+            ],
+          ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (mode == "") {
-      // 선택 화면
-      return Scaffold(
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF4E6E99),
-          title: const Text("게임 6 - 단어 타워"),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => setState(() => mode = "solo"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green, // 녹색 버튼
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 30,
-                        horizontal: 20,
-                      ), // 버튼 크기 키우기
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20), // 모서리 둥글게
-                      ),
-                    ),
-                    child: const Text(
-                      "혼자",
-                      style: TextStyle(fontSize: 24, color: Colors.white),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16), // 버튼 사이 간격
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => setState(() => mode = "multi"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 30,
-                        horizontal: 20,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    child: const Text(
-                      "같이",
-                      style: TextStyle(fontSize: 24, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    if (isLoading) return const LoadingPage();
 
-    // 게임 화면
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
-        title: Text(mode == "solo" ? "솔로 모드" : "배틀 모드"),
+        title: const Text("개인 단어 타워 (솔로 모드)"),
       ),
       body: Column(
         children: [
-          // 흰 네모에 단어 표시
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [Text("총 시간: ${totalTime}s")],
+            ),
+          ),
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             height: 80,
             width: double.infinity,
-            color: Colors.white,
+            color: Colors.black12,
             child: Center(
               child: Text(
-                words.isNotEmpty
-                    ? words[currentWordIndex]["koreanMeaning"] ?? "단어 없음"
-                    : "로딩 중...",
+                currentWord != null
+                    ? (showKorean
+                        ? currentWord!["koreanMeaning"] ?? "단어 없음"
+                        : currentWord!["wordEn"] ?? "단어 없음")
+                    : "단어 없음",
                 style: const TextStyle(fontSize: 24),
               ),
             ),
           ),
-          // Flame Game 영역 (타워 쌓기)
-          Expanded(child: GameWidget(game: Game6())),
-          // 입력창
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                double gameWidth = constraints.maxWidth;
+                double gameHeight = constraints.maxHeight;
+
+                game.towerX = (gameWidth - FlyingBlock.width) / 2;
+                game.towerY = gameHeight - FlyingBlock.height;
+
+                return GameWidget(game: game);
+              },
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: controller,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: "정답 입력",
               ),
@@ -148,25 +386,5 @@ class _Game6PageState extends State<Game6Page> {
         ],
       ),
     );
-  }
-}
-
-class Game6 extends FlameGame {
-  @override
-  Future<void> onLoad() async {
-    super.onLoad();
-    // 타워 초기화
-  }
-
-  @override
-  void update(double dt) {
-    super.update(dt);
-    // 블록 위치 업데이트
-  }
-
-  @override
-  void render(Canvas canvas) {
-    super.render(canvas);
-    // 블록(타워) 그리기
   }
 }

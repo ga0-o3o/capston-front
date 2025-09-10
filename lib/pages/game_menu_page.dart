@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'games/game1_page.dart';
 import 'games/game2_page.dart';
@@ -18,6 +19,11 @@ class GameMenuPage extends StatelessWidget {
     "빙고 게임",
     "단어 타워 쌓기",
   ];
+
+  Future<String?> _getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("userId");
+  }
 
   @override
   Widget build(BuildContext context) {
