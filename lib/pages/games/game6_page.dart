@@ -19,7 +19,7 @@ class FlyingBlock {
 
   final double targetX;
   final double targetY;
-  final ui.Image image; // 색상 대신 이미지
+  final ui.Image image; // 이미지
 
   bool finished = false;
   bool addedToTower = false;
@@ -56,7 +56,7 @@ class FlyingBlock {
 // ------------------ 게임 로직 ------------------
 class Game6 extends FlameGame {
   List<FlyingBlock> flyingBlocks = [];
-  List<FlyingBlock> towerBlocks = []; // Rect 대신 FlyingBlock으로
+  List<FlyingBlock> towerBlocks = [];
   double towerX = 0;
   double towerY = 0;
   int towerHeight = 0;
@@ -66,6 +66,13 @@ class Game6 extends FlameGame {
 
   List<ui.Image> blockImages = [];
   final Random _random = Random();
+
+  // 카메라 제어
+  double cameraSpeed = 0;
+  double cameraAcceleration = 20;
+  double elapsedTime = 0;
+
+  VoidCallback? onGameOut;
 
   @override
   Future<void> onLoad() async {
@@ -90,9 +97,9 @@ class Game6 extends FlameGame {
   void addBlockToTower() {
     double targetY;
     if (towerBlocks.isEmpty) {
-      targetY = towerY; // 첫 블록
+      targetY = towerY;
     } else {
-      targetY = towerBlocks.last.y - FlyingBlock.height + 1; // 살짝 겹치게 1px 보정
+      targetY = towerBlocks.last.y - FlyingBlock.height + 1;
     }
 
     ui.Image img = blockImages[_random.nextInt(blockImages.length)];
@@ -105,16 +112,14 @@ class Game6 extends FlameGame {
   void update(double dt) {
     super.update(dt);
 
-    // 블록 이동 업데이트
+    elapsedTime += dt;
+
+    // 블록 이동
     for (var block in flyingBlocks) {
       block.update(dt);
 
       if (block.finished && !block.addedToTower) {
-        // 탑에 추가
         towerBlocks.add(block);
-        block.addedToTower = true;
-        towerHeight++;
-
         block.addedToTower = true;
         towerHeight++;
       }
@@ -122,15 +127,37 @@ class Game6 extends FlameGame {
 
     flyingBlocks.removeWhere((b) => b.finished && b.addedToTower);
 
-    // 카메라 시점 계산
+    // --- 카메라 제어 ---
+    if (elapsedTime > 5) {
+      // 초기 속도 낮게, 30초마다 조금씩 증가
+      double initialSpeed = 15; // 처음 내려가는 속도
+      double speedIncrease = 10; // 30초마다 증가하는 속도
+      cameraSpeed = initialSpeed + ((elapsedTime ~/ 30) * speedIncrease);
+
+      yOffset += cameraSpeed * dt;
+
+      // 타워가 화면에서 완전히 사라지면 게임 종료
+      if (towerBlocks.isNotEmpty) {
+        double lowestBlockY = towerBlocks
+            .map((b) => b.y + FlyingBlock.height)
+            .reduce(max);
+        if (lowestBlockY - yOffset < 0) {
+          towerBlocks.clear();
+          flyingBlocks.clear();
+          if (onGameOut != null) onGameOut!();
+        }
+      }
+    }
+
+    // 기존 중심 맞춤 로직
     if (towerBlocks.length > 5) {
       double highestY = towerBlocks.map((b) => b.y).reduce(min);
-      targetYOffset = size.y / 2 - highestY - FlyingBlock.height / 2;
-      targetYOffset = min(0, targetYOffset);
-      if ((targetYOffset - yOffset).abs() > 1) {
-        yOffset += (targetYOffset - yOffset) * dt * 5;
-      } else {
-        yOffset = targetYOffset;
+      double desiredYOffset = size.y / 2 - highestY - FlyingBlock.height / 2;
+      desiredYOffset = min(0, desiredYOffset);
+
+      // 카메라가 내려가고 있을 때는 너무 강제로 yOffset 맞추지 않음
+      if (desiredYOffset > yOffset) {
+        yOffset += (desiredYOffset - yOffset) * dt * 2; // 천천히 올림
       }
     }
   }
@@ -142,7 +169,6 @@ class Game6 extends FlameGame {
     canvas.save();
     canvas.translate(0, yOffset);
 
-    // 쌓인 블록 렌더링
     for (var block in towerBlocks) {
       final rect = Rect.fromLTWH(
         block.x,
@@ -163,7 +189,6 @@ class Game6 extends FlameGame {
       );
     }
 
-    // 날아오는 블록 렌더링
     for (var block in flyingBlocks) {
       final rect = Rect.fromLTWH(
         block.x,
@@ -191,8 +216,6 @@ class Game6 extends FlameGame {
     double skyHeight = size.y;
     Rect rect = Rect.fromLTWH(0, 0, size.x, skyHeight);
 
-    // yOffset에 따라 색상 변화
-    // yOffset이 0일 때 밝은 하늘, yOffset 음수로 내려갈수록 어두운 우주 느낌
     Color topColor =
         Color.lerp(
           Color(0xFF87CEEB),
@@ -248,6 +271,12 @@ class _Game6PageState extends State<Game6Page> {
   void initState() {
     super.initState();
     game = Game6();
+    game.onGameOut = () {
+      setState(() {
+        gameOver = true;
+        _showGameOverDialog();
+      });
+    };
     _loadUserIdAndWords();
   }
 
@@ -291,7 +320,6 @@ class _Game6PageState extends State<Game6Page> {
         _nextQuestion();
         isLoading = false;
       });
-      _startGameTimer();
     } else {
       print("단어 조회 실패: ${response.statusCode}");
       setState(() => isLoading = false);
@@ -335,6 +363,11 @@ class _Game6PageState extends State<Game6Page> {
     if (controller.text.trim().toLowerCase() == answer) {
       game.addBlockToTower();
       _nextQuestion();
+
+      // 첫 정답 입력 시 타이머 시작
+      if (gameTimer == null) {
+        _startGameTimer();
+      }
     }
 
     controller.clear();
@@ -406,10 +439,11 @@ class _Game6PageState extends State<Game6Page> {
                 game.towerX = (gameWidth - FlyingBlock.width) / 2;
                 game.towerY = gameHeight - FlyingBlock.height;
 
-                return GameWidget(game: game);
+                return ClipRect(child: GameWidget(game: game));
               },
             ),
           ),
+
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
