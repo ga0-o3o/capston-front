@@ -14,12 +14,12 @@ class FlyingBlock {
   static const double width = 120;
   static const double height = 60;
   double x = -width;
-  double y = 400;
+  double y = 0;
   double speed = 200;
 
   final double targetX;
   final double targetY;
-  final ui.Image image; // 이미지
+  final ui.Image image;
 
   bool finished = false;
   bool addedToTower = false;
@@ -32,7 +32,7 @@ class FlyingBlock {
 
   void update(double dt) {
     if ((x - targetX).abs() > 0.1) {
-      double step = speed * dt;
+      double step = 200 * dt;
       if ((x + step - targetX).abs() > (x - targetX).abs()) {
         x = targetX;
       } else {
@@ -61,15 +61,14 @@ class Game6 extends FlameGame {
   double towerY = 0;
   int towerHeight = 0;
 
+  double inputTopY = 0; // 게임 영역 기준 입력창 top 위치
   double yOffset = 0;
-  double targetYOffset = 0;
 
   List<ui.Image> blockImages = [];
   final Random _random = Random();
 
   // 카메라 제어
   double cameraSpeed = 0;
-  double cameraAcceleration = 20;
   double elapsedTime = 0;
 
   VoidCallback? onGameOut;
@@ -85,6 +84,10 @@ class Game6 extends FlameGame {
       'assets/images/game/part6/cake5.png',
     ];
 
+    // tower 시작 위치를 게임 영역 맨 아래 중앙으로 설정
+    towerX = size.x / 2 - FlyingBlock.width / 2;
+    towerY = size.y - FlyingBlock.height; // 컨테이너 bottom 기준
+
     for (var path in characters) {
       final data = await rootBundle.load(path);
       final bytes = data.buffer.asUint8List();
@@ -99,7 +102,7 @@ class Game6 extends FlameGame {
     if (towerBlocks.isEmpty) {
       targetY = towerY;
     } else {
-      targetY = towerBlocks.last.y - FlyingBlock.height + 1;
+      targetY = towerBlocks.last.y - FlyingBlock.height; // 이전 블록 바로 위
     }
 
     ui.Image img = blockImages[_random.nextInt(blockImages.length)];
@@ -111,7 +114,6 @@ class Game6 extends FlameGame {
   @override
   void update(double dt) {
     super.update(dt);
-
     elapsedTime += dt;
 
     // 블록 이동
@@ -127,24 +129,31 @@ class Game6 extends FlameGame {
 
     flyingBlocks.removeWhere((b) => b.finished && b.addedToTower);
 
-    // --- 카메라 제어 ---
+    void _triggerGameOver() {
+      towerBlocks.clear();
+      flyingBlocks.clear();
+      if (onGameOut != null) onGameOut!();
+    }
+
+    // --- 카메라 & 게임 오버 조건 ---
     if (elapsedTime > 5) {
-      // 초기 속도 낮게, 30초마다 조금씩 증가
-      double initialSpeed = 15; // 처음 내려가는 속도
-      double speedIncrease = 10; // 30초마다 증가하는 속도
+      double initialSpeed = 15;
+      double speedIncrease = 10;
       cameraSpeed = initialSpeed + ((elapsedTime ~/ 30) * speedIncrease);
 
       yOffset += cameraSpeed * dt;
 
-      // 타워가 화면에서 완전히 사라지면 게임 종료
+      // 게임 영역 top
+      double gameAreaTop = 0; // GameWidget 상단 기준
+
       if (towerBlocks.isNotEmpty) {
-        double lowestBlockY = towerBlocks
-            .map((b) => b.y + FlyingBlock.height)
-            .reduce(max);
-        if (lowestBlockY - yOffset < 0) {
-          towerBlocks.clear();
-          flyingBlocks.clear();
-          if (onGameOut != null) onGameOut!();
+        double highestBlockY = towerBlocks.map((b) => b.y).reduce(min);
+
+        double topRelative = highestBlockY - yOffset;
+
+        // 타워 최고가 게임 영역 top보다 낮으면 게임 아웃
+        if (topRelative + FlyingBlock.height < gameAreaTop) {
+          _triggerGameOver();
         }
       }
     }
@@ -155,9 +164,8 @@ class Game6 extends FlameGame {
       double desiredYOffset = size.y / 2 - highestY - FlyingBlock.height / 2;
       desiredYOffset = min(0, desiredYOffset);
 
-      // 카메라가 내려가고 있을 때는 너무 강제로 yOffset 맞추지 않음
       if (desiredYOffset > yOffset) {
-        yOffset += (desiredYOffset - yOffset) * dt * 2; // 천천히 올림
+        yOffset += (desiredYOffset - yOffset) * dt * 2;
       }
     }
   }
@@ -166,9 +174,13 @@ class Game6 extends FlameGame {
   void render(Canvas canvas) {
     _renderBackground(canvas);
 
+    // 게임 영역 클리핑
+    Rect gameArea = Rect.fromLTWH(0, 0, size.x, 500); // 500은 GameWidget 높이
     canvas.save();
+    canvas.clipRect(gameArea);
     canvas.translate(0, yOffset);
 
+    // 기존 블록 그리기
     for (var block in towerBlocks) {
       final rect = Rect.fromLTWH(
         block.x,
@@ -364,7 +376,6 @@ class _Game6PageState extends State<Game6Page> {
       game.addBlockToTower();
       _nextQuestion();
 
-      // 첫 정답 입력 시 타이머 시작
       if (gameTimer == null) {
         _startGameTimer();
       }
@@ -430,17 +441,28 @@ class _Game6PageState extends State<Game6Page> {
               ),
             ),
           ),
+          // Game6Page build 부분
           Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                double gameWidth = constraints.maxWidth;
-                double gameHeight = constraints.maxHeight;
-
-                game.towerX = (gameWidth - FlyingBlock.width) / 2;
-                game.towerY = gameHeight - FlyingBlock.height;
-
-                return ClipRect(child: GameWidget(game: game));
-              },
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32.0,
+                  vertical: 16.0,
+                ),
+                child: ClipRect(
+                  // <-- 여기서 클리핑
+                  child: Container(
+                    width: double.infinity, // 원하는 너비
+                    height: 500, // 원하는 높이
+                    decoration: BoxDecoration(
+                      color: Colors.black12, // 게임 영역 배경
+                      border: Border.all(color: Colors.black, width: 5),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: GameWidget(game: game),
+                  ),
+                ),
+              ),
             ),
           ),
 
