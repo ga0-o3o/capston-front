@@ -65,14 +65,16 @@ class Game6 extends FlameGame {
   int towerHeight = 0;
 
   int pendingBlocks = 0; // 정답 입력으로 대기 중인 블록 수
-
   double yOffset = 0; // 카메라 이동
   List<ui.Image> blockImages = [];
   final Random _random = Random();
   double cameraSpeed = 0;
   double elapsedTime = 0;
+  double startDelay = 4;
+  double? firstBlockTime;
 
   VoidCallback? onGameOut;
+  bool gameOutCalled = false; // 중복 호출 방지
 
   @override
   Future<void> onLoad() async {
@@ -85,8 +87,9 @@ class Game6 extends FlameGame {
       'assets/images/game/part6/cake5.png',
     ];
 
+    double gameAreaHeight = 440;
     towerX = size.x / 2 - FlyingBlock.width / 2;
-    towerY = size.y - FlyingBlock.height;
+    towerY = gameAreaHeight - FlyingBlock.height;
 
     for (var path in characters) {
       final data = await rootBundle.load(path);
@@ -97,14 +100,9 @@ class Game6 extends FlameGame {
     }
   }
 
-  // 블록 생성 함수
   void addBlockToTower() {
-    double targetY;
-    if (towerBlocks.isEmpty) {
-      targetY = towerY;
-    } else {
-      targetY = towerBlocks.last.y - FlyingBlock.height;
-    }
+    double targetY =
+        towerBlocks.isEmpty ? towerY : towerBlocks.last.y - FlyingBlock.height;
 
     ui.Image img = blockImages[_random.nextInt(blockImages.length)];
     double startX = size.x / 2 - FlyingBlock.width / 2 - 300;
@@ -122,27 +120,27 @@ class Game6 extends FlameGame {
     super.update(dt);
     elapsedTime += dt;
 
-    // 블록 이동
     for (var block in flyingBlocks) {
       block.update(dt);
-
       if (block.finished && !block.addedToTower) {
         towerBlocks.add(block);
         block.addedToTower = true;
         towerHeight++;
+
+        if (firstBlockTime == null) firstBlockTime = elapsedTime;
       }
     }
 
     flyingBlocks.removeWhere((b) => b.finished && b.addedToTower);
 
-    // 대기 중인 블록이 있으면 추가
     if (flyingBlocks.isEmpty && pendingBlocks > 0) {
       pendingBlocks--;
       addBlockToTower();
     }
 
     // 카메라 이동
-    if (elapsedTime > 5) {
+    if (firstBlockTime != null &&
+        (elapsedTime - firstBlockTime!) > startDelay) {
       double initialSpeed = 15;
       double speedIncrease = 10;
       cameraSpeed = initialSpeed + ((elapsedTime ~/ 30) * speedIncrease);
@@ -159,19 +157,30 @@ class Game6 extends FlameGame {
         yOffset += (desiredYOffset - yOffset) * dt * 2;
       }
     }
+
+    // ------------------ 게임 오버 조건 ------------------
+    if (!gameOutCalled && towerBlocks.isNotEmpty) {
+      double highestBlockTop = towerBlocks
+          .map((b) => b.y + yOffset)
+          .reduce(min);
+      double bottomLimit = 450; // 화면 기준
+
+      if (highestBlockTop > bottomLimit) {
+        gameOutCalled = true;
+        if (onGameOut != null) onGameOut!();
+      }
+    }
   }
 
   @override
   void render(Canvas canvas) {
     _renderBackground(canvas);
 
-    // 게임 영역 클리핑
-    Rect gameArea = Rect.fromLTWH(0, 0, size.x, 500); // GameWidget 높이
+    Rect gameArea = Rect.fromLTWH(0, 0, size.x, 500);
     canvas.save();
     canvas.clipRect(gameArea);
     canvas.translate(0, yOffset);
 
-    // 타워 블록 렌더링
     for (var block in towerBlocks) {
       final rect = Rect.fromLTWH(
         block.x,
@@ -192,7 +201,6 @@ class Game6 extends FlameGame {
       );
     }
 
-    // 날아오는 블록 렌더링
     for (var block in flyingBlocks) {
       final rect = Rect.fromLTWH(
         block.x,
@@ -270,6 +278,7 @@ class _Game6PageState extends State<Game6Page> {
   int questionNumber = 0;
   Timer? gameTimer;
   bool gameOver = false;
+  int lives = 3; // 목숨
 
   @override
   void initState() {
@@ -365,17 +374,23 @@ class _Game6PageState extends State<Game6Page> {
             : currentWord!["koreanMeaning"].toString().toLowerCase();
 
     if (controller.text.trim().toLowerCase() == answer) {
-      // 이전 블록이 날아가는 중이면 pendingBlocks에 추가
+      // 정답
       if (game.flyingBlocks.isEmpty) {
         game.addBlockToTower();
       } else {
         game.pendingBlocks++;
       }
-
       _nextQuestion();
 
       if (gameTimer == null) {
         _startGameTimer();
+      }
+    } else {
+      // ❌ 오답 → 목숨 감소
+      lives--;
+      if (lives <= 0) {
+        gameOver = true;
+        _showGameOverDialog();
       }
     }
 
@@ -421,8 +436,17 @@ class _Game6PageState extends State<Game6Page> {
             // 총 시간
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [Text("총 시간: ${totalTime}s")],
+              children: [
+                Text("총 시간: ${totalTime}s"),
+                Row(
+                  children: List.generate(
+                    lives,
+                    (index) => const Icon(Icons.favorite, color: Colors.red),
+                  ),
+                ),
+              ],
             ),
+
             const SizedBox(height: 8),
 
             // 문제 영역
