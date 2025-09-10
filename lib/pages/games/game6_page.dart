@@ -171,7 +171,6 @@ class Game6 extends FlameGame {
     }
 
     // ------------------ 게임 오버 조건 ------------------
-    // ------------------ 게임 오버 조건 ------------------
     if (!gameOutCalled && towerBlocks.isNotEmpty) {
       double highestBlockTop = towerBlocks
           .map((b) => b.y + yOffset)
