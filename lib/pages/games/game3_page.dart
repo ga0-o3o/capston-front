@@ -15,18 +15,18 @@ class MazeGame extends FlameGame {
   late Player player;
   bool initialized = false;
 
-  int timeLeft = 180; // 제한 시간
+  int timeLeft = 180;
   int lives = 3;
   bool gameOver = false;
 
   bool canMove = true;
+  Vector2? currentDirection; // ✅ 현재 선택된 방향
   VoidCallback? onUpdate;
   Random random = Random();
 
   @override
   Future<void> onLoad() async {
     super.onLoad();
-
     final screenSize = size;
     int rows = 26;
     int cols = 27;
@@ -46,6 +46,11 @@ class MazeGame extends FlameGame {
   void movePlayer(Vector2 dir) {
     if (!canMove) return;
 
+    // ✅ 선택된 방향이 있으면 그 방향만 허용
+    if (currentDirection != null && dir != currentDirection) {
+      return;
+    }
+
     Vector2 newPos = player.gridPos + dir;
     if (!maze.isWalkable(newPos)) return;
 
@@ -55,8 +60,6 @@ class MazeGame extends FlameGame {
     if (player.gridPos == maze.endPosition) {
       canMove = false;
       gameOver = true;
-
-      // Flutter UI에 메시지 띄우기
       if (onUpdate != null) onUpdate!();
     }
 
@@ -214,18 +217,30 @@ class Player extends PositionComponent {
 }
 
 // -------------------- Direction Selection Dialog --------------------
-class DirectionSelectionDialog extends StatelessWidget {
+class DirectionSelectionDialog extends StatefulWidget {
   final void Function(Vector2 dir) onSelect;
 
   const DirectionSelectionDialog({super.key, required this.onSelect});
 
   @override
-  Widget build(BuildContext context) {
+  State<DirectionSelectionDialog> createState() =>
+      _DirectionSelectionDialogState();
+}
+
+class _DirectionSelectionDialogState extends State<DirectionSelectionDialog> {
+  @override
+  void initState() {
+    super.initState();
     Future.delayed(const Duration(seconds: 3), () {
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context, null); // 선택 안 했으면 null 반환
+      if (mounted) {
+        print("타이머 종료, Navigator.pop 호출");
+        Navigator.pop(context, null); // 3초 안에 선택 안 하면 null 반환
       }
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text("방향 선택"),
       content: Column(
@@ -237,28 +252,20 @@ class DirectionSelectionDialog extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, Vector2(0, -1));
-                },
-                child: const Text("위쪽"), // ↑ → 위쪽
+                onPressed: () => Navigator.pop(context, Vector2(0, -1)),
+                child: const Text("위쪽"),
               ),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, Vector2(-1, 0));
-                },
-                child: const Text("왼쪽"), // ← → 왼쪽
+                onPressed: () => Navigator.pop(context, Vector2(-1, 0)),
+                child: const Text("왼쪽"),
               ),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, Vector2(1, 0));
-                },
-                child: const Text("오른쪽"), // → → 오른쪽
+                onPressed: () => Navigator.pop(context, Vector2(1, 0)),
+                child: const Text("오른쪽"),
               ),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, Vector2(0, 1));
-                },
-                child: const Text("아래쪽"), // ↓ → 아래쪽
+                onPressed: () => Navigator.pop(context, Vector2(0, 1)),
+                child: const Text("아래쪽"),
               ),
             ],
           ),
@@ -515,7 +522,6 @@ class _Game3PageState extends State<Game3Page> {
             : currentWord!["wordEn"].toString().toLowerCase();
 
     if (userAnswer == correctAnswer) {
-      // 정답 처리
       setState(() {
         showQuestion = false;
         infoMessage = '정답입니다! 나아갈 방향을 선택하세요.';
@@ -533,18 +539,16 @@ class _Game3PageState extends State<Game3Page> {
                   onSelect: (d) => Navigator.pop(context, d),
                 ),
           ),
-          Future.delayed(const Duration(seconds: 3), () => null), // ⏰ 3초 제한
+          Future.delayed(const Duration(seconds: 3), () => null),
         ]);
 
         if (dir != null) {
-          game.movePlayer(dir);
+          // ✅ 방향 확정
+          game.currentDirection = dir;
+          game.canMove = true;
 
-          if (!game.maze.isAtJunction(
-            game.player.gridPos,
-            game.player.lastMoveDir,
-          )) {
-            game.canMove = true;
-          }
+          // 첫 칸 이동
+          game.movePlayer(dir);
 
           _nextQuestion();
           setState(() {
@@ -552,7 +556,6 @@ class _Game3PageState extends State<Game3Page> {
             showInfoMessage = false;
           });
         } else {
-          // ❌ 3초 동안 선택 안 하면 실패 처리
           setState(() {
             infoMessage = "⏰ 3초 안에 방향을 선택하지 못했습니다. 문제를 다시 푸세요!";
             showInfoMessage = true;
