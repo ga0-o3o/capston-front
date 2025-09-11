@@ -28,8 +28,8 @@ class MazeGame extends FlameGame {
   Future<void> onLoad() async {
     super.onLoad();
     final screenSize = size;
-    int rows = 26;
-    int cols = 27;
+    int rows = 15;
+    int cols = 16;
 
     double tileW = screenSize.x / cols;
     double tileH = screenSize.y / rows;
@@ -67,6 +67,14 @@ class MazeGame extends FlameGame {
     if (maze.isAtJunction(player.gridPos, player.lastMoveDir)) {
       canMove = false;
       if (onUpdate != null) onUpdate!();
+    }
+
+    // onUpdate 호출 추가
+    if (onUpdate != null) onUpdate!();
+
+    if (player.gridPos == maze.endPosition) {
+      canMove = false;
+      gameOver = true;
     }
   }
 }
@@ -216,6 +224,25 @@ class Player extends PositionComponent {
   }
 }
 
+// -------------------- Maze Extensions --------------------
+extension MazeExtensions on Maze {
+  bool isDeadEnd(Vector2 pos) {
+    List<Vector2> dirs = [
+      Vector2(0, -1),
+      Vector2(0, 1),
+      Vector2(-1, 0),
+      Vector2(1, 0),
+    ];
+
+    int walkableCount = 0;
+    for (var d in dirs) {
+      if (isWalkable(pos + d)) walkableCount++;
+    }
+
+    return walkableCount == 1; // 통로가 하나만 남으면 막다른 길
+  }
+}
+
 // -------------------- Direction Selection Dialog --------------------
 class DirectionSelectionDialog extends StatefulWidget {
   final void Function(Vector2 dir) onSelect;
@@ -228,19 +255,37 @@ class DirectionSelectionDialog extends StatefulWidget {
 }
 
 class _DirectionSelectionDialogState extends State<DirectionSelectionDialog> {
+  late List<Map<String, dynamic>> directions;
+  async.Timer? _autoCloseTimer;
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
+    directions = [
+      {"dir": Vector2(0, -1), "label": "위쪽"},
+      {"dir": Vector2(-1, 0), "label": "왼쪽"},
+      {"dir": Vector2(1, 0), "label": "오른쪽"},
+      {"dir": Vector2(0, 1), "label": "아래쪽"},
+    ];
+
+    // 3초 후 자동 닫기
+    _autoCloseTimer = async.Timer(const Duration(seconds: 3), () {
       if (mounted) {
-        print("타이머 종료, Navigator.pop 호출");
-        Navigator.pop(context, null); // 3초 안에 선택 안 하면 null 반환
+        Navigator.of(context, rootNavigator: true).pop(); // Dialog 닫기
       }
     });
   }
 
   @override
+  void dispose() {
+    _autoCloseTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    directions.shuffle(); // 매번 섞기
+
     return AlertDialog(
       title: const Text("방향 선택"),
       content: Column(
@@ -250,24 +295,16 @@ class _DirectionSelectionDialogState extends State<DirectionSelectionDialog> {
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, Vector2(0, -1)),
-                child: const Text("위쪽"),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, Vector2(-1, 0)),
-                child: const Text("왼쪽"),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, Vector2(1, 0)),
-                child: const Text("오른쪽"),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, Vector2(0, 1)),
-                child: const Text("아래쪽"),
-              ),
-            ],
+            children:
+                directions.map((d) {
+                  return ElevatedButton(
+                    onPressed: () {
+                      _autoCloseTimer?.cancel(); // 사용자가 선택하면 타이머 취소
+                      Navigator.pop(context, d["dir"] as Vector2);
+                    },
+                    child: Text(d["label"] as String),
+                  );
+                }).toList(),
           ),
         ],
       ),
@@ -302,6 +339,8 @@ class _Game3PageState extends State<Game3Page> {
 
   bool showEnglish = true;
 
+  int solvedQuestions = 0; // 풀었던 문제 수
+
   bool showDirectionButtons = false; // 방향 선택 버튼 표시 여부
   async.Timer? directionTimer; // 3초 타이머
 
@@ -330,6 +369,13 @@ class _Game3PageState extends State<Game3Page> {
           infoMessage = "방향을 바꾸고 싶다면, 문제를 풀어야 합니다.";
           showQuestion = true;
           game.canMove = false;
+        } else if (game.maze.isDeadEnd(game.player.gridPos)) {
+          setState(() {
+            showInfoMessage = true;
+            infoMessage = "🚧 막다른 길입니다! 문제를 풀고 방향을 선택하세요.";
+            showQuestion = true;
+            game.canMove = false;
+          });
         }
       });
     };
@@ -349,7 +395,9 @@ class _Game3PageState extends State<Game3Page> {
         builder:
             (_) => AlertDialog(
               title: const Text("게임 종료"),
-              content: Text("남은 목숨: $lives, 남은 시간: $totalTime초"),
+              content: Text(
+                "남은 목숨: $lives\n남은 시간: $totalTime초\n풀었던 문제 수: $solvedQuestions",
+              ),
               actions: [
                 TextButton(
                   onPressed: () {
@@ -477,90 +525,119 @@ class _Game3PageState extends State<Game3Page> {
   Future<void> _showDirectionButtons(Vector2 currentPos) async {
     if (!showDirectionButtons) return;
 
-    Vector2? selectedDir = await showDialog<Vector2>(
+    Vector2? selectedDir;
+
+    // 3초 제한 타이머
+    directionTimer = async.Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+
+      setState(() {
+        showDirectionButtons = false;
+        showInfoMessage = true;
+        infoMessage = '⏰ 3초 안에 방향을 선택하지 못했습니다. 문제를 다시 푸세요!';
+        showQuestion = true;
+        game.canMove = false;
+      });
+
+      // 새로운 문제 생성
+      _nextQuestion();
+
+      // Navigator.pop을 별도 microtask로 예약
+      Future.delayed(Duration.zero, () {
+        if (Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop(); // Dialog 강제 닫기
+        }
+      });
+    });
+
+    // ✅ 선택 시에만 취소
+    Vector2? dir = await showDialog<Vector2>(
       context: context,
       barrierDismissible: false,
       builder:
           (_) => DirectionSelectionDialog(
-            onSelect: (dir) => Navigator.pop(context, dir),
+            onSelect: (d) => Navigator.pop(context, d),
           ),
     );
 
-    if (selectedDir != null) {
-      if (game.maze.isWalkable(currentPos + selectedDir)) {
-        directionTimer?.cancel();
-        game.movePlayer(selectedDir);
+    directionTimer?.cancel(); // ✅ 사용자가 선택했으면 타이머 취소
 
-        // 방향 선택 후 자유 이동 허용
-        game.canMove = true;
+    if (dir != null && game.maze.isWalkable(currentPos + dir)) {
+      game.currentDirection = dir;
+      game.canMove = true;
+      game.movePlayer(dir);
 
-        setState(() {
-          showDirectionButtons = false;
-          showInfoMessage = false;
-        });
-        _nextQuestion(); // 다음 문제
-      } else {
-        // 잘못된 방향 선택
-        setState(() {
-          showDirectionButtons = false;
-          showInfoMessage = true;
-          infoMessage = '잘못된 방향입니다! 다시 문제를 풀어주세요.';
-          showQuestion = true;
-        });
-      }
+      _nextQuestion();
+      setState(() {
+        showQuestion = true;
+        showInfoMessage = false;
+        showDirectionButtons = false; // 한 번 선택했으므로 버튼 숨기기
+      });
+    } else {
+      setState(() {
+        infoMessage = "❌ 올바른 방향을 선택하지 않았습니다. 문제를 다시 풀어주세요!";
+        showInfoMessage = true;
+        showQuestion = true;
+        game.canMove = false;
+        showDirectionButtons = false;
+      });
+      _nextQuestion();
     }
   }
 
   void checkAnswer() {
     if (currentWord == null || game.gameOver) return;
 
-    final userAnswer = controller.text.trim().toLowerCase();
+    solvedQuestions++; // 문제 시도 시 증가
 
+    final userAnswer = controller.text.trim().toLowerCase();
     final correctAnswer =
         showEnglish
             ? currentWord!["koreanMeaning"].toString().toLowerCase()
             : currentWord!["wordEn"].toString().toLowerCase();
 
+    // checkAnswer() 내 정답 처리
     if (userAnswer == correctAnswer) {
       setState(() {
         showQuestion = false;
         infoMessage = '정답입니다! 나아갈 방향을 선택하세요.';
+        showDirectionButtons = true;
         showInfoMessage = true;
         game.canMove = false;
       });
 
-      Future.delayed(Duration.zero, () async {
-        Vector2? dir = await Future.any([
-          showDialog<Vector2>(
-            context: context,
-            barrierDismissible: false,
-            builder:
-                (_) => DirectionSelectionDialog(
-                  onSelect: (d) => Navigator.pop(context, d),
-                ),
-          ),
-          Future.delayed(const Duration(seconds: 3), () => null),
-        ]);
+      // ✅ 정답 처리 후 새로운 문제 선택
+      _nextQuestion();
 
-        if (dir != null) {
-          // ✅ 방향 확정
+      // 방향 선택 1회만
+      Future.delayed(Duration.zero, () async {
+        Vector2? dir = await showDialog<Vector2>(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (_) => DirectionSelectionDialog(
+                onSelect: (d) => Navigator.pop(context, d),
+              ),
+        );
+
+        if (dir != null && game.maze.isWalkable(game.player.gridPos + dir)) {
           game.currentDirection = dir;
           game.canMove = true;
-
-          // 첫 칸 이동
           game.movePlayer(dir);
 
           _nextQuestion();
           setState(() {
             showQuestion = true;
             showInfoMessage = false;
+            showDirectionButtons = false; // 한 번 선택했으므로 버튼 숨기기
           });
         } else {
           setState(() {
-            infoMessage = "⏰ 3초 안에 방향을 선택하지 못했습니다. 문제를 다시 푸세요!";
+            infoMessage = "❌ 올바른 방향을 선택하지 않았습니다. 문제를 다시 풀어주세요!";
             showInfoMessage = true;
             showQuestion = true;
             game.canMove = false;
+            showDirectionButtons = false;
           });
         }
       });
@@ -581,6 +658,9 @@ class _Game3PageState extends State<Game3Page> {
           infoMessage = '틀렸습니다! 남은 목숨: $lives';
           showInfoMessage = true;
         });
+
+        // 오답 처리 시 새로운 문제 선택
+        _nextQuestion();
       }
     }
 
@@ -704,10 +784,11 @@ class _Game3PageState extends State<Game3Page> {
                     child: Center(
                       child:
                           game.initialized &&
-                                  game.maze.isAtJunction(
-                                    game.player.gridPos,
-                                    game.player.lastMoveDir,
-                                  )
+                                  (game.maze.isAtJunction(
+                                        game.player.gridPos,
+                                        game.player.lastMoveDir,
+                                      ) ||
+                                      game.maze.isDeadEnd(game.player.gridPos))
                               ? (currentWord == null
                                   ? const Text("단어 없음")
                                   : Text(
