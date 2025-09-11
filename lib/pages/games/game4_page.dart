@@ -49,16 +49,32 @@ class WordChainGame extends FlameGame {
   bool gameOver = false;
 
   final List<String> wordBank = [
-    "apple",
-    "ear",
-    "rabbit",
-    "top",
-    "pen",
-    "note",
-    "elephant",
-    "tree",
-    "egg",
-    "game",
+    "pasta", // a
+    "club", // b
+    "arc", // c
+    "trend", // d
+    "hope", // e
+    "calf", // f
+    "dog", // g
+    "path", // h
+    "ski", // i
+    "jog", // j
+    "kick", // k
+    "goal", // l
+    "drum", // m
+    "sun", // n
+    "photo", // o
+    "top", // p
+    "unique", // q
+    "star", // r
+    "bus", // s
+    "cat", // t
+    "menu", // u
+    "navy", // v
+    "show", // w
+    "box", // x
+    "day", // y
+    "jazz", // z
   ];
 
   VoidCallback? onUpdate;
