@@ -12,11 +12,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class MazeGame extends FlameGame {
   late Maze maze;
   late Player player;
+  bool initialized = false;
 
   int timeLeft = 180; // 제한 시간
   int lives = 3;
   bool gameOver = false;
 
+  bool canMove = true;
   VoidCallback? onUpdate;
   Random random = Random();
 
@@ -25,29 +27,34 @@ class MazeGame extends FlameGame {
     super.onLoad();
 
     final screenSize = size;
-    int rows = 20; // 미로 크기 크게
-    int cols = 20;
+    int rows = 26;
+    int cols = 27;
 
     double tileW = screenSize.x / cols;
     double tileH = screenSize.y / rows;
     Maze.tileSize = min(tileW, tileH);
 
-    // MazeGame onLoad 내부
     maze = Maze(rows, cols);
-    player = Player(position: maze.startPosition, maze: maze); // <-- maze 전달
+    player = Player(position: maze.startPosition, maze: maze);
     add(maze);
     add(player);
+
+    initialized = true;
   }
 
   void movePlayer(Vector2 dir) {
+    // 플레이어가 갈림길에서 방향 선택 전이면 이동 금지
+    if (!canMove) return;
+
     Vector2 newPos = player.gridPos + dir;
     if (!maze.isWalkable(newPos)) return;
 
     player.moveTo(newPos);
 
-    // Junction 도착시 콜백
-    if (maze.isAtJunction(player.gridPos) && onUpdate != null) {
-      onUpdate!();
+    // 갈림길에 도착하면 이동 제한
+    if (maze.isAtJunction(player.gridPos, player.lastMoveDir)) {
+      canMove = false; // 갈림길에서는 이동 금지
+      if (onUpdate != null) onUpdate!(); // UI 업데이트 등 호출
     }
   }
 }
@@ -61,7 +68,7 @@ class Maze extends PositionComponent {
 
   static double tileSize = 32;
 
-  Maze(this.rows, this.cols) : endPosition = Vector2(cols - 1, rows - 1) {
+  Maze(this.rows, this.cols) : endPosition = Vector2.zero() {
     grid = List.generate(rows, (_) => List.filled(cols, 0));
     generateMaze();
   }
@@ -96,7 +103,6 @@ class Maze extends PositionComponent {
 
     dfs(0, 0);
 
-    // endPosition을 통로 중 한 곳으로 설정
     for (int y = rows - 1; y >= 0; y--) {
       for (int x = cols - 1; x >= 0; x--) {
         if (grid[y][x] == 1) {
@@ -112,25 +118,31 @@ class Maze extends PositionComponent {
     return grid[pos.y.toInt()][pos.x.toInt()] == 1;
   }
 
-  bool isAtJunction(Vector2 pos) {
-    int count = 0;
+  bool isAtJunction(Vector2 pos, [Vector2? lastDir]) {
     List<Vector2> dirs = [
       Vector2(0, -1),
       Vector2(0, 1),
       Vector2(-1, 0),
       Vector2(1, 0),
     ];
+
+    int walkableCount = 0;
+    bool wallAhead = false;
+
     for (var d in dirs) {
       Vector2 next = pos + d;
-      if (isWalkable(next)) count++;
+      if (isWalkable(next)) walkableCount++;
+      if (lastDir != null && d == lastDir && !isWalkable(next))
+        wallAhead = true;
     }
-    return count >= 3;
+
+    return walkableCount >= 3 || (walkableCount >= 2 && wallAhead);
   }
 
   @override
   void render(Canvas canvas) {
-    final paintWall = Paint()..color = Colors.black; // 벽
-    final paintPath = Paint()..color = Colors.white; // 이동 가능한 길
+    final paintWall = Paint()..color = Colors.black;
+    final paintPath = Paint()..color = Colors.white;
 
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
@@ -169,6 +181,7 @@ class Maze extends PositionComponent {
 class Player extends PositionComponent {
   Vector2 gridPos;
   final Maze maze;
+  Vector2 lastMoveDir = Vector2.zero();
 
   Player({required Vector2 position, required this.maze})
     : gridPos = position.clone() {
@@ -185,17 +198,19 @@ class Player extends PositionComponent {
         newGridPos.y >= maze.rows)
       return;
 
+    lastMoveDir = newGridPos - gridPos;
     gridPos = newGridPos.clone();
     position = gridPos * Maze.tileSize;
   }
 
   @override
   void render(Canvas canvas) {
-    final paint = Paint()..color = Colors.blue; // 플레이어 색상
+    final paint = Paint()..color = Colors.blue;
     canvas.drawRect(Rect.fromLTWH(0, 0, size.x, size.y), paint);
   }
 }
 
+// -------------------- Direction Selection Dialog --------------------
 class DirectionSelectionDialog extends StatelessWidget {
   final void Function(Vector2 dir) onSelect;
 
@@ -205,41 +220,46 @@ class DirectionSelectionDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text("방향 선택"),
-      content: const Text("이동할 방향을 선택하세요"),
-      actions: [
-        // 위
-        TextButton(
-          onPressed: () {
-            onSelect(Vector2(0, -1));
-            Navigator.pop(context);
-          },
-          child: const Text("↑ 위쪽"),
-        ),
-        // 왼쪽
-        TextButton(
-          onPressed: () {
-            onSelect(Vector2(-1, 0));
-            Navigator.pop(context);
-          },
-          child: const Text("← 왼쪽"),
-        ),
-        // 오른쪽
-        TextButton(
-          onPressed: () {
-            onSelect(Vector2(1, 0));
-            Navigator.pop(context);
-          },
-          child: const Text("→ 오른쪽"),
-        ),
-        // 아래
-        TextButton(
-          onPressed: () {
-            onSelect(Vector2(0, 1));
-            Navigator.pop(context);
-          },
-          child: const Text("↓ 아래쪽"),
-        ),
-      ],
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text("이동할 방향을 선택하세요"),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  onSelect(Vector2(0, -1));
+                  Navigator.pop(context);
+                },
+                child: const Text("↑"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  onSelect(Vector2(-1, 0));
+                  Navigator.pop(context);
+                },
+                child: const Text("←"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  onSelect(Vector2(1, 0));
+                  Navigator.pop(context);
+                },
+                child: const Text("→"),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  onSelect(Vector2(0, 1));
+                  Navigator.pop(context);
+                },
+                child: const Text("↓"),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -257,21 +277,49 @@ class _Game3PageState extends State<Game3Page> {
   late MazeGame game;
   async.Timer? timer;
   final TextEditingController controller = TextEditingController();
+  final FocusNode answerFocusNode = FocusNode();
 
   Map<String, dynamic>? currentWord;
-  bool showKorean = false;
-  bool isLoading = true;
+  bool showQuestion = false;
+  bool showInfoMessage = false;
+  String infoMessage = "";
 
   int totalTime = 180;
   int lives = 3;
-  int questionNumber = 0;
   final Random _random = Random();
+
+  bool showEnglish = true;
+
+  bool showDirectionButtons = false; // 방향 선택 버튼 표시 여부
+  async.Timer? directionTimer; // 3초 타이머
 
   String? userId;
   String? token;
 
-  bool showQuestion = false; // 문제를 보여줄지 여부
-  bool showDirectionSelection = false; // 방향 선택 버튼 표시 여부
+  @override
+  void initState() {
+    super.initState();
+    game = MazeGame();
+    game.onUpdate = () {
+      if (mounted &&
+          game.maze.isAtJunction(
+            game.player.gridPos,
+            game.player.lastMoveDir,
+          )) {
+        if (!showQuestion) {
+          setState(() {
+            showInfoMessage = true; // 안내문 표시
+            infoMessage = "방향을 바꾸고 싶다면, 문제를 풀어야 합니다.";
+            showQuestion = true; // 문제 표시
+          });
+        }
+      }
+    };
+
+    _loadUserIdAndWords();
+
+    startTimer();
+  }
 
   Future<void> _loadUserIdAndWords() async {
     final prefs = await SharedPreferences.getInstance();
@@ -279,15 +327,12 @@ class _Game3PageState extends State<Game3Page> {
     final storedUserId = prefs.getString('user_id');
 
     if (storedUserId == null || storedToken == null) {
-      print("User ID 또는 Token 없음");
-      setState(() => isLoading = false);
+      setState(() {});
       return;
     }
 
-    setState(() {
-      userId = storedUserId;
-      token = storedToken;
-    });
+    userId = storedUserId;
+    token = storedToken;
 
     await fetchWords(storedUserId, storedToken);
   }
@@ -304,38 +349,15 @@ class _Game3PageState extends State<Game3Page> {
       setState(() {
         words = list;
         _nextQuestion();
-        isLoading = false;
       });
-    } else {
-      print("단어 조회 실패: ${response.statusCode}");
-      setState(() => isLoading = false);
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    game = MazeGame();
-    game.onUpdate = () {
-      if (mounted) {
-        if (game.maze.isAtJunction(game.player.gridPos)) {
-          setState(() {
-            showQuestion = true;
-          });
-        }
-      }
-    };
-
-    _loadUserIdAndWords();
   }
 
   void startTimer() {
     timer = async.Timer.periodic(const Duration(seconds: 1), (t) {
       if (totalTime > 0 && !game.gameOver) {
-        setState(() {
-          totalTime--;
-          game.timeLeft = totalTime;
-        });
+        setState(() => totalTime--);
+        game.timeLeft = totalTime;
       } else {
         t.cancel();
         game.gameOver = true;
@@ -344,21 +366,37 @@ class _Game3PageState extends State<Game3Page> {
   }
 
   void _nextQuestion() {
-    if (words.isEmpty) return;
-    currentWord = words[_random.nextInt(words.length)];
-    showKorean = _random.nextBool();
-    questionNumber++;
+    if (words.isEmpty) {
+      setState(() => currentWord = null);
+      return;
+    }
+
+    setState(() {
+      currentWord = words[_random.nextInt(words.length)];
+      showEnglish = _random.nextBool();
+      showQuestion = true;
+
+      // 갈림길 문제일 때만 이동 금지
+      if (game.maze.isAtJunction(
+        game.player.gridPos,
+        game.player.lastMoveDir,
+      )) {
+        game.canMove = false;
+      } else {
+        game.canMove = true; // 일반 통로에서는 자유롭게 이동
+      }
+    });
   }
 
   Future<void> onMove(Vector2 dir) async {
     if (game.gameOver) return;
-    game.movePlayer(dir); // dir 전달
+    game.movePlayer(dir);
   }
 
-  // -------------------- 영어 문제 --------------------
   Future<bool> showQuestionDialog() async {
     if (currentWord == null) return false;
     String word = currentWord?["wordEn"] ?? "";
+    currentWord!["koreanMeaning"].toString().toLowerCase();
 
     return await showDialog<bool>(
           context: context,
@@ -382,137 +420,102 @@ class _Game3PageState extends State<Game3Page> {
         false;
   }
 
-  // -------------------- 방향 선택 버튼 --------------------
+  // 방향 선택 처리
   Future<void> _showDirectionButtons(Vector2 currentPos) async {
-    bool? result = await showDialog<bool>(
+    if (!showDirectionButtons) return;
+
+    Vector2? selectedDir = await showDialog<Vector2>(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
-        async.Timer? timer;
-        return StatefulBuilder(
-          builder: (context, setState) {
-            timer ??= async.Timer(const Duration(seconds: 3), () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context, null); // 시간 초과
-              }
-            });
-
-            return AlertDialog(
-              title: const Text("방향 선택"),
-              content: const Text("3초 안에 이동할 방향을 선택하세요!"),
-              actions: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 위쪽
-                    TextButton(
-                      onPressed: () {
-                        timer?.cancel();
-                        Navigator.pop(context, true); // 위
-                      },
-                      child: const Text("↑ 위쪽"),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // 왼쪽
-                        TextButton(
-                          onPressed: () {
-                            timer?.cancel();
-                            Navigator.pop(context, false); // 왼쪽
-                          },
-                          child: const Text("← 왼쪽"),
-                        ),
-                        const SizedBox(width: 20),
-                        // 오른쪽
-                        TextButton(
-                          onPressed: () {
-                            timer?.cancel();
-                            Navigator.pop(context, null); // 오른쪽
-                          },
-                          child: const Text("→ 오른쪽"),
-                        ),
-                      ],
-                    ),
-                    // 아래쪽
-                    TextButton(
-                      onPressed: () {
-                        timer?.cancel();
-                        Navigator.pop(context, false); // 아래
-                      },
-                      child: const Text("↓ 아래쪽"),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          },
-        );
-      },
+      builder:
+          (_) => DirectionSelectionDialog(
+            onSelect: (dir) => Navigator.pop(context, dir),
+          ),
     );
 
-    if (result == null) {
-      // 시간 초과 → 다시 문제
-      bool correct = await showQuestionDialog();
-      if (correct) {
-        _showDirectionButtons(currentPos);
-      }
-    } else {
-      // 선택한 방향에 따라 좌표 이동
-      Vector2 dir;
-      switch (result) {
-        case true: // 위쪽
-          dir = Vector2(0, -1);
-          break;
-        case false: // 왼쪽/아래 (구분 필요)
-          dir = Vector2(-1, 0);
-          break;
-        default: // 오른쪽
-          dir = Vector2(1, 0);
-          break;
-      }
-
-      Vector2 newPos = currentPos + dir;
-      if (game.maze.isWalkable(newPos)) {
-        game.movePlayer(newPos);
+    if (selectedDir != null) {
+      if (game.maze.isWalkable(currentPos + selectedDir)) {
+        directionTimer?.cancel();
+        game.movePlayer(selectedDir);
+        setState(() {
+          showDirectionButtons = false;
+          showInfoMessage = false;
+        });
+        _nextQuestion(); // 다음 문제
+      } else {
+        // 잘못된 방향 선택 → 다시 문제
+        setState(() {
+          showDirectionButtons = false;
+          showInfoMessage = true;
+          infoMessage = '잘못된 방향입니다! 다시 문제를 풀어주세요.';
+          showQuestion = true;
+        });
       }
     }
   }
 
   void checkAnswer() {
-    String answer = controller.text.trim();
-    if (currentWord == null) return;
+    if (currentWord == null || game.gameOver) return;
 
-    if (answer.toLowerCase() == (currentWord!["wordEn"] ?? "").toLowerCase()) {
-      _nextQuestion();
+    final userAnswer = controller.text.trim().toLowerCase();
 
-      // 정답 맞았으면 방향 선택 다이얼로그 보여주기
+    // 문제 유형에 따라 정답을 반대로 설정
+    final correctAnswer =
+        showEnglish
+            ? currentWord!["koreanMeaning"]
+                .toString()
+                .toLowerCase() // 영어 문제 → 한국어 뜻
+            : currentWord!["wordEn"].toString().toLowerCase(); // 한국어 문제 → 영어 단어
+
+    if (userAnswer == correctAnswer) {
+      // 정답 처리
       setState(() {
-        showQuestion = false; // 문제 숨김
+        showQuestion = false;
+        infoMessage = '정답입니다! 나아갈 방향을 선택하세요.';
+        showInfoMessage = true;
+        game.canMove = false;
       });
 
-      // 다음 프레임에서 다이얼로그 실행
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showDialog(
+      Future.delayed(Duration.zero, () async {
+        Vector2? dir = await showDialog<Vector2>(
           context: context,
           barrierDismissible: false,
           builder:
               (_) => DirectionSelectionDialog(
-                onSelect: (dir) {
-                  game.movePlayer(game.player.gridPos + dir);
-                  setState(() {
-                    showDirectionSelection = false; // 버튼 숨기기
-                  });
-                },
+                onSelect: (d) => Navigator.pop(context, d),
               ),
         );
+
+        if (dir != null) {
+          game.movePlayer(dir);
+
+          // 방향 선택 후 일반 통로이면 이동 허용
+          if (!game.maze.isAtJunction(
+            game.player.gridPos,
+            game.player.lastMoveDir,
+          )) {
+            game.canMove = true;
+          }
+
+          _nextQuestion();
+          setState(() {
+            showQuestion = true;
+            showInfoMessage = false;
+          });
+        }
       });
     } else {
+      // 오답 처리
       lives--;
       game.lives = lives;
       if (lives <= 0) game.gameOver = true;
-      setState(() {});
+
+      setState(() {
+        infoMessage = '틀렸습니다! 남은 목숨: $lives';
+        showInfoMessage = true;
+      });
     }
+
     controller.clear();
   }
 
@@ -525,94 +528,122 @@ class _Game3PageState extends State<Game3Page> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const Center(child: CircularProgressIndicator());
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
-        title: const Text("개인 단어 타워 (솔로 모드)"),
+        title: const Text("미로 탈출"),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 시간 + 목숨
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("남은 시간: $totalTime s"),
-                Row(
-                  children: List.generate(
-                    lives,
-                    (index) => const Icon(Icons.favorite, color: Colors.red),
-                  ),
+            // 안내문 박스
+            if (showInfoMessage)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ), // 위아래 여백 줄임
+                margin: const EdgeInsets.only(bottom: 8),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade200,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange, width: 2),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
+                child: Text(
+                  infoMessage,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
 
-            // 문제 영역
+            // 문제 박스
             Container(
               padding: const EdgeInsets.all(16),
-              height: 80,
+              height: 70,
               width: double.infinity,
-              color: Colors.black12,
-              child: Center(
-                child:
-                    showQuestion
-                        ? Text(
-                          currentWord != null
-                              ? currentWord!["wordEn"] ?? "단어 없음"
-                              : "단어 없음",
-                          style: const TextStyle(fontSize: 24),
-                        )
-                        : Container(
-                          width: 40,
-                          height: 40,
-                          color: Colors.white, // 평소 가림막
-                        ),
+              decoration: BoxDecoration(color: Colors.black12),
+              child: Row(
+                children: [
+                  // 왼쪽: 남은 시간
+                  Text("남은 시간: ${totalTime}s"),
+                  const SizedBox(width: 16), // 시간과 단어 사이 간격
+                  // 가운데: 단어
+                  Expanded(
+                    child: Center(
+                      child:
+                          game.initialized &&
+                                  game.maze.isAtJunction(
+                                    game.player.gridPos,
+                                    game.player.lastMoveDir,
+                                  )
+                              ? (currentWord == null
+                                  ? const Text("단어 없음")
+                                  : Text(
+                                    showEnglish
+                                        ? currentWord!["wordEn"] ?? "단어 없음"
+                                        : currentWord!["koreanMeaning"] ??
+                                            "뜻 없음",
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ))
+                              : Container(
+                                width: 100,
+                                height: 80,
+                                color: Colors.white,
+                              ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
             const SizedBox(height: 16),
 
-            // 게임 영역
+            // 게임 화면
             Expanded(
-              child: Center(
-                child: Focus(
-                  autofocus: true, // 자동 포커스
-                  child: RawKeyboardListener(
-                    focusNode: FocusNode(),
-                    onKey: (event) {
-                      if (event is RawKeyDownEvent) {
-                        Vector2 dir = Vector2.zero();
-                        switch (event.logicalKey.keyLabel) {
-                          case 'Arrow Up':
-                            dir = Vector2(0, -1);
-                            break;
-                          case 'Arrow Down':
-                            dir = Vector2(0, 1);
-                            break;
-                          case 'Arrow Left':
-                            dir = Vector2(-1, 0);
-                            break;
-                          case 'Arrow Right':
-                            dir = Vector2(1, 0);
-                            break;
-                        }
-                        if (dir != Vector2.zero()) onMove(dir);
+              child: Focus(
+                autofocus: true,
+                focusNode: FocusNode(),
+                child: RawKeyboardListener(
+                  focusNode: FocusNode(),
+                  onKey: (event) {
+                    if (event is RawKeyDownEvent) {
+                      Vector2 dir = Vector2.zero();
+                      switch (event.logicalKey.keyLabel) {
+                        case 'Arrow Up':
+                          dir = Vector2(0, -1);
+                          break;
+                        case 'Arrow Down':
+                          dir = Vector2(0, 1);
+                          break;
+                        case 'Arrow Left':
+                          dir = Vector2(-1, 0);
+                          break;
+                        case 'Arrow Right':
+                          dir = Vector2(1, 0);
+                          break;
                       }
-                    },
-                    child: ClipRect(
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.black12,
-                          border: Border.all(color: Colors.black, width: 5),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: GameWidget(game: game),
+                      if (dir != Vector2.zero()) onMove(dir);
+                    }
+                  },
+                  child: ClipRect(
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.black12,
+                        border: Border.all(color: Colors.black, width: 5),
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      child: GameWidget(game: game),
                     ),
                   ),
                 ),
@@ -620,9 +651,11 @@ class _Game3PageState extends State<Game3Page> {
             ),
 
             const SizedBox(height: 16),
-            // 정답 입력창
+
+            // 입력창
             TextField(
               controller: controller,
+              focusNode: answerFocusNode,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: "정답 입력",
