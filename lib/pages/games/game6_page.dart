@@ -521,7 +521,7 @@ class _Game6PageState extends State<Game6Page> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("총 시간: ${totalTime}s"),
+                Text("남은 시간: ${totalTime}s"),
                 Row(
                   children: List.generate(
                     lives,
