@@ -221,6 +221,11 @@ class DirectionSelectionDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Future.delayed(const Duration(seconds: 3), () {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, null); // 선택 안 했으면 null 반환
+      }
+    });
     return AlertDialog(
       title: const Text("방향 선택"),
       content: Column(
@@ -519,19 +524,21 @@ class _Game3PageState extends State<Game3Page> {
       });
 
       Future.delayed(Duration.zero, () async {
-        Vector2? dir = await showDialog<Vector2>(
-          context: context,
-          barrierDismissible: false,
-          builder:
-              (_) => DirectionSelectionDialog(
-                onSelect: (d) => Navigator.pop(context, d),
-              ),
-        );
+        Vector2? dir = await Future.any([
+          showDialog<Vector2>(
+            context: context,
+            barrierDismissible: false,
+            builder:
+                (_) => DirectionSelectionDialog(
+                  onSelect: (d) => Navigator.pop(context, d),
+                ),
+          ),
+          Future.delayed(const Duration(seconds: 3), () => null), // ⏰ 3초 제한
+        ]);
 
         if (dir != null) {
           game.movePlayer(dir);
 
-          // 방향 선택 후 일반 통로이면 이동 허용
           if (!game.maze.isAtJunction(
             game.player.gridPos,
             game.player.lastMoveDir,
@@ -543,6 +550,14 @@ class _Game3PageState extends State<Game3Page> {
           setState(() {
             showQuestion = true;
             showInfoMessage = false;
+          });
+        } else {
+          // ❌ 3초 동안 선택 안 하면 실패 처리
+          setState(() {
+            infoMessage = "⏰ 3초 안에 방향을 선택하지 못했습니다. 문제를 다시 푸세요!";
+            showInfoMessage = true;
+            showQuestion = true;
+            game.canMove = false;
           });
         }
       });
