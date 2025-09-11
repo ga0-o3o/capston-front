@@ -91,18 +91,15 @@ class Game6 extends FlameGame {
     ];
 
     // 배경 이미지 로드
-    final data = await rootBundle.load(
+    final bgData = await rootBundle.load(
       'assets/images/game/part6/background.png',
     );
-    final bytes = data.buffer.asUint8List();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    bgImage = frame.image;
+    final bgBytes = bgData.buffer.asUint8List();
+    final bgCodec = await ui.instantiateImageCodec(bgBytes);
+    final bgFrame = await bgCodec.getNextFrame();
+    bgImage = bgFrame.image;
 
-    double gameAreaHeight = 440;
-    towerX = size.x / 2 - FlyingBlock.width / 2;
-    towerY = gameAreaHeight - FlyingBlock.height;
-
+    // 블록 이미지 모두 로드
     for (var path in characters) {
       final data = await rootBundle.load(path);
       final bytes = data.buffer.asUint8List();
@@ -110,6 +107,11 @@ class Game6 extends FlameGame {
       final frame = await codec.getNextFrame();
       blockImages.add(frame.image);
     }
+
+    // 모든 이미지 로딩 완료 후 초기 위치 계산
+    double gameAreaHeight = 405;
+    towerX = (size.x > 0 ? size.x : 360) / 2 - FlyingBlock.width / 2;
+    towerY = gameAreaHeight - FlyingBlock.height;
   }
 
   void addBlockToTower() {
@@ -247,7 +249,7 @@ class Game6 extends FlameGame {
         bgImage!.height.toDouble() * (bgWidth / bgImage!.width.toDouble());
 
     // 배경 위치
-    double bgY = screenHeight - bgHeight + yOffset;
+    double bgY = screenHeight - bgHeight + yOffset - 55;
 
     canvas.drawImageRect(
       bgImage!,
@@ -290,9 +292,13 @@ class _Game6PageState extends State<Game6Page> {
   bool gameOver = false;
   int lives = 3; // 목숨
 
+  bool showStartMessage = true; // 1번 안내문
+  bool showSpeedUpMessage = false; // 2번 안내문
+
   @override
   void initState() {
     super.initState();
+
     game = Game6();
     game.onGameOut = () {
       setState(() {
@@ -300,7 +306,23 @@ class _Game6PageState extends State<Game6Page> {
         _showGameOverDialog();
       });
     };
+
     _loadUserIdAndWords();
+
+    // 1번 안내문 5초
+    Future.delayed(const Duration(seconds: 5), () {
+      setState(() {
+        showStartMessage = false;
+        showSpeedUpMessage = true; // 2번 안내문 시작
+      });
+
+      // 2번 안내문 3초 후 사라짐
+      Future.delayed(const Duration(seconds: 3), () {
+        setState(() {
+          showSpeedUpMessage = false;
+        });
+      });
+    });
   }
 
   @override
@@ -308,6 +330,52 @@ class _Game6PageState extends State<Game6Page> {
     controller.dispose();
     gameTimer?.cancel();
     super.dispose();
+  }
+
+  DateTime? pauseStart;
+
+  void _pauseGame() {
+    gameTimer?.cancel(); // 타이머 멈춤
+    pauseStart = DateTime.now();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => AlertDialog(
+            title: const Text("일시정지"),
+            content: const Text("게임을 계속하시겠습니까?"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  if (pauseStart != null) {
+                    double pausedSeconds =
+                        DateTime.now()
+                            .difference(pauseStart!)
+                            .inSeconds
+                            .toDouble();
+                    game.elapsedTime += pausedSeconds; // 경과 시간 보정
+                  }
+                  pauseStart = null;
+                  Navigator.pop(context);
+
+                  // 정답을 맞춰서 타이머가 시작된 경우에만 재개
+                  if (timerStarted) {
+                    _startGameTimer();
+                  }
+                },
+                child: const Text("계속하기"),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context); // 메뉴로 나가기
+                },
+                child: const Text("종료"),
+              ),
+            ],
+          ),
+    );
   }
 
   Future<void> _loadUserIdAndWords() async {
@@ -350,6 +418,8 @@ class _Game6PageState extends State<Game6Page> {
   }
 
   void _startGameTimer() {
+    if (gameTimer != null && gameTimer!.isActive) return; // 이미 진행 중이면 무시
+
     gameTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (gameOver) {
         timer.cancel();
@@ -375,6 +445,8 @@ class _Game6PageState extends State<Game6Page> {
     questionNumber++;
   }
 
+  bool timerStarted = false; // 클래스 필드
+
   void checkAnswer() {
     if (currentWord == null || gameOver) return;
 
@@ -392,11 +464,13 @@ class _Game6PageState extends State<Game6Page> {
       }
       _nextQuestion();
 
-      if (gameTimer == null) {
+      // 처음 정답 맞춘 경우에만 타이머 시작
+      if (!timerStarted) {
         _startGameTimer();
+        timerStarted = true;
       }
     } else {
-      // ❌ 오답 → 목숨 감소
+      // 오답 → 목숨 감소
       lives--;
       if (lives <= 0) {
         gameOver = true;
@@ -456,7 +530,6 @@ class _Game6PageState extends State<Game6Page> {
                 ),
               ],
             ),
-
             const SizedBox(height: 8),
 
             // 문제 영역
@@ -465,32 +538,87 @@ class _Game6PageState extends State<Game6Page> {
               height: 80,
               width: double.infinity,
               color: Colors.black12,
-              child: Center(
-                child: Text(
-                  currentWord != null
-                      ? (showKorean
-                          ? currentWord!["koreanMeaning"] ?? "단어 없음"
-                          : currentWord!["wordEn"] ?? "단어 없음")
-                      : "단어 없음",
-                  style: const TextStyle(fontSize: 24),
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        currentWord != null
+                            ? (showKorean
+                                ? currentWord!["koreanMeaning"] ?? "단어 없음"
+                                : currentWord!["wordEn"] ?? "단어 없음")
+                            : "단어 없음",
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.pause,
+                      color: Colors.black87,
+                      size: 28,
+                    ),
+                    onPressed: () {
+                      _pauseGame();
+                    },
+                  ),
+                ],
               ),
             ),
+
             const SizedBox(height: 16),
 
             // 게임 영역
             Expanded(
               child: Center(
-                child: ClipRect(
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.black12,
-                      border: Border.all(color: Colors.black, width: 5),
-                      borderRadius: BorderRadius.circular(8),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ClipRect(
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.black12,
+                          border: Border.all(color: Colors.black, width: 5),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: GameWidget(game: game),
+                      ),
                     ),
-                    child: GameWidget(game: game),
-                  ),
+                    if (showStartMessage)
+                      Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        color: Colors.black.withOpacity(0.7),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          "준비하세요!\n게임이 곧 시작됩니다. \n문제를 맞추면 탑이 쌓여집니다.\n탑이 완전히 화면에서 사라지거나 \n목숨을 다 사용하면 게임 오버!",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 25,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    if (showSpeedUpMessage)
+                      Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        color: Colors.black.withOpacity(0.7),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          "30초마다 올라가는 속도가 빨라집니다!",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 25,
+                            color: Colors.yellow,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),

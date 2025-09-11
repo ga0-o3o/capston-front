@@ -7,6 +7,7 @@ import 'games/game3_page.dart';
 import 'games/game4_page.dart';
 import 'games/game5_page.dart';
 import 'games/game6_page.dart';
+import 'games/game6_multi_page.dart';
 
 class GameMenuPage extends StatelessWidget {
   const GameMenuPage({Key? key}) : super(key: key);
@@ -65,7 +66,7 @@ class GameMenuPage extends StatelessWidget {
                         case 4:
                           return Game5Page();
                         case 5:
-                          return Game6Page();
+                          return const Game6StartPage();
                         default:
                           return Game1Page();
                       }
@@ -118,6 +119,75 @@ class GameMenuPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------- Game6StartPage ----------------
+class Game6StartPage extends StatelessWidget {
+  const Game6StartPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF4E6E99),
+        title: const Text("단어 타워 쌓기"),
+      ),
+      body: Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4E6E99),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 16,
+                ),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const Game6Page()),
+                );
+              },
+              child: const Text(
+                "혼자 하기",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+            const SizedBox(width: 20), // 버튼 사이 간격
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4E6E99),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40,
+                  vertical: 16,
+                ),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const Game6MultiPage()),
+                );
+              },
+              child: const Text(
+                "같이 하기",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
