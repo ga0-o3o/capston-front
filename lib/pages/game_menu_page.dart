@@ -16,7 +16,7 @@ class GameMenuPage extends StatelessWidget {
   final List<String> gameTitles = const [
     "단어 빨리 맞히기",
     "카드 짝 빨리 맞히기",
-    "제시어 영작하기",
+    "미로 탈출",
     "끝말 잇기",
     "빙고 게임",
     "단어 타워 쌓기",
