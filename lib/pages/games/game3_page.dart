@@ -276,7 +276,8 @@ class _Game3PageState extends State<Game3Page> {
   late MazeGame game;
   async.Timer? timer;
   final TextEditingController controller = TextEditingController();
-  final FocusNode answerFocusNode = FocusNode();
+  final FocusNode gameFocusNode = FocusNode(); // ✅ 게임 화면용 포커스
+  final FocusNode answerFocusNode = FocusNode(); // 입력창용 포커스
 
   Map<String, dynamic>? currentWord;
   bool showQuestion = false;
@@ -572,6 +573,8 @@ class _Game3PageState extends State<Game3Page> {
   void dispose() {
     timer?.cancel();
     controller.dispose();
+    gameFocusNode.dispose(); // ✅ 해제
+    answerFocusNode.dispose(); // ✅ 해제
     super.dispose();
   }
 
@@ -727,13 +730,16 @@ class _Game3PageState extends State<Game3Page> {
 
             // 게임 화면
             Expanded(
-              child: Focus(
-                autofocus: true,
-                focusNode: FocusNode(),
-                child: RawKeyboardListener(
-                  focusNode: FocusNode(),
-                  onKey: (event) {
-                    if (event is RawKeyDownEvent) {
+              child: GestureDetector(
+                onTap: () {
+                  // 게임 화면 클릭 시 포커스를 게임으로 돌림
+                  FocusScope.of(context).requestFocus(gameFocusNode);
+                },
+                child: Focus(
+                  focusNode: gameFocusNode,
+                  autofocus: true, // 시작할 때도 자동 포커스
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent) {
                       Vector2 dir = Vector2.zero();
                       switch (event.logicalKey.keyLabel) {
                         case 'Arrow Up':
@@ -749,8 +755,12 @@ class _Game3PageState extends State<Game3Page> {
                           dir = Vector2(1, 0);
                           break;
                       }
-                      if (dir != Vector2.zero()) onMove(dir);
+                      if (dir != Vector2.zero()) {
+                        onMove(dir);
+                        return KeyEventResult.handled; // 이벤트 처리됨 표시
+                      }
                     }
+                    return KeyEventResult.ignored;
                   },
                   child: ClipRect(
                     child: Container(
@@ -777,7 +787,12 @@ class _Game3PageState extends State<Game3Page> {
                 border: OutlineInputBorder(),
                 labelText: "정답 입력",
               ),
-              onSubmitted: (_) => checkAnswer(),
+              onSubmitted: (_) {
+                checkAnswer();
+                FocusScope.of(
+                  context,
+                ).requestFocus(gameFocusNode); // ✅ 자동으로 다시 게임으로
+              },
             ),
           ],
         ),
