@@ -5,12 +5,25 @@ import 'loading_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class LevelTestPage extends StatefulWidget {
   const LevelTestPage({Key? key}) : super(key: key);
 
   @override
   State<LevelTestPage> createState() => _LevelTestPageState();
+}
+
+class SoundManager {
+  static final AudioPlayer _player = AudioPlayer();
+
+  static Future<void> playSuccess() async {
+    await _player.play(AssetSource('audios/levelTest_success.mp3'));
+  }
+
+  static Future<void> playFailure() async {
+    await _player.play(AssetSource('audios/levelTest_failure.mp3'));
+  }
 }
 
 class _LevelTestPageState extends State<LevelTestPage> {
@@ -162,6 +175,13 @@ class _LevelTestPageState extends State<LevelTestPage> {
     }
 
     setState(() => _isLoading = false);
+
+    // 결과 효과음 재생
+    if (scorePercent >= 90) {
+      await SoundManager.playSuccess();
+    } else {
+      await SoundManager.playFailure();
+    }
 
     // 결과 다이얼로그
     showDialog(

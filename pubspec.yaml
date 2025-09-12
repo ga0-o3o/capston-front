@@ -15,7 +15,8 @@ dependencies:
   http: ^1.2.0
   flame: ^1.30.0
   shared_preferences: ^2.2.2
-  web_socket_channel: ^2.3.0 
+  web_socket_channel: ^2.3.0
+  audioplayers: 6.5.1
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +29,4 @@ flutter:
     - assets/images/
     - assets/images/char/
     - assets/images/game/part6/
+    - assets/audios/
