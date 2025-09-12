@@ -333,6 +333,9 @@ class _Game3PageState extends State<Game3Page> {
   bool showInfoMessage = false;
   String infoMessage = "";
 
+  bool showIntro = true;
+  bool hasMoved = false;
+
   int totalTime = 180;
   int lives = 3;
   final Random _random = Random();
@@ -351,9 +354,17 @@ class _Game3PageState extends State<Game3Page> {
   void initState() {
     super.initState();
     game = MazeGame();
+
+    // ✅ 5초 뒤 안내 숨기고 그때 타이머 시작
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) {
+        setState(() => showIntro = false);
+        startTimer();
+      }
+    });
+
     game.onUpdate = () {
       if (!mounted) return;
-
       setState(() {
         if (game.player.gridPos == game.maze.endPosition) {
           showInfoMessage = true;
@@ -370,19 +381,15 @@ class _Game3PageState extends State<Game3Page> {
           showQuestion = true;
           game.canMove = false;
         } else if (game.maze.isDeadEnd(game.player.gridPos)) {
-          setState(() {
-            showInfoMessage = true;
-            infoMessage = "🚧 막다른 길입니다! 문제를 풀고 방향을 선택하세요.";
-            showQuestion = true;
-            game.canMove = false;
-          });
+          showInfoMessage = true;
+          infoMessage = "🚧 막다른 길입니다! 문제를 풀고 방향을 선택하세요.";
+          showQuestion = true;
+          game.canMove = false;
         }
       });
     };
 
     _loadUserIdAndWords();
-
-    startTimer();
   }
 
   void _checkGameOver() {
@@ -491,6 +498,14 @@ class _Game3PageState extends State<Game3Page> {
 
   Future<void> onMove(Vector2 dir) async {
     if (game.gameOver) return;
+
+    // ✅ 최초 움직임 체크
+    if (!hasMoved) {
+      setState(() {
+        hasMoved = true;
+      });
+    }
+
     game.movePlayer(dir);
   }
 
@@ -767,7 +782,7 @@ class _Game3PageState extends State<Game3Page> {
                 ),
               ),
 
-            // 문제 박스
+            // 문제 박스 + 시간 + 일시정지 버튼
             Container(
               padding: const EdgeInsets.all(16),
               height: 70,
@@ -784,11 +799,14 @@ class _Game3PageState extends State<Game3Page> {
                     child: Center(
                       child:
                           game.initialized &&
-                                  (game.maze.isAtJunction(
-                                        game.player.gridPos,
-                                        game.player.lastMoveDir,
-                                      ) ||
-                                      game.maze.isDeadEnd(game.player.gridPos))
+                                  (hasMoved &&
+                                      (game.maze.isAtJunction(
+                                            game.player.gridPos,
+                                            game.player.lastMoveDir,
+                                          ) ||
+                                          game.maze.isDeadEnd(
+                                            game.player.gridPos,
+                                          )))
                               ? (currentWord == null
                                   ? const Text("단어 없음")
                                   : Text(
@@ -804,7 +822,7 @@ class _Game3PageState extends State<Game3Page> {
                                   ))
                               : Container(
                                 width: 100,
-                                height: 80,
+                                height: 50,
                                 color: Colors.white,
                               ),
                     ),
@@ -817,9 +835,7 @@ class _Game3PageState extends State<Game3Page> {
                       color: Colors.black87,
                       size: 28,
                     ),
-                    onPressed: () {
-                      _pauseGame();
-                    },
+                    onPressed: _pauseGame,
                   ),
                 ],
               ),
@@ -827,52 +843,100 @@ class _Game3PageState extends State<Game3Page> {
 
             const SizedBox(height: 16),
 
-            // 게임 화면
+            // -------------------- 게임 화면 --------------------
             Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  // 게임 화면 클릭 시 포커스를 게임으로 돌림
-                  FocusScope.of(context).requestFocus(gameFocusNode);
-                },
-                child: Focus(
-                  focusNode: gameFocusNode,
-                  autofocus: true, // 시작할 때도 자동 포커스
-                  onKeyEvent: (node, event) {
-                    if (event is KeyDownEvent) {
-                      Vector2 dir = Vector2.zero();
-                      switch (event.logicalKey.keyLabel) {
-                        case 'Arrow Up':
-                          dir = Vector2(0, -1);
-                          break;
-                        case 'Arrow Down':
-                          dir = Vector2(0, 1);
-                          break;
-                        case 'Arrow Left':
-                          dir = Vector2(-1, 0);
-                          break;
-                        case 'Arrow Right':
-                          dir = Vector2(1, 0);
-                          break;
-                      }
-                      if (dir != Vector2.zero()) {
-                        onMove(dir);
-                        return KeyEventResult.handled; // 이벤트 처리됨 표시
-                      }
-                    }
-                    return KeyEventResult.ignored;
-                  },
-                  child: ClipRect(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.black12,
-                        border: Border.all(color: Colors.black, width: 5),
-                        borderRadius: BorderRadius.circular(8),
+              child: Stack(
+                children: [
+                  // 1️⃣ 게임화면 (GestureDetector ~ GameWidget)
+                  GestureDetector(
+                    onTap: () {
+                      FocusScope.of(context).requestFocus(gameFocusNode);
+                    },
+                    child: Focus(
+                      focusNode: gameFocusNode,
+                      autofocus: true,
+                      onKeyEvent: (node, event) {
+                        if (event is KeyDownEvent) {
+                          Vector2 dir = Vector2.zero();
+                          switch (event.logicalKey.keyLabel) {
+                            case 'Arrow Up':
+                              dir = Vector2(0, -1);
+                              break;
+                            case 'Arrow Down':
+                              dir = Vector2(0, 1);
+                              break;
+                            case 'Arrow Left':
+                              dir = Vector2(-1, 0);
+                              break;
+                            case 'Arrow Right':
+                              dir = Vector2(1, 0);
+                              break;
+                          }
+                          if (dir != Vector2.zero()) {
+                            onMove(dir); // ✅ 플레이어 이동 함수 호출
+                            return KeyEventResult.handled; // 이벤트 처리 완료
+                          }
+                        }
+                        return KeyEventResult.ignored; // 다른 키는 무시
+                      },
+                      child: ClipRect(
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.black12,
+                            border: Border.all(color: Colors.black, width: 5),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: GameWidget(game: game),
+                        ),
                       ),
-                      child: GameWidget(game: game),
                     ),
                   ),
-                ),
+
+                  // 2️⃣ ✅ 시작 안내 오버레이 (문제 박스까지 전부 가림)
+                  if (showIntro)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.white.withOpacity(0.9), // ← 흰색으로 반투명 덮기
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Text(
+                                  "미로를 탈출합시다!\n"
+                                  "갈림길마다 문제를 풀고 \n방향을 선택하세요!\n"
+                                  "방향 선택을 3초 안에 결정하지 않으면 \n다시 문제를 풀어야 합니다.",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    height: 1.4,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                SizedBox(height: 20),
+                                Text(
+                                  "⏳ 시간 제한 또는 ❤️ 목숨이 \n모두 사라지면 게임 오버됩니다.",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.redAccent,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
 
