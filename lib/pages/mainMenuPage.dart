@@ -113,6 +113,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       );
                     }),
                     const SizedBox(height: 16),
+                    _menuButton(context, '💬 채팅', () {}),
+                    const SizedBox(height: 16),
                     _menuButton(context, '⚙️ 설정', () {
                       // 설정 페이지 이동
                     }),
