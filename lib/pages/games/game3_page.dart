@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'dart:html' as html;
 
 // -------------------- Maze Game --------------------
 class MazeGame extends FlameGame {
@@ -23,6 +25,8 @@ class MazeGame extends FlameGame {
   Vector2? currentDirection; // ✅ 현재 선택된 방향
   VoidCallback? onUpdate;
   Random random = Random();
+
+  final WebBgm bgm = WebBgm();
 
   @override
   Future<void> onLoad() async {
@@ -41,6 +45,9 @@ class MazeGame extends FlameGame {
     add(player);
 
     initialized = true;
+
+    // ✅ 게임 시작 시 배경음 재생
+    bgm.play();
   }
 
   void movePlayer(Vector2 dir) {
@@ -60,6 +67,7 @@ class MazeGame extends FlameGame {
     if (player.gridPos == maze.endPosition) {
       canMove = false;
       gameOver = true;
+      bgm.stop();
       if (onUpdate != null) onUpdate!();
     }
 
@@ -76,6 +84,23 @@ class MazeGame extends FlameGame {
       canMove = false;
       gameOver = true;
     }
+  }
+}
+
+class WebBgm {
+  html.AudioElement? _audio;
+
+  void play() {
+    _audio ??=
+        html.AudioElement('assets/audios/solve_the_riddle.mp3')
+          ..loop = true
+          ..autoplay = true;
+    _audio!.play();
+  }
+
+  void stop() {
+    _audio?.pause();
+    _audio?.currentTime = 0;
   }
 }
 
@@ -394,6 +419,9 @@ class _Game3PageState extends State<Game3Page> {
 
   void _checkGameOver() {
     if (!game.gameOver) return;
+
+    // ✅ 게임 종료 시 배경음 정지
+    game.bgm.stop();
 
     Future.delayed(Duration.zero, () {
       showDialog(
