@@ -104,6 +104,18 @@ class WebBgm {
   }
 }
 
+class SoundEffect {
+  static void playSuccess() {
+    final audio = html.AudioElement('assets/audios/levelTest_success.mp3');
+    audio.play();
+  }
+
+  static void playFailure() {
+    final audio = html.AudioElement('assets/audios/levelTest_failure.mp3');
+    audio.play();
+  }
+}
+
 // -------------------- Maze --------------------
 class Maze extends PositionComponent {
   final int rows, cols;
@@ -396,6 +408,8 @@ class _Game3PageState extends State<Game3Page> {
           infoMessage = "🎉 미로 탈출 성공! 🎉";
           showQuestion = false;
           game.gameOver = true;
+          // ✅ 성공 효과음
+          SoundEffect.playSuccess();
           _checkGameOver();
         } else if (game.maze.isAtJunction(
           game.player.gridPos,
@@ -422,6 +436,11 @@ class _Game3PageState extends State<Game3Page> {
 
     // ✅ 게임 종료 시 배경음 정지
     game.bgm.stop();
+
+    // ✅ 실패 효과음
+    if (game.player.gridPos != game.maze.endPosition) {
+      SoundEffect.playFailure();
+    }
 
     Future.delayed(Duration.zero, () {
       showDialog(
