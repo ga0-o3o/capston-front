@@ -76,21 +76,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                           ),
                         ),
                       ),
-
-                      const SizedBox(width: 12),
-                      // 햄버거 메뉴 버튼
-                      IconButton(
-                        icon: const Icon(
-                          Icons.menu,
-                          size: 28,
-                          color: Colors.black87,
-                        ),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('메뉴 버튼 클릭됨')),
-                          );
-                        },
-                      ),
                     ],
                   ),
                 ],
