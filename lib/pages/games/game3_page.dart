@@ -114,6 +114,16 @@ class SoundEffect {
     final audio = html.AudioElement('assets/audios/levelTest_failure.mp3');
     audio.play();
   }
+
+  static void gameSuccess() {
+    final audio = html.AudioElement('assets/audios/game_success.mp3');
+    audio.play();
+  }
+
+  static void gameFailure() {
+    final audio = html.AudioElement('assets/audios/game_failure.mp3');
+    audio.play();
+  }
 }
 
 // -------------------- Maze --------------------
@@ -668,6 +678,9 @@ class _Game3PageState extends State<Game3Page> {
         game.canMove = false;
       });
 
+      // ✅ 정답 시 게임 성공 사운드 재생
+      SoundEffect.gameSuccess();
+
       // ✅ 정답 처리 후 새로운 문제 선택
       _nextQuestion();
 
@@ -707,6 +720,9 @@ class _Game3PageState extends State<Game3Page> {
       // 오답 처리
       lives--;
       game.lives = lives;
+
+      // ❌ 오답 효과음 재생
+      SoundEffect.gameFailure();
 
       if (lives <= 0) {
         game.gameOver = true;
