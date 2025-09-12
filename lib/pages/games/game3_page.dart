@@ -92,7 +92,7 @@ class WebBgm {
 
   void play() {
     _audio ??=
-        html.AudioElement('assets/audios/solve_the_riddle.mp3')
+        html.AudioElement('assets/audios/game3_bgm.mp3')
           ..loop = true
           ..autoplay = true;
     _audio!.play();
@@ -742,6 +742,7 @@ class _Game3PageState extends State<Game3Page> {
 
   void _pauseGame() {
     timer?.cancel(); // 타이머 멈춤
+    game.bgm.stop();
     pauseStart = DateTime.now();
 
     showDialog(
@@ -788,6 +789,7 @@ class _Game3PageState extends State<Game3Page> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
         title: const Text("미로 탈출"),
+        automaticallyImplyLeading: false,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
