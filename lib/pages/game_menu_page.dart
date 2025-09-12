@@ -15,7 +15,7 @@ class GameMenuPage extends StatelessWidget {
 
   final List<String> gameTitles = const [
     "단어 빨리 맞히기",
-    "카드 짝 빨리 맞히기",
+    "제시어 영작 게임",
     "미로 탈출",
     "끝말 잇기",
     "빙고 게임",
@@ -63,11 +63,19 @@ class GameMenuPage extends StatelessWidget {
                         case 2:
                           return Game3Page();
                         case 3:
-                          return const Game4StartPage();
+                          return StartPageWithModes(
+                            title: "끝말잇기",
+                            soloPage: const Game4Page(),
+                            multiPage: const Game4MultiPage(),
+                          );
                         case 4:
                           return Game5Page();
                         case 5:
-                          return const Game6StartPage();
+                          return StartPageWithModes(
+                            title: "단어 타워 쌓기",
+                            soloPage: const Game6Page(),
+                            multiPage: const Game6MultiPage(),
+                          );
                         default:
                           return Game1Page();
                       }
@@ -125,139 +133,52 @@ class GameMenuPage extends StatelessWidget {
   }
 }
 
-// ---------------- Game4StartPage ----------------
-class Game4StartPage extends StatelessWidget {
-  const Game4StartPage({super.key});
+class StartPageWithModes extends StatelessWidget {
+  final String title;
+  final Widget soloPage;
+  final Widget multiPage;
+
+  const StartPageWithModes({
+    super.key,
+    required this.title,
+    required this.soloPage,
+    required this.multiPage,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
-        title: const Text("끝말잇기"),
+        title: Text(title),
       ),
       body: Center(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4E6E99),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 16,
-                ),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const Game4Page()),
-                );
-              },
-              child: const Text(
-                "혼자 하기",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
-            const SizedBox(width: 20), // 버튼 사이 간격
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4E6E99),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 16,
-                ),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const Game4MultiPage()),
-                );
-              },
-              child: const Text(
-                "같이 하기",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
+            _modeButton(context, "혼자 하기", soloPage),
+            const SizedBox(width: 20),
+            _modeButton(context, "같이 하기", multiPage),
           ],
         ),
       ),
     );
   }
-}
 
-// ---------------- Game6StartPage ----------------
-class Game6StartPage extends StatelessWidget {
-  const Game6StartPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
+  Widget _modeButton(BuildContext context, String label, Widget page) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF4E6E99),
-        title: const Text("단어 타워 쌓기"),
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
       ),
-      body: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4E6E99),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 16,
-                ),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const Game6Page()),
-                );
-              },
-              child: const Text(
-                "혼자 하기",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
-            const SizedBox(width: 20), // 버튼 사이 간격
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4E6E99),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40,
-                  vertical: 16,
-                ),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const Game6MultiPage()),
-                );
-              },
-              child: const Text(
-                "같이 하기",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-            ),
-          ],
-        ),
+      onPressed: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+      },
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
       ),
     );
   }

@@ -15,7 +15,7 @@ class MazeGame extends FlameGame {
   late Player player;
   bool initialized = false;
 
-  int timeLeft = 180;
+  int timeLeft = 140;
   int lives = 3;
   bool gameOver = false;
 
@@ -269,7 +269,7 @@ class _DirectionSelectionDialogState extends State<DirectionSelectionDialog> {
     ];
 
     // 3초 후 자동 닫기
-    _autoCloseTimer = async.Timer(const Duration(seconds: 3), () {
+    _autoCloseTimer = async.Timer(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop(); // Dialog 닫기
       }
@@ -325,7 +325,7 @@ class _Game3PageState extends State<Game3Page> {
   late MazeGame game;
   async.Timer? timer;
   final TextEditingController controller = TextEditingController();
-  final FocusNode gameFocusNode = FocusNode(); // ✅ 게임 화면용 포커스
+  final FocusNode gameFocusNode = FocusNode(); // 게임 화면용 포커스
   final FocusNode answerFocusNode = FocusNode(); // 입력창용 포커스
 
   Map<String, dynamic>? currentWord;
@@ -336,7 +336,7 @@ class _Game3PageState extends State<Game3Page> {
   bool showIntro = true;
   bool hasMoved = false;
 
-  int totalTime = 180;
+  int totalTime = 140;
   int lives = 3;
   final Random _random = Random();
 
@@ -543,7 +543,7 @@ class _Game3PageState extends State<Game3Page> {
     Vector2? selectedDir;
 
     // 3초 제한 타이머
-    directionTimer = async.Timer(const Duration(seconds: 3), () {
+    directionTimer = async.Timer(const Duration(seconds: 2), () {
       if (!mounted) return;
 
       setState(() {
@@ -590,7 +590,7 @@ class _Game3PageState extends State<Game3Page> {
       });
     } else {
       setState(() {
-        infoMessage = "❌ 올바른 방향을 선택하지 않았습니다. 문제를 다시 풀어주세요!";
+        infoMessage = "❌ 3초 안에 방향을 선택하지 못하였군요. 문제를 다시 풀어주세요!";
         showInfoMessage = true;
         showQuestion = true;
         game.canMove = false;
@@ -648,7 +648,7 @@ class _Game3PageState extends State<Game3Page> {
           });
         } else {
           setState(() {
-            infoMessage = "❌ 올바른 방향을 선택하지 않았습니다. 문제를 다시 풀어주세요!";
+            infoMessage = "❌ 3초 안에 선택하지 못하였군요. 문제를 다시 풀어주세요!";
             showInfoMessage = true;
             showQuestion = true;
             game.canMove = false;
