@@ -365,7 +365,11 @@ class _WordMenuPageState extends State<WordMenuPage> {
             ),
             onPressed: _confirmQuiz,
             child: const Text('확인',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                )),
           ),
         ),
       ]),
