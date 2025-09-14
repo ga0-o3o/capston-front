@@ -21,13 +21,9 @@ dependencies:
 
   # Storage & game engine
   shared_preferences: ^2.2.2
-  flame: ^1.17.0
-
-  # File/image handling
-  image_picker: ^1.1.2
-  file_picker: ^8.0.0
   flame: ^1.30.0
-  shared_preferences: ^2.2.2
+  image_picker: ^0.8.7+5
+  file_picker: ^8.3.7
   web_socket_channel: ^2.3.0
   audioplayers: 6.5.1
 

@@ -40,7 +40,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 상단 로고 + 사용자 프로필 + 햄버거 메뉴
+            // 상단 로고 + 사용자 프로필
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: Row(
@@ -67,16 +67,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                               radius: 30,
                               backgroundImage: AssetImage(selectedCharacter)),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      IconButton(
-                        icon: const Icon(Icons.menu,
-                            size: 28, color: Colors.black87),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('메뉴 버튼 클릭됨')),
-                          );
-                        },
                       ),
                     ],
                   ),
@@ -113,7 +103,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       );
                     }),
                     const SizedBox(height: 16),
-                    _menuButton(context, '📊 스테이터스', () {}),
                     _menuButton(context, '💬 채팅', () {}),
                     const SizedBox(height: 16),
                     _menuButton(context, '⚙️ 설정', () {}),

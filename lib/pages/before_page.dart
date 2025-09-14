@@ -84,27 +84,6 @@ class BeforePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            // sdffdfhp
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const UsersPage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF88C999),
-                foregroundColor: Colors.white,
-                minimumSize: const Size(200, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Test - All Users',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-            ),
           ],
         ),
       ),
