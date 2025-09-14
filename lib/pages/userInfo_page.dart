@@ -80,28 +80,41 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
     final newNickname = await showDialog<String>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('닉네임 변경'),
-            content: TextField(
-              controller: _controller,
-              decoration: const InputDecoration(labelText: '새 닉네임'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, null),
-                child: const Text('취소'),
-              ),
-              ElevatedButton(
-                onPressed:
-                    () => Navigator.pop(context, _controller.text.trim()),
-                child: const Text('변경'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('닉네임 변경'),
+        content: TextField(
+          controller: _controller,
+          decoration: const InputDecoration(labelText: '새 닉네임'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('취소'),
           ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, _controller.text.trim()),
+            child: const Text('변경'),
+          ),
+        ],
+      ),
     );
 
-    if (newNickname == null || newNickname.isEmpty) return;
+    if (newNickname == null || newNickname.isEmpty || newNickname.length > 12) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text("경고"),
+          content: const Text("닉네임은 1자 이상 12자 이하로 해주세요."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("확인"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');
@@ -207,21 +220,19 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
                   return InkWell(
                     borderRadius: BorderRadius.circular(60),
-                    onTap:
-                        isUnlocked
-                            ? () {
-                              setState(() {
-                                tempSelected = charPath;
-                              });
-                            }
-                            : null,
+                    onTap: isUnlocked
+                        ? () {
+                            setState(() {
+                              tempSelected = charPath;
+                            });
+                          }
+                        : null,
                     splashColor: Colors.blue.withOpacity(0.3),
                     highlightColor: Colors.transparent,
                     child: AnimatedScale(
-                      scale:
-                          tempSelected == charPath
-                              ? 1.1
-                              : 1.0, // 선택된 캐릭터만 살짝 커짐
+                      scale: tempSelected == charPath
+                          ? 1.1
+                          : 1.0, // 선택된 캐릭터만 살짝 커짐
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOut,
                       child: Stack(
@@ -247,7 +258,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
                               ),
                               child: Text(
                                 // index로 필요한 랭크 조회
-                                '레벨 테스트\n${rankUnlocks.entries.firstWhere((entry) => entry.value.contains(index), orElse: () => MapEntry('Unknown', [index])).key}\n통과 필요',
+                                '레벨 테스트\n${rankUnlocks.entries.firstWhere((entry) => entry.value.contains(index), orElse: () => MapEntry('Unknown', [
+                                          index
+                                        ])).key}\n통과 필요',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   color: Colors.white,
@@ -271,7 +284,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
                 },
               ),
             ),
-
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: ElevatedButton(

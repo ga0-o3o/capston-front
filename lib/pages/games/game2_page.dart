@@ -1,29 +1,50 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Game2 extends FlameGame {
   int score = 0;
   int timeLeft = 30;
   String currentWord = '';
   Timer? _timer;
+  List<String> wordList = [];
 
-  final List<String> wordList = [
-    'apple',
-    'future',
-    'travel',
-    'dream',
-    'challenge',
-  ];
+  final String userId;
+  final String token;
+
+  Game2({required this.userId, required this.token});
 
   @override
   Future<void> onLoad() async {
     super.onLoad();
-    _nextWord();
-    _startTimer();
+    await _fetchWords();
+    if (wordList.isNotEmpty) {
+      _nextWord();
+      _startTimer();
+    }
+  }
+
+  Future<void> _fetchWords() async {
+    try {
+      final url = Uri.parse("http://localhost:8080/api/personal-words/$userId");
+      final response =
+          await http.get(url, headers: {"Authorization": "Bearer $token"});
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        wordList = List<String>.from(data);
+      } else {
+        wordList = [];
+      }
+    } catch (e) {
+      wordList = [];
+    }
   }
 
   void _nextWord() {
+    if (wordList.isEmpty) return;
     currentWord = (wordList..shuffle()).first;
     overlays.add('inputOverlay');
   }
@@ -40,11 +61,9 @@ class Game2 extends FlameGame {
   }
 
   void checkSentence(String sentence) {
-    // 🔹 아주 단순한 체크: 제시어 포함 여부만 (문법 API로 대체 가능)
     if (sentence.toLowerCase().contains(currentWord.toLowerCase())) {
       score++;
     }
-    // 다음 제시어
     _nextWord();
   }
 
@@ -55,23 +74,47 @@ class Game2 extends FlameGame {
   }
 }
 
-class Game2Page extends StatelessWidget {
+class Game2Page extends StatefulWidget {
   const Game2Page({Key? key}) : super(key: key);
 
   @override
+  State<Game2Page> createState() => _Game2PageState();
+}
+
+class _Game2PageState extends State<Game2Page> {
+  String? userId;
+  String? token;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = prefs.getString('userId') ?? '';
+      token = prefs.getString('token') ?? '';
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final game = Game2();
+    if (userId == null || token == null || userId!.isEmpty || token!.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final game = Game2(userId: userId!, token: token!);
 
     return Scaffold(
-      // 🔹 전체 배경색
       backgroundColor: const Color(0xFFF6F0E9),
-
       appBar: AppBar(
         title: const Text("제시어 영작 게임"),
-        // 🔹 AppBar 색상
         backgroundColor: const Color(0xFF4E6E99),
       ),
-
       body: GameWidget(
         game: game,
         overlayBuilderMap: {
@@ -86,6 +129,7 @@ class Game2Page extends StatelessWidget {
 class _InputOverlay extends StatefulWidget {
   final Game2 game;
   const _InputOverlay({required this.game});
+
   @override
   State<_InputOverlay> createState() => _InputOverlayState();
 }
