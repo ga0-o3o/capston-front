@@ -1,13 +1,15 @@
+// lib/pages/main_menu_page.dart
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'game_menu_page.dart';
 import 'levelTest_page.dart';
 import 'userInfo_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'word_menu_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   final String userName;
-
-  MainMenuPage({Key? key, required this.userName}) : super(key: key);
+  const MainMenuPage({Key? key, required this.userName}) : super(key: key);
 
   @override
   State<MainMenuPage> createState() => _MainMenuPageState();
@@ -44,47 +46,32 @@ class _MainMenuPageState extends State<MainMenuPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Image.asset(
-                    'assets/images/title.png',
-                    height: 60,
-                    fit: BoxFit.contain,
-                  ),
-
+                  Image.asset('assets/images/title.png',
+                      height: 60, fit: BoxFit.contain),
                   Row(
                     children: [
-                      // 사용자 프로필 (이모티콘 동그라미)
                       GestureDetector(
                         onTap: () async {
-                          // UserInfoPage로 이동 후 돌아오면 캐릭터 새로 불러오기
                           await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const UserInfoPage(),
-                            ),
+                                builder: (_) => const UserInfoPage()),
                           );
                           _loadSelectedCharacter();
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(3), // 테두리 두께
-                          decoration: BoxDecoration(
-                            color: Colors.white, // 테두리 색상
-                            shape: BoxShape.circle,
-                          ),
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                              color: Colors.white, shape: BoxShape.circle),
                           child: CircleAvatar(
-                            radius: 30,
-                            backgroundImage: AssetImage(selectedCharacter),
-                          ),
+                              radius: 30,
+                              backgroundImage: AssetImage(selectedCharacter)),
                         ),
                       ),
-
                       const SizedBox(width: 12),
-                      // 햄버거 메뉴 버튼
                       IconButton(
-                        icon: const Icon(
-                          Icons.menu,
-                          size: 28,
-                          color: Colors.black87,
-                        ),
+                        icon: const Icon(Icons.menu,
+                            size: 28, color: Colors.black87),
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('메뉴 버튼 클릭됨')),
@@ -96,7 +83,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 ],
               ),
             ),
-
             const SizedBox(height: 10),
 
             // 버튼 목록
@@ -106,15 +92,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
                 child: Column(
                   children: [
                     _menuButton(context, '📚 단어장', () {
-                      // 단어장 페이지로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const WordMenuPage()),
+                      );
                     }),
                     const SizedBox(height: 16),
                     _menuButton(context, '🎮 게임', () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const GameMenuPage(),
-                        ),
+                        MaterialPageRoute(builder: (_) => const GameMenuPage()),
                       );
                     }),
                     const SizedBox(height: 16),
@@ -122,19 +109,13 @@ class _MainMenuPageState extends State<MainMenuPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder:
-                              (context) => const LevelTestPage(), // 레벨 테스트 페이지
-                        ),
+                            builder: (_) => const LevelTestPage()),
                       );
                     }),
                     const SizedBox(height: 16),
-                    _menuButton(context, '📊 스테이터스', () {
-                      // 통계 페이지로 이동
-                    }),
+                    _menuButton(context, '📊 스테이터스', () {}),
                     const SizedBox(height: 16),
-                    _menuButton(context, '⚙️ 설정', () {
-                      // 설정 페이지 이동
-                    }),
+                    _menuButton(context, '⚙️ 설정', () {}),
                   ],
                 ),
               ),
@@ -145,12 +126,9 @@ class _MainMenuPageState extends State<MainMenuPage> {
     );
   }
 
-  // 버튼 스타일
+  // 공통 버튼
   Widget _menuButton(
-    BuildContext context,
-    String title,
-    VoidCallback onPressed,
-  ) {
+      BuildContext context, String title, VoidCallback onPressed) {
     return SizedBox(
       width: double.infinity,
       height: 60,
@@ -158,18 +136,14 @@ class _MainMenuPageState extends State<MainMenuPage> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF4E6E99),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 3,
         ),
         child: Text(
           title,
           style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
     );

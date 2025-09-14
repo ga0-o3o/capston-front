@@ -1,20 +1,31 @@
 name: english_study
-description: "A new Flutter project."
+description: A new Flutter project.
 publish_to: 'none'
 version: 0.1.0
 
 environment:
-  sdk: ^3.7.0
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.22.0'
 
 dependencies:
   flutter:
     sdk: flutter
-  kakao_flutter_sdk: ^1.9.7+3 
-  kakao_flutter_sdk_user: ^1.4.3
+
+  # Auth & networking
+  kakao_flutter_sdk: ^1.9.7+3
+  kakao_flutter_sdk_user: ^1.9.7+3
   jwt_decoder: ^2.0.1
   http: ^1.2.0
-  flame: ^1.17.0
+  dio: ^5.5.0
+  http_parser: ^4.0.2
+
+  # Storage & game engine
   shared_preferences: ^2.2.2
+  flame: ^1.17.0
+
+  # File/image handling
+  image_picker: ^1.1.2
+  file_picker: ^8.0.0
 
 dev_dependencies:
   flutter_test:
