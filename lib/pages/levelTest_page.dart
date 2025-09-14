@@ -1,15 +1,29 @@
 import 'dart:convert';
 import 'dart:math';
 import 'login_page.dart';
+import 'loading_page.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class LevelTestPage extends StatefulWidget {
   const LevelTestPage({Key? key}) : super(key: key);
 
   @override
   State<LevelTestPage> createState() => _LevelTestPageState();
+}
+
+class SoundManager {
+  static final AudioPlayer _player = AudioPlayer();
+
+  static Future<void> playSuccess() async {
+    await _player.play(AssetSource('audios/levelTest_success.mp3'));
+  }
+
+  static Future<void> playFailure() async {
+    await _player.play(AssetSource('audios/levelTest_failure.mp3'));
+  }
 }
 
 class _LevelTestPageState extends State<LevelTestPage> {
@@ -107,6 +121,9 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   void _finishLevel() async {
+    setState(() => _isLoading = true); // 1️⃣ 로딩 시작
+    await Future.delayed(const Duration(milliseconds: 100));
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token'); // 서버 JWT
     final userId = prefs.getString('user_id');
@@ -155,6 +172,15 @@ class _LevelTestPageState extends State<LevelTestPage> {
       }
     } else if (token == null) {
       print("❌ 토큰 없음, 로그인 필요");
+    }
+
+    setState(() => _isLoading = false);
+
+    // 결과 효과음 재생
+    if (scorePercent >= 90) {
+      await SoundManager.playSuccess();
+    } else {
+      await SoundManager.playFailure();
     }
 
     // 결과 다이얼로그
@@ -249,9 +275,9 @@ class _LevelTestPageState extends State<LevelTestPage> {
       );
     }
 
-    // 로딩 화면
+    // 문제 화면 build()에서
     if (_isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const LoadingPage(); // CircularProgressIndicator 대신 LoadingPage 사용
     }
 
     if (_words.isEmpty) {

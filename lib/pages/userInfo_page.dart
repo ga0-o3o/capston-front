@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'login_page.dart';
+import 'loading_page.dart';
 
 class UserInfoPage extends StatefulWidget {
   const UserInfoPage({Key? key}) : super(key: key);
@@ -115,31 +116,59 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
     final uri = Uri.parse("http://localhost:8080/api/user/nickname");
 
+    // ✅ 로딩 페이지 표시
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoadingPage()),
+    );
+
     try {
       final response = await http.put(
         uri,
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer $token", // 로그인 시 받은 토큰 사용
+          "Authorization": "Bearer $token",
         },
         body: jsonEncode({"id": userId, "nickname": newNickname}),
       );
 
-      print('PUT 요청 상태 코드: ${response.statusCode}');
+      // ✅ 로딩 페이지 닫기
+      Navigator.pop(context);
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          nickname = data['nickname']; // 서버에서 내려온 닉네임 갱신
+          nickname = data['nickname'];
         });
         await prefs.setString('user_nickname', nickname);
 
-        print("✅ 닉네임 업데이트 성공: $nickname");
-      } else if (response.statusCode == 403) {
-        print("❌ 권한 거부 403 - 서버에서 JWT 검증 실패 가능");
+        // ✅ 완료 알림 다이얼로그
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text("알림"),
+              content: const Text("닉네임이 변경되었습니다."),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text("확인"),
+                ),
+              ],
+            );
+          },
+        );
       } else {
         print("❌ PUT 요청 실패: ${response.statusCode}");
       }
     } catch (e) {
+      // ✅ 로딩 페이지 닫기 (에러 상황에서도)
+      Navigator.pop(context);
       print("⚠️ 닉네임 업데이트 중 오류: $e");
     }
   }
@@ -155,49 +184,110 @@ class _UserInfoPageState extends State<UserInfoPage> {
     );
   }
 
-  // 캐릭터 선택
   Future<void> _selectCharacter() async {
-    showModalBottomSheet(
+    String tempSelected = selectedCharacter; // 임시 선택 변수
+
+    await showModalBottomSheet(
       context: context,
       builder: (context) {
-        return GridView.builder(
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-          ),
-          itemCount: characters.length,
-          itemBuilder: (context, index) {
-            final charPath = characters[index];
-            final isUnlocked = unlockedCharacters.contains(index);
+        return Column(
+          children: [
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                ),
+                itemCount: characters.length,
+                itemBuilder: (context, index) {
+                  final charPath = characters[index];
+                  final isUnlocked = unlockedCharacters.contains(index);
 
-            return GestureDetector(
-              onTap:
-                  isUnlocked
-                      ? () {
-                        Navigator.pop(context);
-                        setState(() {
-                          selectedCharacter = charPath; // 화면에만 반영
-                        });
-                      }
-                      : null, // 잠겨있으면 선택 불가
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Opacity(
-                    opacity: isUnlocked ? 1.0 : 0.4,
-                    child: CircleAvatar(
-                      backgroundImage: AssetImage(charPath),
-                      radius: 60,
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(60),
+                    onTap:
+                        isUnlocked
+                            ? () {
+                              setState(() {
+                                tempSelected = charPath;
+                              });
+                            }
+                            : null,
+                    splashColor: Colors.blue.withOpacity(0.3),
+                    highlightColor: Colors.transparent,
+                    child: AnimatedScale(
+                      scale:
+                          tempSelected == charPath
+                              ? 1.1
+                              : 1.0, // 선택된 캐릭터만 살짝 커짐
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // 캐릭터 이미지
+                          Opacity(
+                            opacity: isUnlocked ? 1.0 : 0.4,
+                            child: CircleAvatar(
+                              backgroundImage: AssetImage(charPath),
+                              radius: 60,
+                            ),
+                          ),
+
+                          // 잠긴 캐릭터 문구
+                          if (!isUnlocked)
+                            Container(
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(60),
+                              ),
+                              child: Text(
+                                // index로 필요한 랭크 조회
+                                '레벨 테스트\n${rankUnlocks.entries.firstWhere((entry) => entry.value.contains(index), orElse: () => MapEntry('Unknown', [index])).key}\n통과 필요',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+
+                          // 선택 표시
+                          if (tempSelected == charPath && isUnlocked)
+                            const Icon(
+                              Icons.check_circle,
+                              color: Colors.green,
+                              size: 30,
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                  if (!isUnlocked)
-                    const Icon(Icons.lock, color: Colors.black54, size: 30),
-                ],
+                  );
+                },
               ),
-            );
-          },
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ElevatedButton(
+                onPressed: () async {
+                  // 최종 선택 저장
+                  setState(() {
+                    selectedCharacter = tempSelected;
+                  });
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('user_character', selectedCharacter);
+                  Navigator.pop(context);
+                },
+                child: const Text('변경'),
+              ),
+            ),
+          ],
         );
       },
     );

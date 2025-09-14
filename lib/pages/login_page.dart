@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'signup_page.dart';
 import 'mainMenuPage.dart';
 import 'levelTest_Page.dart';
+import 'loading_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -78,7 +79,6 @@ class _LoginPageState extends State<LoginPage> {
     await prefs.setString('user_id', id);
   }
 
-  // ID + PW 로그인
   Future<void> _loginWithId() async {
     final id = _idController.text.trim();
     final pw = _passwordController.text.trim();
@@ -88,10 +88,11 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // 로딩 페이지로 이동
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoadingPage()),
+    );
 
     try {
       final response = await http.post(
@@ -114,34 +115,34 @@ class _LoginPageState extends State<LoginPage> {
         await _saveName(name);
         await _saveNickname(nickname);
 
+        // 로딩 페이지 닫기
+        Navigator.pop(context);
+
+        // 메인 메뉴로 이동
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainMenuPage(userName: name)),
+        );
+
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text("환영합니다, $name 님!")));
-
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => MainMenuPage(userName: name)),
-          );
-        });
-      } else if (response.statusCode == 400) {
-        setState(() => _errorMessage = "아이디 또는 비밀번호가 틀립니다.");
       } else {
+        Navigator.pop(context); // 로딩 화면 닫기
         setState(() => _errorMessage = "로그인 실패: 서버 오류(${response.statusCode})");
       }
     } catch (e) {
+      Navigator.pop(context); // 로딩 화면 닫기
       setState(() => _errorMessage = "네트워크 오류: $e");
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
-  // 카카오 로그인
   Future<void> _loginWithKakao() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // 로딩 화면 띄우기
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LoadingPage()),
+    );
 
     try {
       bool isInstalled = await isKakaoTalkInstalled();
@@ -153,33 +154,58 @@ class _LoginPageState extends State<LoginPage> {
         token = await UserApi.instance.loginWithKakaoAccount();
       }
 
-      User user = await UserApi.instance.me();
+      print("✅ 카카오 로그인 성공 → 토큰 발급됨");
 
-      // 여기선 JWT 토큰이 아니라 Kakao 토큰
-      await _saveToken(token.accessToken);
+      User kakaoUser = await UserApi.instance.me();
+      final kakaoId = kakaoUser.id.toString();
+      final kakaoName = kakaoUser.kakaoAccount?.profile?.nickname ?? "사용자";
+      print("👤 카카오 사용자 정보: id=$kakaoId, name=$kakaoName, token=$token");
 
-      setState(() => _isLoading = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '환영합니다, ${user.kakaoAccount?.profile?.nickname ?? "사용자"}님!',
-          ),
-        ),
+      // 서버에 저장 요청
+      final response = await http.post(
+        Uri.parse("http://localhost:8080/user/save"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"id": kakaoId, "name": kakaoName}),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder:
-              (_) => MainMenuPage(
-                userName: user.kakaoAccount?.profile?.nickname ?? '사용자',
-              ),
-        ),
-      );
+      // 로딩 화면 닫기
+      Navigator.pop(context);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final token = data['token'];
+        final id = data['id'];
+        final name = data['name'];
+        final nickname = data['nickname'];
+        final rank = data['rank'] ?? 'Beginner';
+
+        // SharedPreferences 저장
+        await _saveToken(token);
+        await _saveID(id);
+        await _saveName(name);
+        await _saveNickname(nickname);
+        await _saveRank(rank);
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("환영합니다, $name 님!")));
+
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => MainMenuPage(userName: name)),
+          );
+        });
+      } else {
+        setState(
+          () => _errorMessage = "카카오 로그인 후 서버 저장 실패: ${response.statusCode}",
+        );
+      }
     } catch (error) {
+      // 로딩 화면 닫기
+      Navigator.pop(context);
+
       setState(() {
-        _isLoading = false;
         _errorMessage = '카카오 로그인 실패: $error';
       });
     }

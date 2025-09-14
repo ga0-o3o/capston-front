@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'games/game1_page.dart';
 import 'games/game2_page.dart';
 import 'games/game3_page.dart';
 import 'games/game4_page.dart';
+import 'games/game4_multi_page.dart';
 import 'games/game5_page.dart';
 import 'games/game6_page.dart';
+import 'games/game6_multi_page.dart';
 
 class GameMenuPage extends StatelessWidget {
   const GameMenuPage({Key? key}) : super(key: key);
 
   final List<String> gameTitles = const [
     "단어 빨리 맞히기",
-    "카드 짝 빨리 맞히기",
-    "제시어 영작하기",
+    "제시어 영작 게임",
+    "미로 탈출",
     "끝말 잇기",
     "빙고 게임",
     "단어 타워 쌓기",
   ];
+
+  Future<String?> _getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("userId");
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,11 +63,19 @@ class GameMenuPage extends StatelessWidget {
                         case 2:
                           return Game3Page();
                         case 3:
-                          return Game4Page();
+                          return StartPageWithModes(
+                            title: "끝말잇기",
+                            soloPage: const Game4Page(),
+                            multiPage: const Game4MultiPage(),
+                          );
                         case 4:
                           return Game5Page();
                         case 5:
-                          return Game6Page();
+                          return StartPageWithModes(
+                            title: "단어 타워 쌓기",
+                            soloPage: const Game6Page(),
+                            multiPage: const Game6MultiPage(),
+                          );
                         default:
                           return Game1Page();
                       }
@@ -112,6 +128,57 @@ class GameMenuPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class StartPageWithModes extends StatelessWidget {
+  final String title;
+  final Widget soloPage;
+  final Widget multiPage;
+
+  const StartPageWithModes({
+    super.key,
+    required this.title,
+    required this.soloPage,
+    required this.multiPage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF4E6E99),
+        title: Text(title),
+      ),
+      body: Center(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _modeButton(context, "혼자 하기", soloPage),
+            const SizedBox(width: 20),
+            _modeButton(context, "같이 하기", multiPage),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _modeButton(BuildContext context, String label, Widget page) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF4E6E99),
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+      ),
+      onPressed: () {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+      },
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
       ),
     );
   }
