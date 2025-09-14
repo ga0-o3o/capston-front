@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../loading_page.dart';
+import 'dart:html' as html;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 // ------------------ 날아오는 블록 ------------------
 class FlyingBlock {
@@ -56,6 +57,45 @@ class FlyingBlock {
   }
 }
 
+class WebBgm {
+  html.AudioElement? _audio;
+
+  void play() {
+    _audio ??=
+        html.AudioElement('assets/audios/game6_bgm.mp3')
+          ..loop = true
+          ..autoplay = true;
+    _audio!.play();
+  }
+
+  void stop() {
+    _audio?.pause();
+    _audio?.currentTime = 0;
+  }
+}
+
+class SoundEffect {
+  static void playSuccess() {
+    final audio = html.AudioElement('assets/audios/levelTest_success.mp3');
+    audio.play();
+  }
+
+  static void playFailure() {
+    final audio = html.AudioElement('assets/audios/levelTest_failure.mp3');
+    audio.play();
+  }
+
+  static void gameSuccess() {
+    final audio = html.AudioElement('assets/audios/game_success.mp3');
+    audio.play();
+  }
+
+  static void gameFailure() {
+    final audio = html.AudioElement('assets/audios/game_failure.mp3');
+    audio.play();
+  }
+}
+
 // ------------------ 게임 로직 ------------------
 class Game6 extends FlameGame {
   List<FlyingBlock> flyingBlocks = [];
@@ -77,6 +117,8 @@ class Game6 extends FlameGame {
   bool gameOutCalled = false; // 중복 호출 방지
 
   ui.Image? bgImage;
+
+  final WebBgm bgm = WebBgm();
 
   @override
   Future<void> onLoad() async {
@@ -112,6 +154,9 @@ class Game6 extends FlameGame {
     double gameAreaHeight = 405;
     towerX = (size.x > 0 ? size.x : 360) / 2 - FlyingBlock.width / 2;
     towerY = gameAreaHeight - FlyingBlock.height;
+
+    // ✅ 게임 시작 시 배경음 재생
+    bgm.play();
   }
 
   void addBlockToTower() {
@@ -336,6 +381,7 @@ class _Game6PageState extends State<Game6Page> {
 
   void _pauseGame() {
     gameTimer?.cancel(); // 타이머 멈춤
+    game.bgm.stop();
     pauseStart = DateTime.now();
 
     showDialog(
@@ -355,6 +401,7 @@ class _Game6PageState extends State<Game6Page> {
                             .inSeconds
                             .toDouble();
                     game.elapsedTime += pausedSeconds; // 경과 시간 보정
+                    game.bgm.play();
                   }
                   pauseStart = null;
                   Navigator.pop(context);
@@ -431,7 +478,15 @@ class _Game6PageState extends State<Game6Page> {
       if (totalTime <= 0) {
         gameOver = true;
         timer.cancel();
-        _showGameOverDialog();
+
+        // 성공 조건: 목숨이 남아있고 블록이 화면 아래로 내려가지 않은 경우
+        bool success =
+            lives > 0 &&
+            !(game.towerBlocks.isNotEmpty &&
+                game.towerBlocks.map((b) => b.y + game.yOffset).reduce(min) >
+                    450);
+
+        _showGameOverDialog(success: success);
       }
 
       setState(() {});
@@ -457,6 +512,7 @@ class _Game6PageState extends State<Game6Page> {
 
     if (controller.text.trim().toLowerCase() == answer) {
       // 정답
+      SoundEffect.gameSuccess();
       if (game.flyingBlocks.isEmpty) {
         game.addBlockToTower();
       } else {
@@ -471,6 +527,7 @@ class _Game6PageState extends State<Game6Page> {
       }
     } else {
       // 오답 → 목숨 감소
+      SoundEffect.gameFailure();
       lives--;
       if (lives <= 0) {
         gameOver = true;
@@ -482,14 +539,27 @@ class _Game6PageState extends State<Game6Page> {
     setState(() {});
   }
 
-  void _showGameOverDialog() {
+  void _showGameOverDialog({bool success = false}) {
+    game.bgm.stop();
+
+    // 게임 종료 시 사운드 재생
+    if (success) {
+      SoundEffect.playSuccess(); // levelTest_success.mp3
+    } else {
+      SoundEffect.playFailure(); // levelTest_failure.mp3
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder:
           (_) => AlertDialog(
-            title: const Text("게임 종료"),
-            content: Text("총 쌓인 블록: ${game.towerHeight}"),
+            title: Text(success ? "게임 성공!" : "게임 종료"),
+            content: Text(
+              success
+                  ? "축하합니다! 시간을 버티고 탑을 완성했습니다.\n총 쌓인 블록: ${game.towerHeight}"
+                  : "총 쌓인 블록: ${game.towerHeight}",
+            ),
             actions: [
               TextButton(
                 onPressed: () {
@@ -505,8 +575,6 @@ class _Game6PageState extends State<Game6Page> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) return const LoadingPage();
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
@@ -560,9 +628,11 @@ class _Game6PageState extends State<Game6Page> {
                       color: Colors.black87,
                       size: 28,
                     ),
-                    onPressed: () {
-                      _pauseGame();
-                    },
+                    // 1번 안내문, 2번 안내문이 모두 끝나야만 작동
+                    onPressed:
+                        (!showStartMessage && !showSpeedUpMessage)
+                            ? _pauseGame
+                            : null,
                   ),
                 ],
               ),
