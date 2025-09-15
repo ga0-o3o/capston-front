@@ -61,10 +61,9 @@ class WebBgm {
   html.AudioElement? _audio;
 
   void play() {
-    _audio ??=
-        html.AudioElement('assets/audios/game6_bgm.mp3')
-          ..loop = true
-          ..autoplay = true;
+    _audio ??= html.AudioElement('assets/audios/game6_bgm.mp3')
+      ..loop = true
+      ..autoplay = true;
     _audio!.play();
   }
 
@@ -219,9 +218,8 @@ class Game6 extends FlameGame {
 
     // ------------------ 게임 오버 조건 ------------------
     if (!gameOutCalled && towerBlocks.isNotEmpty) {
-      double highestBlockTop = towerBlocks
-          .map((b) => b.y + yOffset)
-          .reduce(min);
+      double highestBlockTop =
+          towerBlocks.map((b) => b.y + yOffset).reduce(min);
       double bottomLimit = 450; // 화면 기준
 
       if (highestBlockTop > bottomLimit) {
@@ -387,41 +385,37 @@ class _Game6PageState extends State<Game6Page> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (_) => AlertDialog(
-            title: const Text("일시정지"),
-            content: const Text("게임을 계속하시겠습니까?"),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  if (pauseStart != null) {
-                    double pausedSeconds =
-                        DateTime.now()
-                            .difference(pauseStart!)
-                            .inSeconds
-                            .toDouble();
-                    game.elapsedTime += pausedSeconds; // 경과 시간 보정
-                    game.bgm.play();
-                  }
-                  pauseStart = null;
-                  Navigator.pop(context);
+      builder: (_) => AlertDialog(
+        title: const Text("일시정지"),
+        content: const Text("게임을 계속하시겠습니까?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (pauseStart != null) {
+                double pausedSeconds =
+                    DateTime.now().difference(pauseStart!).inSeconds.toDouble();
+                game.elapsedTime += pausedSeconds; // 경과 시간 보정
+                game.bgm.play();
+              }
+              pauseStart = null;
+              Navigator.pop(context);
 
-                  // 정답을 맞춰서 타이머가 시작된 경우에만 재개
-                  if (timerStarted) {
-                    _startGameTimer();
-                  }
-                },
-                child: const Text("계속하기"),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context); // 메뉴로 나가기
-                },
-                child: const Text("종료"),
-              ),
-            ],
+              // 정답을 맞춰서 타이머가 시작된 경우에만 재개
+              if (timerStarted) {
+                _startGameTimer();
+              }
+            },
+            child: const Text("계속하기"),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context); // 메뉴로 나가기
+            },
+            child: const Text("종료"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -480,8 +474,7 @@ class _Game6PageState extends State<Game6Page> {
         timer.cancel();
 
         // 성공 조건: 목숨이 남아있고 블록이 화면 아래로 내려가지 않은 경우
-        bool success =
-            lives > 0 &&
+        bool success = lives > 0 &&
             !(game.towerBlocks.isNotEmpty &&
                 game.towerBlocks.map((b) => b.y + game.yOffset).reduce(min) >
                     450);
@@ -505,10 +498,9 @@ class _Game6PageState extends State<Game6Page> {
   void checkAnswer() {
     if (currentWord == null || gameOver) return;
 
-    final answer =
-        showKorean
-            ? currentWord!["wordEn"].toString().toLowerCase()
-            : currentWord!["koreanMeaning"].toString().toLowerCase();
+    final answer = showKorean
+        ? currentWord!["wordEn"].toString().toLowerCase()
+        : currentWord!["koreanMeaning"].toString().toLowerCase();
 
     if (controller.text.trim().toLowerCase() == answer) {
       // 정답
@@ -552,24 +544,23 @@ class _Game6PageState extends State<Game6Page> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (_) => AlertDialog(
-            title: Text(success ? "게임 성공!" : "게임 종료"),
-            content: Text(
-              success
-                  ? "축하합니다! 시간을 버티고 탑을 완성했습니다.\n총 쌓인 블록: ${game.towerHeight}"
-                  : "총 쌓인 블록: ${game.towerHeight}",
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                child: const Text("확인"),
-              ),
-            ],
+      builder: (_) => AlertDialog(
+        title: Text(success ? "게임 성공!" : "게임 종료"),
+        content: Text(
+          success
+              ? "축하합니다! 시간을 버티고 탑을 완성했습니다.\n총 쌓인 블록: ${game.towerHeight}"
+              : "총 쌓인 블록: ${game.towerHeight}",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context);
+            },
+            child: const Text("확인"),
           ),
+        ],
+      ),
     );
   }
 
@@ -629,10 +620,9 @@ class _Game6PageState extends State<Game6Page> {
                       size: 28,
                     ),
                     // 1번 안내문, 2번 안내문이 모두 끝나야만 작동
-                    onPressed:
-                        (!showStartMessage && !showSpeedUpMessage)
-                            ? _pauseGame
-                            : null,
+                    onPressed: (!showStartMessage && !showSpeedUpMessage)
+                        ? _pauseGame
+                        : null,
                   ),
                 ],
               ),
@@ -702,7 +692,10 @@ class _Game6PageState extends State<Game6Page> {
                 border: OutlineInputBorder(),
                 labelText: "정답 입력",
               ),
-              onSubmitted: (_) => checkAnswer(),
+              onSubmitted: (!showStartMessage && !showSpeedUpMessage)
+                  ? (_) => checkAnswer()
+                  : null,
+              enabled: !showStartMessage && !showSpeedUpMessage,
             ),
           ],
         ),

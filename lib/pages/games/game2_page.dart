@@ -25,6 +25,7 @@ class _Game2PageState extends State<Game2Page> {
   final Random _random = Random();
 
   int totalTime = 120;
+  DateTime? pauseStart;
   int questionNumber = 0;
   int lives = 3; // 목숨
   Timer? gameTimer;
@@ -41,6 +42,11 @@ class _Game2PageState extends State<Game2Page> {
 
   void _startTimer() {
     gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel(); // 위젯이 없으면 타이머 중지
+        return;
+      }
+
       if (gameOver) {
         timer.cancel();
         return;
@@ -121,6 +127,44 @@ class _Game2PageState extends State<Game2Page> {
     setState(() {});
   }
 
+  void _pauseGame() {
+    // 타이머 멈춤
+    gameTimer?.cancel();
+    pauseStart = DateTime.now();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("일시정지"),
+        content: const Text("게임을 계속하시겠습니까?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _startTimer(); // 다시 타이머 시작
+            },
+            child: const Text("계속하기"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context); // 메뉴로 나가기
+            },
+            child: const Text("종료"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    gameTimer?.cancel(); // 타이머 중지
+    controller.dispose(); // 텍스트 컨트롤러 정리
+    super.dispose();
+  }
+
   Future<void> _loadUserIdAndWords() async {
     final prefs = await SharedPreferences.getInstance();
     final storedToken = prefs.getString('jwt_token');
@@ -189,10 +233,6 @@ class _Game2PageState extends State<Game2Page> {
               children: [
                 Text(
                   '남은 시간: $totalTime초',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
                 Row(
                   children: List.generate(
@@ -209,14 +249,29 @@ class _Game2PageState extends State<Game2Page> {
               padding: const EdgeInsets.all(16),
               width: double.infinity,
               color: Colors.black12,
-              child: Center(
-                child: Text(
-                  currentWord != null
-                      ? '제시어: ${currentWord!["wordEn"]}'
-                      : "단어 없음",
-                  style: const TextStyle(
-                      fontSize: 24, fontWeight: FontWeight.bold),
-                ),
+              child: Stack(
+                children: [
+                  // 제시어 가운데 정렬
+                  Align(
+                    alignment: Alignment.center,
+                    child: Text(
+                      currentWord != null
+                          ? '제시어: ${currentWord!["wordEn"]}'
+                          : "단어 없음",
+                      style: const TextStyle(
+                          fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+
+                  // 오른쪽에 일시정지 버튼
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      icon: const Icon(Icons.pause, size: 28),
+                      onPressed: _pauseGame,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 8),

@@ -91,10 +91,9 @@ class WebBgm {
   html.AudioElement? _audio;
 
   void play() {
-    _audio ??=
-        html.AudioElement('assets/audios/game3_bgm.mp3')
-          ..loop = true
-          ..autoplay = true;
+    _audio ??= html.AudioElement('assets/audios/game3_bgm.mp3')
+      ..loop = true
+      ..autoplay = true;
     _audio!.play();
   }
 
@@ -251,7 +250,7 @@ class Player extends PositionComponent {
   Vector2 lastMoveDir = Vector2.zero();
 
   Player({required Vector2 position, required this.maze})
-    : gridPos = position.clone() {
+      : gridPos = position.clone() {
     size = Vector2(Maze.tileSize, Maze.tileSize);
     this.position = gridPos * Maze.tileSize;
   }
@@ -342,16 +341,15 @@ class _DirectionSelectionDialogState extends State<DirectionSelectionDialog> {
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children:
-                directions.map((d) {
-                  return ElevatedButton(
-                    onPressed: () {
-                      _autoCloseTimer?.cancel(); // 사용자가 선택하면 타이머 취소
-                      Navigator.pop(context, d["dir"] as Vector2);
-                    },
-                    child: Text(d["label"] as String),
-                  );
-                }).toList(),
+            children: directions.map((d) {
+              return ElevatedButton(
+                onPressed: () {
+                  _autoCloseTimer?.cancel(); // 사용자가 선택하면 타이머 취소
+                  Navigator.pop(context, d["dir"] as Vector2);
+                },
+                child: Text(d["label"] as String),
+              );
+            }).toList(),
           ),
         ],
       ),
@@ -456,27 +454,26 @@ class _Game3PageState extends State<Game3Page> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder:
-            (_) => AlertDialog(
-              title: const Text("게임 종료"),
-              content: Text(
-                "남은 목숨: $lives\n남은 시간: $totalTime초\n풀었던 문제 수: $solvedQuestions",
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const GameMenuPage(),
-                      ),
-                      (route) => false, // 기존의 모든 라우트 제거
-                    );
-                  },
-                  child: const Text("확인"),
-                ),
-              ],
+        builder: (_) => AlertDialog(
+          title: const Text("게임 종료"),
+          content: Text(
+            "남은 목숨: $lives\n남은 시간: $totalTime초\n풀었던 문제 수: $solvedQuestions",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const GameMenuPage(),
+                  ),
+                  (route) => false, // 기존의 모든 라우트 제거
+                );
+              },
+              child: const Text("확인"),
             ),
+          ],
+        ),
       );
     });
   }
@@ -574,21 +571,20 @@ class _Game3PageState extends State<Game3Page> {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
-          builder:
-              (_) => AlertDialog(
-                title: const Text("영어 문제!"),
-                content: Text("정답 단어: $word"),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text("정답"),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text("오답"),
-                  ),
-                ],
+          builder: (_) => AlertDialog(
+            title: const Text("영어 문제!"),
+            content: Text("정답 단어: $word"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text("정답"),
               ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("오답"),
+              ),
+            ],
+          ),
         ) ??
         false;
   }
@@ -626,10 +622,9 @@ class _Game3PageState extends State<Game3Page> {
     Vector2? dir = await showDialog<Vector2>(
       context: context,
       barrierDismissible: false,
-      builder:
-          (_) => DirectionSelectionDialog(
-            onSelect: (d) => Navigator.pop(context, d),
-          ),
+      builder: (_) => DirectionSelectionDialog(
+        onSelect: (d) => Navigator.pop(context, d),
+      ),
     );
 
     directionTimer?.cancel(); // ✅ 사용자가 선택했으면 타이머 취소
@@ -663,10 +658,9 @@ class _Game3PageState extends State<Game3Page> {
     solvedQuestions++; // 문제 시도 시 증가
 
     final userAnswer = controller.text.trim().toLowerCase();
-    final correctAnswer =
-        showEnglish
-            ? currentWord!["koreanMeaning"].toString().toLowerCase()
-            : currentWord!["wordEn"].toString().toLowerCase();
+    final correctAnswer = showEnglish
+        ? currentWord!["koreanMeaning"].toString().toLowerCase()
+        : currentWord!["wordEn"].toString().toLowerCase();
 
     // checkAnswer() 내 정답 처리
     if (userAnswer == correctAnswer) {
@@ -689,10 +683,9 @@ class _Game3PageState extends State<Game3Page> {
         Vector2? dir = await showDialog<Vector2>(
           context: context,
           barrierDismissible: false,
-          builder:
-              (_) => DirectionSelectionDialog(
-                onSelect: (d) => Navigator.pop(context, d),
-              ),
+          builder: (_) => DirectionSelectionDialog(
+            onSelect: (d) => Navigator.pop(context, d),
+          ),
         );
 
         if (dir != null && game.maze.isWalkable(game.player.gridPos + dir)) {
@@ -764,38 +757,37 @@ class _Game3PageState extends State<Game3Page> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (_) => AlertDialog(
-            title: const Text("일시정지"),
-            content: const Text("게임을 계속하시겠습니까?"),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  if (pauseStart != null) {
-                    int pausedSeconds =
-                        DateTime.now().difference(pauseStart!).inSeconds;
-                    setState(() {
-                      totalTime -= pausedSeconds; // 남은 시간 보정
-                      game.timeLeft = totalTime;
-                    });
-                  }
-                  pauseStart = null;
-                  Navigator.pop(context);
+      builder: (_) => AlertDialog(
+        title: const Text("일시정지"),
+        content: const Text("게임을 계속하시겠습니까?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (pauseStart != null) {
+                int pausedSeconds =
+                    DateTime.now().difference(pauseStart!).inSeconds;
+                setState(() {
+                  totalTime -= pausedSeconds; // 남은 시간 보정
+                  game.timeLeft = totalTime;
+                });
+              }
+              pauseStart = null;
+              Navigator.pop(context);
 
-                  // 타이머 재개
-                  startTimer();
-                },
-                child: const Text("계속하기"),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context); // 메뉴로 나가기
-                },
-                child: const Text("종료"),
-              ),
-            ],
+              // 타이머 재개
+              startTimer();
+            },
+            child: const Text("계속하기"),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context); // 메뉴로 나가기
+            },
+            child: const Text("종료"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -817,7 +809,6 @@ class _Game3PageState extends State<Game3Page> {
           ),
         ],
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -862,34 +853,32 @@ class _Game3PageState extends State<Game3Page> {
                   // 문제 텍스트
                   Expanded(
                     child: Center(
-                      child:
-                          game.initialized &&
-                                  (hasMoved &&
-                                      (game.maze.isAtJunction(
-                                            game.player.gridPos,
-                                            game.player.lastMoveDir,
-                                          ) ||
-                                          game.maze.isDeadEnd(
-                                            game.player.gridPos,
-                                          )))
-                              ? (currentWord == null
-                                  ? const Text("단어 없음")
-                                  : Text(
-                                    showEnglish
-                                        ? currentWord!["wordEn"] ?? "단어 없음"
-                                        : currentWord!["koreanMeaning"] ??
-                                            "뜻 없음",
-                                    style: const TextStyle(
-                                      fontSize: 24,
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ))
-                              : Container(
-                                width: 100,
-                                height: 50,
-                                color: Colors.white,
-                              ),
+                      child: game.initialized &&
+                              (hasMoved &&
+                                  (game.maze.isAtJunction(
+                                        game.player.gridPos,
+                                        game.player.lastMoveDir,
+                                      ) ||
+                                      game.maze.isDeadEnd(
+                                        game.player.gridPos,
+                                      )))
+                          ? (currentWord == null
+                              ? const Text("단어 없음")
+                              : Text(
+                                  showEnglish
+                                      ? currentWord!["wordEn"] ?? "단어 없음"
+                                      : currentWord!["koreanMeaning"] ?? "뜻 없음",
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    color: Colors.black,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ))
+                          : Container(
+                              width: 100,
+                              height: 50,
+                              color: Colors.white,
+                            ),
                     ),
                   ),
 

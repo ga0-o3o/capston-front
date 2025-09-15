@@ -219,7 +219,6 @@ class _Game4PageState extends State<Game4Page> {
   }
 
   void _pauseGame() {
-    // <- 여기에 함수 정의
     // 타이머 멈춤
     _timer?.cancel();
     pauseStart = DateTime.now();
@@ -227,36 +226,35 @@ class _Game4PageState extends State<Game4Page> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (_) => AlertDialog(
-            title: const Text("일시정지"),
-            content: const Text("게임을 계속하시겠습니까?"),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  if (pauseStart != null) {
-                    int pausedSeconds =
-                        DateTime.now().difference(pauseStart!).inSeconds;
-                    remainingTime -= pausedSeconds; // 남은 시간 보정
-                  }
-                  pauseStart = null;
-                  Navigator.pop(context);
+      builder: (_) => AlertDialog(
+        title: const Text("일시정지"),
+        content: const Text("게임을 계속하시겠습니까?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (pauseStart != null) {
+                int pausedSeconds =
+                    DateTime.now().difference(pauseStart!).inSeconds;
+                remainingTime -= pausedSeconds; // 남은 시간 보정
+              }
+              pauseStart = null;
+              Navigator.pop(context);
 
-                  if (_timerStarted && !game.gameOver) {
-                    startTimer();
-                  }
-                },
-                child: const Text("계속하기"),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context); // 메뉴로 나가기
-                },
-                child: const Text("종료"),
-              ),
-            ],
+              if (_timerStarted && !game.gameOver) {
+                startTimer();
+              }
+            },
+            child: const Text("계속하기"),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pop(context); // 메뉴로 나가기
+            },
+            child: const Text("종료"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -301,20 +299,17 @@ class _Game4PageState extends State<Game4Page> {
                       ),
                       children: [
                         TextSpan(
-                          text:
-                              game.currentWord.length > 1
-                                  ? game.currentWord.substring(
-                                    0,
-                                    game.currentWord.length - 1,
-                                  )
-                                  : "",
+                          text: game.currentWord.length > 1
+                              ? game.currentWord.substring(
+                                  0,
+                                  game.currentWord.length - 1,
+                                )
+                              : "",
                         ),
                         TextSpan(
-                          text:
-                              game.currentWord.isNotEmpty
-                                  ? game.currentWord[game.currentWord.length -
-                                      1]
-                                  : "",
+                          text: game.currentWord.isNotEmpty
+                              ? game.currentWord[game.currentWord.length - 1]
+                              : "",
                           style: const TextStyle(color: Colors.red),
                         ),
                       ],
@@ -402,10 +397,9 @@ class _Game4PageState extends State<Game4Page> {
             // 사용된 단어 목록
             Expanded(
               child: ListView(
-                children:
-                    game.usedWords
-                        .map((w) => ListTile(title: Text(w)))
-                        .toList(),
+                children: game.usedWords
+                    .map((w) => ListTile(title: Text(w)))
+                    .toList(),
               ),
             ),
           ],
