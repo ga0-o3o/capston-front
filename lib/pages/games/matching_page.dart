@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:http/http.dart' as http;
 import 'multiplayer_game_page.dart';
 
 class MatchingPage extends StatefulWidget {
@@ -75,14 +77,17 @@ class Room {
 class _MatchingPageState extends State<MatchingPage> {
   final List<Room> rooms = [];
   String? currentUserId;
+  late WebSocketChannel channel;
 
   @override
   void initState() {
     super.initState();
-    _addCurrentUser();
+    _addCurrentUser().then((_) {
+      joinMatchmaking();
+    });
   }
 
-  void _addCurrentUser() async {
+  Future<void> _addCurrentUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userIdFromPrefs = prefs.getString("user_id");
     final userNickNameFromPrefs = prefs.getString("user_nickname");
@@ -129,6 +134,51 @@ class _MatchingPageState extends State<MatchingPage> {
     }
   }
 
+  // -------------------- 매칭 API 호출 --------------------
+  Future<void> joinMatchmaking() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("jwt_token");
+    if (token == null) return;
+
+    final url = Uri.parse("http://localhost:8080/api/game/lobby/join");
+    final response = await http.post(
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: '{}',
+    );
+
+    if (response.statusCode == 200) {
+      print("매칭 요청 완료");
+      _connectWebSocket(token);
+    } else {
+      print("매칭 요청 실패: ${response.statusCode}");
+    }
+  }
+
+  // -------------------- WebSocket 연결 --------------------
+  void _connectWebSocket(String token) {
+    channel = WebSocketChannel.connect(
+      Uri.parse("ws://localhost:8080/ws/matchmaking?token=$token"),
+    );
+
+    channel.stream.listen((message) {
+      print("WebSocket 메시지: $message");
+      if (message.toString().startsWith("Match found!")) {
+        final sessionId = message.toString().split("Session ID: ").last;
+        print("매칭 완료! 세션 ID: $sessionId");
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => widget.gameWidgetBuilder([currentUserId!], token),
+          ),
+        );
+      }
+    });
+  }
+
   void _startGame(Room room) {
     if (room.playerIds.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -154,13 +204,19 @@ class _MatchingPageState extends State<MatchingPage> {
     setState(() {
       room.setReady(currentUserId!);
 
-      // 모든 플레이어 준비 완료면 방장 자동 게임 시작
       if (room.allReady && currentUserId == room.hostId) {
         _startGame(room);
       }
     });
   }
 
+  @override
+  void dispose() {
+    channel.sink.close();
+    super.dispose();
+  }
+
+  // -------------------- UI --------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -170,67 +226,97 @@ class _MatchingPageState extends State<MatchingPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: rooms.isEmpty
-            ? const Center(child: Text("현재 매칭 중인 방이 없습니다."))
-            : ListView.builder(
-                itemCount: rooms.length,
-                itemBuilder: (context, index) {
-                  final room = rooms[index];
-                  final isHost =
-                      currentUserId != null && room.hostId == currentUserId;
-                  final isReady = currentUserId != null &&
-                      room.readyStatus[currentUserId!] == true;
+        child: Column(
+          children: [
+            Expanded(
+              child: rooms.isEmpty
+                  ? const Center(child: Text("현재 매칭 중인 방이 없습니다."))
+                  : ListView.builder(
+                      itemCount: rooms.length,
+                      itemBuilder: (context, index) {
+                        final room = rooms[index];
+                        final isReady = currentUserId != null &&
+                            room.readyStatus[currentUserId!] == true;
 
-                  return Card(
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      side:
-                          const BorderSide(color: Color(0xFF4E6E99), width: 2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "${room.roomName} (${room.playerIds.length}/5)",
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                        return Card(
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            side: const BorderSide(
+                                color: Color(0xFF4E6E99), width: 2),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            room.playerIds.map((id) {
-                              final nickname = room.nicknames[id] ?? id;
-                              final ready = room.readyStatus[id] ?? false;
-                              return "$nickname ${ready ? '✅ 준비 완료' : '님을 ⌛ 기다리는 중..'}";
-                            }).join(", "),
-                          ),
-                          const SizedBox(height: 8),
-                          !isReady
-                              ? ElevatedButton(
-                                  onPressed: () => _setReady(room),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF4E6E99),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: const Text("준비 완료"),
-                                )
-                              : Text(
-                                  "준비 완료",
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "${room.roomName} (${room.playerIds.length}/5)",
                                   style: const TextStyle(
-                                      fontStyle: FontStyle.italic,
-                                      color: Colors.black54),
+                                      fontWeight: FontWeight.bold),
                                 ),
-                        ],
-                      ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  room.playerIds.map((id) {
+                                    final nickname = room.nicknames[id] ?? id;
+                                    final ready = room.readyStatus[id] ?? false;
+                                    return "$nickname ${ready ? '✅ 준비 완료' : '님을 ⌛ 기다리는 중..'}";
+                                  }).join(", "),
+                                ),
+                                const SizedBox(height: 8),
+                                !isReady
+                                    ? ElevatedButton(
+                                        onPressed: () => _setReady(room),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFF4E6E99),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        child: const Text("준비 완료"),
+                                      )
+                                    : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            "준비 완료",
+                                            style: TextStyle(
+                                              fontStyle: FontStyle.italic,
+                                              color: Colors.black54,
+                                            ),
+                                          ),
+                                          // 호스트 && 플레이어 2명 이상 && 모든 플레이어 준비 완료 시 게임 시작 버튼 표시
+                                          if (room.allReady &&
+                                              room.playerIds.length >= 2 &&
+                                              currentUserId == room.hostId)
+                                            ElevatedButton(
+                                              onPressed: () => _startGame(room),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.green,
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              child: const Text("게임 시작"),
+                                            ),
+                                        ],
+                                      ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
+            ),
+          ],
+        ),
       ),
     );
   }
