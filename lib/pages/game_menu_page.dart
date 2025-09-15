@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'games/game1_page.dart';
+import 'games/game1_page.dart' as game1;
 import 'games/game2_page.dart';
 import 'games/game2_multi_page.dart';
 import 'games/game3_page.dart';
@@ -11,6 +11,8 @@ import 'games/game5_page.dart';
 import 'games/game5_multi_page.dart';
 import 'games/game6_page.dart';
 import 'games/game6_multi_page.dart';
+import 'games/matching_page.dart';
+import 'games/multiplayer_game_page.dart' as multi;
 
 class GameMenuPage extends StatelessWidget {
   const GameMenuPage({Key? key}) : super(key: key);
@@ -59,8 +61,11 @@ class GameMenuPage extends StatelessWidget {
                     builder: (context) {
                       switch (index) {
                         case 0:
-                          return MultiplayerGamePage(
-                              userIds: []); // 게임1: 멀티만 존재
+                          return MatchingPage(
+                            gameWidgetBuilder: (userIds) =>
+                                multi.MultiplayerGamePage(userIds: userIds),
+                          );
+
                         case 1:
                           return StartPageWithModes(
                             title: "제시어 영작 게임",

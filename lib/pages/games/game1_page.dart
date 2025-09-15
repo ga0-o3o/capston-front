@@ -163,7 +163,7 @@ class _MultiplayerGamePageState extends State<MultiplayerGamePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
-        title: const Text("멀티 배틀 단어 게임"),
+        title: const Text("단어 빨리 맞히기"),
         backgroundColor: const Color(0xFF4E6E99),
       ),
       body: GridView.builder(

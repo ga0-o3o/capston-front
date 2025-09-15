@@ -3,7 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'multiplayer_game_page.dart';
 
 class MatchingPage extends StatefulWidget {
-  const MatchingPage({Key? key}) : super(key: key);
+  final Widget Function(List<String> userIds) gameWidgetBuilder;
+
+  const MatchingPage({Key? key, required this.gameWidgetBuilder})
+      : super(key: key);
 
   @override
   State<MatchingPage> createState() => _MatchingPageState();
@@ -16,15 +19,19 @@ class _MatchingPageState extends State<MatchingPage> {
   @override
   void initState() {
     super.initState();
-    _addCurrentUser(); // 현재 로그인한 유저 자동 추가
+    _addCurrentUser();
+    // TODO: 서버나 매칭 알고리즘 연동
   }
 
   Future<void> _addCurrentUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getString("userId");
-    if (userId != null && !players.contains(userId)) {
+    final userIdFromPrefs =
+        prefs.getString("user_id"); // 'userId' → 'user_id'로 수정
+    print("userId: $userIdFromPrefs");
+
+    if (userIdFromPrefs != null && !players.contains(userIdFromPrefs)) {
       setState(() {
-        players.add(userId);
+        players.add(userIdFromPrefs);
       });
     }
   }
@@ -55,7 +62,7 @@ class _MatchingPageState extends State<MatchingPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => MultiplayerGamePage(userIds: players),
+        builder: (_) => widget.gameWidgetBuilder(players),
       ),
     );
   }
@@ -81,10 +88,6 @@ class _MatchingPageState extends State<MatchingPage> {
                   final player = players[index];
                   return ListTile(
                     title: Text(player),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.remove_circle, color: Colors.red),
-                      onPressed: () => _leavePlayer(player),
-                    ),
                   );
                 },
               ),

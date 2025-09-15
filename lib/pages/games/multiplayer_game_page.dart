@@ -9,18 +9,12 @@ class MultiplayerGamePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("단어 빨리 맞히기 (멀티)"),
-        backgroundColor: const Color(0xFF4E6E99),
-      ),
+      appBar: AppBar(title: const Text("멀티플레이 게임")),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text("멀티플레이어 게임 화면"),
-            const SizedBox(height: 16),
-            Text("플레이어: ${userIds.join(", ")}"),
-            const SizedBox(height: 16),
+            Text("참가 플레이어: ${userIds.join(", ")}"),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               child: const Text("뒤로가기"),
