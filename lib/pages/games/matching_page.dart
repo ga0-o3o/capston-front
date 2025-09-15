@@ -212,110 +212,147 @@ class _MatchingPageState extends State<MatchingPage> {
 
   @override
   void dispose() {
+    _leaveMatchmaking(); // 서버에 나감 알림
     channel.sink.close();
     super.dispose();
+  }
+
+  Future<void> _leaveMatchmaking() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("jwt_token");
+    if (token == null) return;
+
+    final url = Uri.parse("http://localhost:8080/api/game/lobby/leave");
+    final response = await http.post(
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: '{}',
+    );
+
+    if (response.statusCode == 200) {
+      print("매칭에서 나감 알림 완료");
+    } else {
+      print("매칭 나감 실패: ${response.statusCode}");
+    }
   }
 
   // -------------------- UI --------------------
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("플레이어 매칭"),
-        backgroundColor: const Color(0xFF4E6E99),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Expanded(
-              child: rooms.isEmpty
-                  ? const Center(child: Text("현재 매칭 중인 방이 없습니다."))
-                  : ListView.builder(
-                      itemCount: rooms.length,
-                      itemBuilder: (context, index) {
-                        final room = rooms[index];
-                        final isReady = currentUserId != null &&
-                            room.readyStatus[currentUserId!] == true;
+    return WillPopScope(
+      onWillPop: () async {
+        // 뒤로가기 버튼 눌렀을 때 서버에 나감 알림
+        await _leaveMatchmaking();
 
-                        return Card(
-                          color: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            side: const BorderSide(
-                                color: Color(0xFF4E6E99), width: 2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "${room.roomName} (${room.playerIds.length}/5)",
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  room.playerIds.map((id) {
-                                    final nickname = room.nicknames[id] ?? id;
-                                    final ready = room.readyStatus[id] ?? false;
-                                    return "$nickname ${ready ? '✅ 준비 완료' : '님을 ⌛ 기다리는 중..'}";
-                                  }).join(", "),
-                                ),
-                                const SizedBox(height: 8),
-                                !isReady
-                                    ? ElevatedButton(
-                                        onPressed: () => _setReady(room),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFF4E6E99),
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        child: const Text("준비 완료"),
-                                      )
-                                    : Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Text(
-                                            "준비 완료",
-                                            style: TextStyle(
-                                              fontStyle: FontStyle.italic,
-                                              color: Colors.black54,
-                                            ),
-                                          ),
-                                          // 호스트 && 플레이어 2명 이상 && 모든 플레이어 준비 완료 시 게임 시작 버튼 표시
-                                          if (room.allReady &&
-                                              room.playerIds.length >= 2 &&
-                                              currentUserId == room.hostId)
-                                            ElevatedButton(
-                                              onPressed: () => _startGame(room),
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.green,
-                                                foregroundColor: Colors.white,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                              ),
-                                              child: const Text("게임 시작"),
-                                            ),
-                                        ],
-                                      ),
-                              ],
+        // WebSocket 종료
+        channel.sink.close();
+
+        // true 반환하면 화면 pop 됨
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("플레이어 매칭"),
+          backgroundColor: const Color(0xFF4E6E99),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Expanded(
+                child: rooms.isEmpty
+                    ? const Center(child: Text("현재 매칭 중인 방이 없습니다."))
+                    : ListView.builder(
+                        itemCount: rooms.length,
+                        itemBuilder: (context, index) {
+                          final room = rooms[index];
+                          final isReady = currentUserId != null &&
+                              room.readyStatus[currentUserId!] == true;
+
+                          return Card(
+                            color: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              side: const BorderSide(
+                                  color: Color(0xFF4E6E99), width: 2),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "${room.roomName} (${room.playerIds.length}/5)",
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    room.playerIds.map((id) {
+                                      final nickname = room.nicknames[id] ?? id;
+                                      final ready =
+                                          room.readyStatus[id] ?? false;
+                                      return "$nickname ${ready ? '✅ 준비 완료' : '님을 ⌛ 기다리는 중..'}";
+                                    }).join(", "),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  !isReady
+                                      ? ElevatedButton(
+                                          onPressed: () => _setReady(room),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor:
+                                                const Color(0xFF4E6E99),
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          child: const Text("준비 완료"),
+                                        )
+                                      : Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              "준비 완료",
+                                              style: TextStyle(
+                                                fontStyle: FontStyle.italic,
+                                                color: Colors.black54,
+                                              ),
+                                            ),
+                                            if (room.allReady &&
+                                                room.playerIds.length >= 2 &&
+                                                currentUserId == room.hostId)
+                                              ElevatedButton(
+                                                onPressed: () =>
+                                                    _startGame(room),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: Colors.green,
+                                                  foregroundColor: Colors.white,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8),
+                                                  ),
+                                                ),
+                                                child: const Text("게임 시작"),
+                                              ),
+                                          ],
+                                        ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
