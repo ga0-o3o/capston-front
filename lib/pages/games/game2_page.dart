@@ -189,13 +189,17 @@ class _Game2PageState extends State<Game2Page> {
     gameTimer?.cancel();
     setState(() => gameOver = true);
 
+    // 총 점수 계산
+    int totalScore =
+        submittedAnswers.fold(0, (sum, item) => sum + (item["score"] as int));
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text("게임 종료"),
         content: Text(
-            "게임이 종료되었습니다!\n남은 목숨: $lives\n총 제출한 답: ${submittedAnswers.length}개"),
+            "게임이 종료되었습니다!\n남은 목숨: $lives\n총 제출한 답: ${submittedAnswers.length}개\n총 점수: $totalScore"),
         actions: [
           TextButton(
             onPressed: () {
@@ -301,7 +305,8 @@ class _Game2PageState extends State<Game2Page> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
-        title: const Text("제시어 영작 게임"),
+        title: const Text("제시어 영작 게임 (솔로 모드)"),
+        automaticallyImplyLeading: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

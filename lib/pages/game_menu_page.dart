@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'games/game1_page.dart';
 import 'games/game2_page.dart';
+import 'games/game2_multi_page.dart';
 import 'games/game3_page.dart';
 import 'games/game4_page.dart';
 import 'games/game4_multi_page.dart';
@@ -59,7 +60,11 @@ class GameMenuPage extends StatelessWidget {
                         case 0:
                           return Game1Page();
                         case 1:
-                          return Game2Page();
+                          return StartPageWithModes(
+                            title: "제시어 영작 게임",
+                            soloPage: const Game2Page(),
+                            multiPage: const Game2MultiPage(),
+                          );
                         case 2:
                           return Game3Page();
                         case 3:
