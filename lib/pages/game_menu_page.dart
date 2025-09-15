@@ -8,6 +8,7 @@ import 'games/game3_page.dart';
 import 'games/game4_page.dart';
 import 'games/game4_multi_page.dart';
 import 'games/game5_page.dart';
+import 'games/game5_multi_page.dart';
 import 'games/game6_page.dart';
 import 'games/game6_multi_page.dart';
 
@@ -58,7 +59,8 @@ class GameMenuPage extends StatelessWidget {
                     builder: (context) {
                       switch (index) {
                         case 0:
-                          return Game1Page();
+                          return MultiplayerGamePage(
+                              userIds: []); // 게임1: 멀티만 존재
                         case 1:
                           return StartPageWithModes(
                             title: "제시어 영작 게임",
@@ -66,7 +68,7 @@ class GameMenuPage extends StatelessWidget {
                             multiPage: const Game2MultiPage(),
                           );
                         case 2:
-                          return Game3Page();
+                          return Game3Page(); // 게임3: 싱글만 존재
                         case 3:
                           return StartPageWithModes(
                             title: "끝말잇기",
@@ -74,7 +76,11 @@ class GameMenuPage extends StatelessWidget {
                             multiPage: const Game4MultiPage(),
                           );
                         case 4:
-                          return Game5Page();
+                          return StartPageWithModes(
+                            title: "빙고 게임",
+                            soloPage: const Game5Page(),
+                            multiPage: const Game5MultiPage(),
+                          );
                         case 5:
                           return StartPageWithModes(
                             title: "단어 타워 쌓기",
@@ -82,7 +88,7 @@ class GameMenuPage extends StatelessWidget {
                             multiPage: const Game6MultiPage(),
                           );
                         default:
-                          return Game1Page();
+                          return const SizedBox(); // 안전하게 반환
                       }
                     },
                   ),

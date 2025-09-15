@@ -1,99 +1,114 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:convert';
-import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-// ------------------- 단어 빨리 맞히기 게임 로직 -----------------
-class FastWordGame extends FlameGame {
-  List<Map<String, dynamic>> wordBank = [];
-  Map<String, dynamic>? currentWord;
-  int score = 0;
-  int lives = 3;
+/// ------------------- 멀티플레이어 단어 게임 로직 -----------------
+class MultiplayerFastWordGame {
+  final int maxPlayers = 5;
+  Map<String, List<Map<String, dynamic>>> playerWordBanks =
+      {}; // userId별 단어 리스트
+  Map<String, int> scores = {};
+  Map<String, int> lives = {};
+  Map<String, String?> currentWords = {};
   bool gameOver = false;
-  List<String> submittedWords = [];
   Random random = Random();
+
   VoidCallback? onUpdate;
 
-  void startGame(List<Map<String, dynamic>> words) {
-    wordBank = words;
-    score = 0;
-    lives = 3;
-    submittedWords.clear();
-    gameOver = false;
-    _nextWord();
-    onUpdate?.call();
+  /// 게임 시작: userIds 배열로 POST 요청해서 단어 목록 가져오기
+  Future<void> startGame(List<String> userIds, String token) async {
+    final url = Uri.parse("http://localhost:8080/api/personal-words/for-game");
+    final response = await http.post(
+      url,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json"
+      },
+      body: jsonEncode(userIds),
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> wordsList = jsonDecode(response.body);
+
+      // userId별 단어 분류
+      for (var word in wordsList) {
+        String userId = word["userId"];
+        playerWordBanks
+            .putIfAbsent(userId, () => [])
+            .add(Map<String, dynamic>.from(word));
+      }
+
+      // 초기 상태 설정
+      for (var userId in userIds) {
+        scores[userId] = 0;
+        lives[userId] = 3;
+        currentWords[userId] = _nextWord(userId);
+      }
+
+      onUpdate?.call();
+    } else {
+      throw Exception("단어 목록 가져오기 실패: ${response.statusCode}");
+    }
   }
 
-  void _nextWord() {
-    if (wordBank.isEmpty) return;
-    currentWord = wordBank[random.nextInt(wordBank.length)];
+  /// 특정 플레이어의 다음 단어
+  String? _nextWord(String userId) {
+    final bank = playerWordBanks[userId];
+    if (bank == null || bank.isEmpty) return null;
+    final word = bank[random.nextInt(bank.length)];
+    return word["wordEn"];
   }
 
-  Future<void> submitWord(String word, BuildContext context) async {
-    if (gameOver || currentWord == null) return;
+  /// 플레이어 단어 제출
+  void submitWord(String userId, String word) {
+    if (gameOver || currentWords[userId] == null) return;
 
     word = word.toLowerCase().trim();
-    if (word.isEmpty) return;
-
-    String correctWord =
-        (currentWord!["wordEn"] ?? "").toString().toLowerCase();
+    String correctWord = currentWords[userId]!.toLowerCase();
 
     if (word != correctWord) {
-      lives--;
-      if (lives <= 0) gameOver = true;
-      onUpdate?.call();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("틀린 단어: $word. 남은 목숨: $lives"),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return;
+      lives[userId] = (lives[userId] ?? 1) - 1;
+      if (lives[userId]! <= 0) {
+        currentWords[userId] = null;
+      }
+    } else {
+      scores[userId] = (scores[userId] ?? 0) + 5;
+      currentWords[userId] = _nextWord(userId);
     }
 
-    submittedWords.insert(0, word);
-    int position = submittedWords.length - 1;
-    int earnedScore = max(5 - position, 0);
-    score += earnedScore;
+    // 전체 게임 종료 체크
+    if (lives.values.every((l) => l <= 0)) {
+      gameOver = true;
+    }
 
-    _nextWord();
     onUpdate?.call();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("정답! +$earnedScore 점"),
-        duration: const Duration(seconds: 1),
-      ),
-    );
   }
 }
 
-// ----------------- 게임 페이지 -----------------
-class Game1Page extends StatefulWidget {
-  const Game1Page({Key? key}) : super(key: key);
+/// ----------------- 게임 페이지 -----------------
+class MultiplayerGamePage extends StatefulWidget {
+  final List<String> userIds; // 참여자 ID
+  const MultiplayerGamePage({Key? key, required this.userIds})
+      : super(key: key);
 
   @override
-  State<Game1Page> createState() => _Game1PageState();
+  State<MultiplayerGamePage> createState() => _MultiplayerGamePageState();
 }
 
-class _Game1PageState extends State<Game1Page> {
-  late FastWordGame game;
-  final TextEditingController controller = TextEditingController();
-  Timer? _timer;
-  int remainingTime = 30;
-  bool _timerStarted = false;
+class _MultiplayerGamePageState extends State<MultiplayerGamePage> {
+  late MultiplayerFastWordGame game;
+  final Map<String, TextEditingController> controllers = {};
+  final Map<String, Timer?> timers = {};
+  int gameDuration = 30;
 
   @override
   void initState() {
     super.initState();
-    game = FastWordGame();
-    game.onUpdate = () {
-      setState(() {});
-    };
+    game = MultiplayerFastWordGame();
+    game.onUpdate = () => setState(() {});
     _fetchWordsAndStart();
   }
 
@@ -101,104 +116,45 @@ class _Game1PageState extends State<Game1Page> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
-      final userId = prefs.getString('user_id') ?? '';
+      if (token.isEmpty) throw Exception("토큰 없음");
 
-      if (token.isEmpty || userId.isEmpty) {
-        throw Exception("토큰 또는 사용자 ID가 없습니다. 로그인 먼저 필요");
-      }
+      await game.startGame(widget.userIds, token);
 
-      final url = Uri.parse("http://localhost:8080/api/personal-words/$userId");
-      final response = await http.get(
-        url,
-        headers: {"Authorization": "Bearer $token"},
-      );
-
-      if (response.statusCode == 200) {
-        final List<Map<String, dynamic>> words =
-            List<Map<String, dynamic>>.from(jsonDecode(response.body));
-        game.startGame(words); // 게임 시작
-      } else {
-        throw Exception("단어장 가져오기 실패: ${response.statusCode}");
+      // 각 플레이어 타이머 시작
+      for (var userId in widget.userIds) {
+        controllers[userId] = TextEditingController();
+        _startPlayerTimer(userId, gameDuration);
       }
     } catch (e) {
-      print("단어장 불러오기 실패: $e");
+      print("게임 시작 실패: $e");
     }
   }
 
-  void startTimer() {
-    _timerStarted = true;
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (remainingTime > 0 && !game.gameOver) {
-        setState(() => remainingTime--);
-      } else {
+  void _startPlayerTimer(String userId, int duration) {
+    int remaining = duration;
+    timers[userId]?.cancel();
+    timers[userId] = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (remaining <= 0 || game.currentWords[userId] == null) {
         timer.cancel();
-        if (!game.gameOver) game.gameOver = true;
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text("시간 종료! 게임 오버!")));
+        game.currentWords[userId] = null;
+      } else {
+        remaining--;
       }
+      setState(() {});
     });
   }
 
-  void startWordTimer() {
-    _timer?.cancel();
-    remainingTime = 30;
-    _timerStarted = true;
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (remainingTime > 0 && !game.gameOver) {
-        setState(() => remainingTime--);
-      } else {
-        timer.cancel();
-        if (!game.gameOver) {
-          game.gameOver = true;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("시간 초과! 게임 오버!")),
-          );
-        }
-      }
-    });
-  }
-
-  void checkAnswer() async {
-    if (!_timerStarted) startTimer();
-    await game.submitWord(controller.text, context);
-    controller.clear();
-    if (game.gameOver) _timer?.cancel();
-  }
-
-  void _pauseGame() {
-    _timer?.cancel();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("일시정지"),
-        content: const Text("게임을 계속하시겠습니까?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              if (!_timerStarted && !game.gameOver) startTimer();
-            },
-            child: const Text("계속하기"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text("종료"),
-          ),
-        ],
-      ),
-    );
+  void _submitWord(String userId) {
+    final text = controllers[userId]?.text ?? '';
+    if (text.isEmpty) return;
+    game.submitWord(userId, text);
+    controllers[userId]?.clear();
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    controller.dispose();
+    for (var t in timers.values) t?.cancel();
+    for (var c in controllers.values) c?.dispose();
     super.dispose();
   }
 
@@ -207,85 +163,62 @@ class _Game1PageState extends State<Game1Page> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
-        title: const Text("단어 빨리 맞히기"),
+        title: const Text("멀티 배틀 단어 게임"),
         backgroundColor: const Color(0xFF4E6E99),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              height: 80,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.black12,
-                borderRadius: BorderRadius.circular(8.0),
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Text(
-                    game.currentWord?["koreanMeaning"] ?? "",
-                    style: const TextStyle(
-                        fontSize: 28, fontWeight: FontWeight.bold),
-                  ),
-                  Positioned(
-                    right: 0,
-                    child: IconButton(
-                      icon: const Icon(Icons.pause, size: 28),
-                      onPressed: _pauseGame,
-                    ),
-                  ),
-                ],
-              ),
+      body: GridView.builder(
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 1,
+          childAspectRatio: 2.5,
+          mainAxisSpacing: 16,
+        ),
+        itemCount: widget.userIds.length,
+        itemBuilder: (context, index) {
+          final userId = widget.userIds[index];
+          return Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.black12,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("점수: ${game.score}", style: const TextStyle(fontSize: 20)),
-                Text("남은 시간: $remainingTime s"),
+                Text("플레이어: $userId",
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Text("현재 단어: ${game.currentWords[userId] ?? '게임 오버'}",
+                    style: const TextStyle(fontSize: 18)),
+                Text(
+                    "점수: ${game.scores[userId] ?? 0} | 목숨: ${game.lives[userId] ?? 0}"),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controllers[userId],
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: "단어 입력",
+                        ),
+                        onSubmitted: (_) => _submitWord(userId),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () => _submitWord(userId),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4E6E99),
+                      ),
+                      child: const Text("제출"),
+                    ),
+                  ],
+                ),
               ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "단어 입력",
-              ),
-              onSubmitted: (_) {
-                FocusScope.of(context).unfocus();
-                checkAnswer();
-              },
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: checkAnswer,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4E6E99),
-                foregroundColor: Colors.white,
-                textStyle:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text("제출"),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView(
-                children: game.submittedWords
-                    .map((w) => ListTile(title: Text(w)))
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
