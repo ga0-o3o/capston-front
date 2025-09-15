@@ -39,7 +39,6 @@ class _MultiplayerGamePageState extends State<MultiplayerGamePage> {
             switch (widget.gameId) {
               case "game1":
                 return Game1Page(
-                  // ← 자기 자신이 아니라 실제 게임 페이지 호출
                   userIds: widget.userIds,
                   hostToken: widget.hostToken,
                 );

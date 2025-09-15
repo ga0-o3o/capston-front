@@ -200,10 +200,11 @@ class _MatchingPageState extends State<MatchingPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            room.playerIds
-                                .map((id) =>
-                                    "${room.nicknames[id] ?? id}${room.readyStatus[id]! ? " ✅" : ""}")
-                                .join(", "),
+                            room.playerIds.map((id) {
+                              final nickname = room.nicknames[id] ?? id;
+                              final ready = room.readyStatus[id] ?? false;
+                              return "$nickname ${ready ? '✅ 준비 완료' : '님을 ⌛ 기다리는 중..'}";
+                            }).join(", "),
                           ),
                           const SizedBox(height: 8),
                           !isReady
