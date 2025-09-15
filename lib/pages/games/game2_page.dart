@@ -25,13 +25,13 @@ class _Game2PageState extends State<Game2Page> {
   final Random _random = Random();
 
   int totalTime = 120;
-  DateTime? pauseStart;
   int questionNumber = 0;
   int lives = 3; // 목숨
   Timer? gameTimer;
   bool gameOver = false;
 
-  List<Map<String, String>> submittedAnswers = [];
+  /// grammarDetails: List<Map<String, String>> 형태로 오류 메시지와 틀린 단어 저장
+  List<Map<String, dynamic>> submittedAnswers = [];
 
   @override
   void initState() {
@@ -42,83 +42,103 @@ class _Game2PageState extends State<Game2Page> {
 
   void _startTimer() {
     gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel(); // 위젯이 없으면 타이머 중지
-        return;
-      }
-
-      if (gameOver) {
+      if (!mounted || gameOver) {
         timer.cancel();
         return;
       }
 
       if (totalTime > 0) {
-        setState(() {
-          totalTime--;
-        });
+        setState(() => totalTime--);
       } else {
-        setState(() {
-          gameOver = true;
-        });
-        timer.cancel();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("시간 종료! 게임 오버")),
-        );
+        _endGame(); // 시간 종료 시 게임 종료
       }
     });
   }
 
-  void checkAnswer() {
+  /// ✅ 문법 검사: 오류 메시지, 틀린 단어 추출
+  Future<List<Map<String, String>>> checkGrammar(String sentence) async {
+    final url = Uri.parse("https://api.languagetoolplus.com/v2/check");
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body:
+            "text=${Uri.encodeComponent(sentence.replaceAll('\n', ' '))}&language=en-US",
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final matches = data["matches"] as List;
+
+        // 문법 오류 상세 정보 (메시지 + 틀린 부분)
+        return matches.map<Map<String, String>>((m) {
+          final offset = m["offset"] as int;
+          final length = m["length"] as int;
+          final wrong = sentence.substring(
+              offset, (offset + length).clamp(0, sentence.length));
+          return {
+            "message": m["message"],
+            "wrongText": wrong,
+          };
+        }).toList();
+      } else {
+        print(
+            "LanguageTool API error: ${response.statusCode} ${response.body}");
+        return [];
+      }
+    } catch (e) {
+      print("LanguageTool API exception: $e");
+      return [];
+    }
+  }
+
+  void checkAnswer() async {
     if (currentWord == null || gameOver) return;
 
     final answer = currentWord!["wordEn"].toString();
     final meaning = currentWord!["koreanMeaning"].toString();
     final submitted = controller.text.trim();
 
-    // 제시어가 포함되어 있는지 확인
+    // 제시어 포함 여부 먼저 확인
     if (!submitted.toLowerCase().contains(answer.toLowerCase())) {
-      lives--; // 목숨 감소
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("틀렸습니다! 제시어가 포함되어 있지 않습니다."),
-        ),
-      );
-
+      lives--;
       if (lives <= 0) {
-        setState(() {
-          gameOver = true;
-        });
+        _endGame();
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("목숨 소진! 게임 오버")),
+          const SnackBar(content: Text("틀렸습니다! 제시어가 포함되어 있지 않습니다. 목숨 -1")),
         );
       }
-
       controller.clear();
       setState(() {});
-      return; // 제시어 미포함이면 더 이상 진행하지 않음
+      return;
     }
 
-    // 정답인지 확인
+    // ✅ 문법 검사 (상세정보 포함)
+    final grammarDetails = await checkGrammar(submitted);
+
     submittedAnswers.insert(0, {
       "word": answer,
       "meaning": meaning,
       "submitted": submitted,
+      "grammarErrors": grammarDetails.length,
+      "grammarDetails": grammarDetails, // 리스트 그대로 저장
     });
 
-    if (submitted.toLowerCase() == answer.toLowerCase()) {
+    if (grammarDetails.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("정답! 문법도 OK")),
+      );
       _nextQuestion();
     } else {
-      lives--; // 틀린 경우 목숨 감소
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("틀렸습니다!")),
-      );
-
+      lives--;
       if (lives <= 0) {
-        setState(() {
-          gameOver = true;
-        });
+        _endGame();
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("목숨 소진! 게임 오버")),
+          SnackBar(
+            content: Text("문법 오류 ${grammarDetails.length}개 발견! 목숨 -1"),
+          ),
         );
       }
     }
@@ -127,10 +147,32 @@ class _Game2PageState extends State<Game2Page> {
     setState(() {});
   }
 
-  void _pauseGame() {
-    // 타이머 멈춤
+  void _endGame() {
     gameTimer?.cancel();
-    pauseStart = DateTime.now();
+    setState(() => gameOver = true);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text("게임 종료"),
+        content: Text(
+            "게임이 종료되었습니다!\n남은 목숨: $lives\n총 제출한 답: ${submittedAnswers.length}개"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // dialog 닫기
+              Navigator.pop(context); // 게임 화면 종료
+            },
+            child: const Text("확인"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _pauseGame() {
+    gameTimer?.cancel();
 
     showDialog(
       context: context,
@@ -142,14 +184,14 @@ class _Game2PageState extends State<Game2Page> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _startTimer(); // 다시 타이머 시작
+              _startTimer();
             },
             child: const Text("계속하기"),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              Navigator.pop(context); // 메뉴로 나가기
+              Navigator.pop(context);
             },
             child: const Text("종료"),
           ),
@@ -160,8 +202,8 @@ class _Game2PageState extends State<Game2Page> {
 
   @override
   void dispose() {
-    gameTimer?.cancel(); // 타이머 중지
-    controller.dispose(); // 텍스트 컨트롤러 정리
+    gameTimer?.cancel();
+    controller.dispose();
     super.dispose();
   }
 
@@ -227,13 +269,10 @@ class _Game2PageState extends State<Game2Page> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // 남은 시간과 목숨 표시
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '남은 시간: $totalTime초',
-                ),
+                Text('남은 시간: $totalTime초'),
                 Row(
                   children: List.generate(
                     lives,
@@ -243,15 +282,12 @@ class _Game2PageState extends State<Game2Page> {
               ],
             ),
             const SizedBox(height: 8),
-
-            // 문제 영역
             Container(
               padding: const EdgeInsets.all(16),
               width: double.infinity,
               color: Colors.black12,
               child: Stack(
                 children: [
-                  // 제시어 가운데 정렬
                   Align(
                     alignment: Alignment.center,
                     child: Text(
@@ -262,8 +298,6 @@ class _Game2PageState extends State<Game2Page> {
                           fontSize: 24, fontWeight: FontWeight.bold),
                     ),
                   ),
-
-                  // 오른쪽에 일시정지 버튼
                   Align(
                     alignment: Alignment.centerRight,
                     child: IconButton(
@@ -275,8 +309,6 @@ class _Game2PageState extends State<Game2Page> {
               ),
             ),
             const SizedBox(height: 8),
-
-            // 힌트 버튼
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -293,31 +325,29 @@ class _Game2PageState extends State<Game2Page> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4E6E99), // 버튼 배경색
-                    foregroundColor: Colors.white, // 글자색
+                    backgroundColor: const Color(0xFF4E6E99),
+                    foregroundColor: Colors.white,
                   ),
                   child: const Text("힌트"),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-
-            // 정답 입력창 + 제출 버튼
             Column(
               children: [
                 TextField(
                   controller: controller,
-                  maxLines: null, // 문장 길이에 따라 여러 줄 입력 가능
+                  maxLines: null,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     labelText: "정답 입력",
                   ),
-                  onSubmitted: (_) => checkAnswer(), // Enter로 제출
+                  onSubmitted: (_) => checkAnswer(),
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
-                  width: 150, // 원하는 가로 길이
-                  height: 40, // 세로 길이
+                  width: 150,
+                  height: 40,
                   child: ElevatedButton(
                     onPressed: checkAnswer,
                     style: ElevatedButton.styleFrom(
@@ -329,38 +359,78 @@ class _Game2PageState extends State<Game2Page> {
                     ),
                     child: const Text(
                       "제출",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-
-            // 제출된 답 보여주기
             Expanded(
               child: ListView.builder(
                 itemCount: submittedAnswers.length,
                 itemBuilder: (context, index) {
-                  final item = submittedAnswers[index]; // 맨 위가 최신
-                  return Card(
-                    child: ListTile(
-                      title: Text('제시어: ${item["word"]}'),
-                      subtitle: Column(
+                  final item = submittedAnswers[index];
+
+                  /// ✅ grammarErrors > 0 인 경우 클릭 시 다이얼로그
+                  return InkWell(
+                    onTap: () {
+                      if (item["grammarErrors"] > 0) {
+                        final details =
+                            item["grammarDetails"] as List<Map<String, String>>;
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("문법 오류 상세"),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: details
+                                  .map((d) => Text(
+                                      "틀린 부분: '${d["wrongText"]}' → ${d["message"]}"))
+                                  .toList(),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("닫기"),
+                              )
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(
+                            color: const Color(0xFF4E6E99), width: 5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text('제시어: ${item["word"]}',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
                           Text('뜻: ${item["meaning"]}'),
                           Text('답: ${item["submitted"]}'),
+                          Text('문법 오류: ${item["grammarErrors"]}개'),
+                          if (item["grammarErrors"] > 0)
+                            const Text("(클릭하면 상세 오류 확인)",
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey)),
                         ],
                       ),
                     ),
                   );
                 },
               ),
-            )
+            ),
           ],
         ),
       ),
