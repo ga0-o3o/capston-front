@@ -30,6 +30,9 @@ class _Game2PageState extends State<Game2Page> {
   Timer? gameTimer;
   bool gameOver = false;
 
+  int lastScore = 0;
+  int totalScore = 0;
+
   /// grammarDetails: List<Map<String, String>> 형태로 오류 메시지와 틀린 단어 저장
   List<Map<String, dynamic>> submittedAnswers = [];
 
@@ -55,39 +58,48 @@ class _Game2PageState extends State<Game2Page> {
     });
   }
 
-  /// ✅ 문법 검사: 오류 메시지, 틀린 단어 추출
   Future<List<Map<String, String>>> checkGrammar(String sentence) async {
-    final url = Uri.parse("https://api.languagetoolplus.com/v2/check");
+    final url = Uri.parse("https://api.sapling.ai/api/v1/edits");
+
     try {
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/x-www-form-urlencoded"},
-        body:
-            "text=${Uri.encodeComponent(sentence.replaceAll('\n', ' '))}&language=en-US",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer 3HFZSH7A9O05TM0Q0SZRA7CB657WEH7B", // 여기!
+        },
+        body: jsonEncode({
+          "text": sentence,
+          "session_id": "game_session_1", // 아무 문자열 가능
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final matches = data["matches"] as List;
+        final edits = data["edits"] as List;
 
-        // 문법 오류 상세 정보 (메시지 + 틀린 부분)
-        return matches.map<Map<String, String>>((m) {
-          final offset = m["offset"] as int;
-          final length = m["length"] as int;
-          final wrong = sentence.substring(
-              offset, (offset + length).clamp(0, sentence.length));
+        return edits.map<Map<String, String>>((e) {
+          final wrongText = sentence.substring(
+            e["start"] as int,
+            (e["end"] as int).clamp(0, sentence.length),
+          );
+
+          // replacements 배열에서 첫 번째 추천 수정 가져오기
+          final replacement = (e["replacements"] as List?)?.isNotEmpty == true
+              ? e["replacements"][0]
+              : "Error";
+
           return {
-            "message": m["message"],
-            "wrongText": wrong,
+            "wrongText": wrongText,
+            "message": replacement, // 기존 message 대신 추천 수정 표시
           };
         }).toList();
       } else {
-        print(
-            "LanguageTool API error: ${response.statusCode} ${response.body}");
+        print("Sapling API error: ${response.statusCode}");
         return [];
       }
     } catch (e) {
-      print("LanguageTool API exception: $e");
+      print("Sapling API exception: $e");
       return [];
     }
   }
@@ -99,52 +111,78 @@ class _Game2PageState extends State<Game2Page> {
     final meaning = currentWord!["koreanMeaning"].toString();
     final submitted = controller.text.trim();
 
-    // 제시어 포함 여부 먼저 확인
+    List<Map<String, String>> grammarDetails = [];
+
+    // 제시어 포함 여부 확인
     if (!submitted.toLowerCase().contains(answer.toLowerCase())) {
-      lives--;
-      if (lives <= 0) {
-        _endGame();
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("틀렸습니다! 제시어가 포함되어 있지 않습니다. 목숨 -1")),
-        );
-      }
+      setState(() {
+        lives--;
+        lastScore = 0;
+        submittedAnswers.insert(0, {
+          "word": answer,
+          "meaning": meaning,
+          "submitted": submitted,
+          "grammarErrors": 0,
+          "grammarDetails": [],
+          "score": lastScore,
+        });
+        _nextQuestion();
+      });
+
+      if (lives <= 0) _endGame();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("틀렸습니다! 제시어가 포함되어 있지 않습니다. 목숨 -1")),
+      );
+
       controller.clear();
-      setState(() {});
       return;
     }
 
-    // ✅ 문법 검사 (상세정보 포함)
-    final grammarDetails = await checkGrammar(submitted);
+    // 문법 체크
+    grammarDetails = await checkGrammar(submitted);
 
-    submittedAnswers.insert(0, {
-      "word": answer,
-      "meaning": meaning,
-      "submitted": submitted,
-      "grammarErrors": grammarDetails.length,
-      "grammarDetails": grammarDetails, // 리스트 그대로 저장
-    });
+    int score = 0;
 
     if (grammarDetails.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("정답! 문법도 OK")),
-      );
-      _nextQuestion();
+      // 문법 오류 없을 때만 점수 부여
+      score = submitted.split(RegExp(r'\s+')).length; // 띄어쓰기 기준 단어 수
+      totalScore += score;
     } else {
-      lives--;
-      if (lives <= 0) {
-        _endGame();
-      } else {
+      // 문법 오류 있을 경우 목숨 감소
+      setState(() => lives--);
+      if (lives <= 0) _endGame();
+    }
+
+    setState(() {
+      lastScore = score;
+      submittedAnswers.insert(0, {
+        "word": answer,
+        "meaning": meaning,
+        "submitted": submitted,
+        "grammarErrors": grammarDetails.length,
+        "grammarDetails": grammarDetails,
+        "score": lastScore,
+      });
+      _nextQuestion();
+    });
+
+    // 피드백 메시지
+    if (grammarDetails.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("정답! 문법도 OK, 점수: $lastScore")), // 띄어쓰기 기준 점수 표시
+      );
+    } else {
+      if (lives > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("문법 오류 ${grammarDetails.length}개 발견! 목숨 -1"),
-          ),
+              content: Text(
+                  "문법 오류 ${grammarDetails.length}개 발견! 목숨 -1, 점수: $lastScore")),
         );
       }
     }
 
     controller.clear();
-    setState(() {});
   }
 
   void _endGame() {
@@ -310,8 +348,11 @@ class _Game2PageState extends State<Game2Page> {
             ),
             const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Text('점수: $totalScore',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
                 ElevatedButton(
                   onPressed: () {
                     if (currentWord != null) {
