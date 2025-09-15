@@ -2,7 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 class Game2MultiPage extends StatefulWidget {
-  const Game2MultiPage({Key? key}) : super(key: key);
+  final List<String> userIds;
+  final String hostToken;
+
+  const Game2MultiPage({
+    Key? key,
+    required this.userIds,
+    required this.hostToken,
+  }) : super(key: key);
 
   @override
   State<Game2MultiPage> createState() => _Game2MultiPageState();

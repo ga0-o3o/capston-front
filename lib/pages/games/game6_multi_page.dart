@@ -26,7 +26,14 @@ class Game6Multi extends FlameGame {
 
 // ------------------ 게임 페이지 ------------------
 class Game6MultiPage extends StatefulWidget {
-  const Game6MultiPage({Key? key}) : super(key: key);
+  final List<String> userIds; // 플레이어 이름
+  final String hostToken;
+
+  const Game6MultiPage({
+    Key? key,
+    required this.userIds,
+    required this.hostToken,
+  }) : super(key: key);
 
   @override
   State<Game6MultiPage> createState() => _Game6MultiPageState();
@@ -74,20 +81,19 @@ class _Game6MultiPageState extends State<Game6MultiPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (_) => AlertDialog(
-            title: const Text("게임 종료"),
-            content: const Text("멀티 모드 게임이 종료되었습니다."),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // dialog 닫기
-                  Navigator.pop(context); // 게임 화면 닫기
-                },
-                child: const Text("확인"),
-              ),
-            ],
+      builder: (_) => AlertDialog(
+        title: const Text("게임 종료"),
+        content: const Text("멀티 모드 게임이 종료되었습니다."),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // dialog 닫기
+              Navigator.pop(context); // 게임 화면 닫기
+            },
+            child: const Text("확인"),
           ),
+        ],
+      ),
     );
   }
 

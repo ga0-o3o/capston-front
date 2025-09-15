@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'matching_page.dart';
 
 /// ------------------- 멀티플레이어 단어 게임 로직 -----------------
 class MultiplayerFastWordGame {
@@ -89,16 +90,21 @@ class MultiplayerFastWordGame {
 }
 
 /// ----------------- 게임 페이지 -----------------
-class MultiplayerGamePage extends StatefulWidget {
-  final List<String> userIds; // 참여자 ID
-  const MultiplayerGamePage({Key? key, required this.userIds})
-      : super(key: key);
+class Game1Page extends StatefulWidget {
+  final List<String> userIds;
+  final String hostToken;
+
+  const Game1Page({
+    Key? key,
+    required this.userIds,
+    required this.hostToken,
+  }) : super(key: key);
 
   @override
-  State<MultiplayerGamePage> createState() => _MultiplayerGamePageState();
+  State<Game1Page> createState() => _Game1PageState();
 }
 
-class _MultiplayerGamePageState extends State<MultiplayerGamePage> {
+class _Game1PageState extends State<Game1Page> {
   late MultiplayerFastWordGame game;
   final Map<String, TextEditingController> controllers = {};
   final Map<String, Timer?> timers = {};
@@ -114,13 +120,9 @@ class _MultiplayerGamePageState extends State<MultiplayerGamePage> {
 
   Future<void> _fetchWordsAndStart() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token') ?? '';
-      if (token.isEmpty) throw Exception("토큰 없음");
+      // 모든 플레이어(userIds)를 방장의 토큰으로 서버 요청
+      await game.startGame(widget.userIds, widget.hostToken);
 
-      await game.startGame(widget.userIds, token);
-
-      // 각 플레이어 타이머 시작
       for (var userId in widget.userIds) {
         controllers[userId] = TextEditingController();
         _startPlayerTimer(userId, gameDuration);

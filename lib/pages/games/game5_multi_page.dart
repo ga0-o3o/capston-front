@@ -71,7 +71,14 @@ class WordChainMultiGame extends FlameGame {
 
 // ------------------ 게임 페이지 ------------------
 class Game5MultiPage extends StatefulWidget {
-  const Game5MultiPage({Key? key}) : super(key: key);
+  final List<String> userIds; // 플레이어 이름
+  final String hostToken;
+
+  const Game5MultiPage({
+    Key? key,
+    required this.userIds,
+    required this.hostToken,
+  }) : super(key: key);
 
   @override
   State<Game5MultiPage> createState() => _Game5MultiPageState();

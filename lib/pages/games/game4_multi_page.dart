@@ -54,8 +54,7 @@ class WordChainMultiGame extends FlameGame {
     if (word.isEmpty) return false;
     if (usedWords.contains(word)) return false;
     if (currentWord.isNotEmpty &&
-        word[0] != currentWord[currentWord.length - 1])
-      return false;
+        word[0] != currentWord[currentWord.length - 1]) return false;
 
     usedWords.insert(0, word);
     currentWord = word;
@@ -72,7 +71,14 @@ class WordChainMultiGame extends FlameGame {
 
 // ------------------ 게임 페이지 ------------------
 class Game4MultiPage extends StatefulWidget {
-  const Game4MultiPage({Key? key}) : super(key: key);
+  final List<String> userIds; // 멀티플레이어 유저 정보
+  final String hostToken;
+
+  const Game4MultiPage({
+    Key? key,
+    required this.userIds,
+    required this.hostToken,
+  }) : super(key: key);
 
   @override
   State<Game4MultiPage> createState() => _Game4MultiPageState();
@@ -112,17 +118,16 @@ class _Game4MultiPageState extends State<Game4MultiPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder:
-          (_) => AlertDialog(
-            title: const Text("게임 종료"),
-            content: Text("P1: ${game.scoreP1}점, P2: ${game.scoreP2}점"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("확인"),
-              ),
-            ],
+      builder: (_) => AlertDialog(
+        title: const Text("게임 종료"),
+        content: Text("P1: ${game.scoreP1}점, P2: ${game.scoreP2}점"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("확인"),
           ),
+        ],
+      ),
     );
   }
 
@@ -183,10 +188,9 @@ class _Game4MultiPageState extends State<Game4MultiPage> {
             const SizedBox(height: 16),
             Expanded(
               child: ListView(
-                children:
-                    game.usedWords
-                        .map((w) => ListTile(title: Text(w)))
-                        .toList(),
+                children: game.usedWords
+                    .map((w) => ListTile(title: Text(w)))
+                    .toList(),
               ),
             ),
           ],

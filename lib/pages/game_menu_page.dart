@@ -62,36 +62,77 @@ class GameMenuPage extends StatelessWidget {
                       switch (index) {
                         case 0:
                           return MatchingPage(
-                            gameWidgetBuilder: (userIds) =>
-                                multi.MultiplayerGamePage(userIds: userIds),
+                            gameWidgetBuilder: (userIds, hostToken) =>
+                                multi.MultiplayerGamePage(
+                              userIds: userIds,
+                              hostToken: hostToken,
+                              gameId: "game1",
+                            ),
+                            gameId: "game1",
                           );
 
                         case 1:
                           return StartPageWithModes(
                             title: "제시어 영작 게임",
                             soloPage: const Game2Page(),
-                            multiPage: const Game2MultiPage(),
+                            multiPage: MatchingPage(
+                              gameId: "game2",
+                              gameWidgetBuilder: (userIds, hostToken) =>
+                                  multi.MultiplayerGamePage(
+                                userIds: userIds,
+                                hostToken: hostToken,
+                                gameId: "game2",
+                              ),
+                            ),
                           );
+
                         case 2:
                           return Game3Page(); // 게임3: 싱글만 존재
                         case 3:
                           return StartPageWithModes(
                             title: "끝말잇기",
                             soloPage: const Game4Page(),
-                            multiPage: const Game4MultiPage(),
+                            multiPage: MatchingPage(
+                              gameId: "game4",
+                              gameWidgetBuilder: (userIds, hostToken) =>
+                                  multi.MultiplayerGamePage(
+                                userIds: userIds,
+                                hostToken: hostToken,
+                                gameId: "game4",
+                              ),
+                            ),
                           );
+
                         case 4:
                           return StartPageWithModes(
                             title: "빙고 게임",
                             soloPage: const Game5Page(),
-                            multiPage: const Game5MultiPage(),
+                            multiPage: MatchingPage(
+                              gameId: "game5",
+                              gameWidgetBuilder: (userIds, hostToken) =>
+                                  multi.MultiplayerGamePage(
+                                userIds: userIds,
+                                hostToken: hostToken,
+                                gameId: "game5",
+                              ),
+                            ),
                           );
+
                         case 5:
                           return StartPageWithModes(
                             title: "단어 타워 쌓기",
                             soloPage: const Game6Page(),
-                            multiPage: const Game6MultiPage(),
+                            multiPage: MatchingPage(
+                              gameId: "game6",
+                              gameWidgetBuilder: (userIds, hostToken) =>
+                                  multi.MultiplayerGamePage(
+                                userIds: userIds,
+                                hostToken: hostToken,
+                                gameId: "game6",
+                              ),
+                            ),
                           );
+
                         default:
                           return const SizedBox(); // 안전하게 반환
                       }
