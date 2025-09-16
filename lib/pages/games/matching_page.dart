@@ -21,11 +21,15 @@ class _MatchingPageState extends State<MatchingPage> {
   String statusMessage = "매칭 요청 중...";
   bool isLoading = true;
   String? roomId;
+
+  Timer? _pollingTimer;
+  Timer? _dotsTimer; // 점 애니메이션용
+  int _dotCount = 0;
+
   bool isReadyLoading = false;
   bool isStartingGame = false;
 
   List<String> playerNicknames = [];
-  Timer? _pollingTimer;
 
   bool allReady = false; // 모든 플레이어 준비 여부
   Map<String, bool> readyStatus = {}; // 닉네임별 준비 상태
@@ -33,13 +37,27 @@ class _MatchingPageState extends State<MatchingPage> {
   @override
   void initState() {
     super.initState();
+    _startDotsAnimation(); // 점 애니메이션 시작
     _joinMatch();
   }
 
   @override
   void dispose() {
     _pollingTimer?.cancel();
+    _dotsTimer?.cancel();
     super.dispose();
+  }
+
+  void _startDotsAnimation() {
+    _dotsTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (!mounted || roomId != null) return; // roomId가 있으면 멈춤
+
+      setState(() {
+        _dotCount = (_dotCount + 1) % 4; // 0,1,2,3 반복
+        String dots = '.' * _dotCount;
+        statusMessage = "매칭 요청 중$dots";
+      });
+    });
   }
 
   /// 매칭 요청
@@ -98,10 +116,6 @@ class _MatchingPageState extends State<MatchingPage> {
           });
           return;
         } else {
-          setState(() {
-            statusMessage = body;
-            isLoading = false;
-          });
           print("매칭 대기: $body");
           Future.delayed(const Duration(seconds: 3), () {
             if (roomId == null) _joinMatch();

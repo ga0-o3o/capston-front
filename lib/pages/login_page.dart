@@ -18,10 +18,11 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final FocusNode _idFocus = FocusNode();
+  final FocusNode _pwFocus = FocusNode();
+  bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
-
-  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -217,6 +218,8 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _idController.dispose();
     _passwordController.dispose();
+    _idFocus.dispose();
+    _pwFocus.dispose();
     super.dispose();
   }
 
@@ -278,13 +281,51 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           TextField(
             controller: _idController,
+            focusNode: _idFocus, // FocusNode 지정
             decoration: _inputDecoration('아이디', Icons.person),
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) {
+              FocusScope.of(context).requestFocus(_pwFocus); // 비밀번호 칸으로 포커스 이동
+            },
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _passwordController,
-            obscureText: true,
-            decoration: _inputDecoration('비밀번호', Icons.lock),
+            focusNode: _pwFocus, // FocusNode 지정
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              labelText: '비밀번호',
+              prefixIcon: const Icon(Icons.lock, color: Color(0xFF4E6E99)),
+              filled: true,
+              fillColor: const Color(0xFFF0EDEE),
+              border:
+                  OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: const BorderSide(color: Color(0xFFBDA68B)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide:
+                    const BorderSide(color: Color(0xFF4E6E99), width: 2),
+              ),
+              floatingLabelStyle: const TextStyle(color: Color(0xFF4E6E99)),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: const Color(0xFF4E6E99),
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+              ),
+            ),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) {
+              _loginWithId(); // 엔터 시 로그인 실행
+            },
           ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 12),
