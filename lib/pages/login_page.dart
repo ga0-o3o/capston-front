@@ -21,6 +21,8 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  bool _obscurePassword = true;
+
   @override
   void initState() {
     super.initState();
@@ -292,26 +294,26 @@ class _LoginPageState extends State<LoginPage> {
           _isLoading
               ? const CircularProgressIndicator()
               : SizedBox(
-                width: 200,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _loginWithId,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4E6E99),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15), // 둥근 네모
+                  width: 200,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _loginWithId,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4E6E99),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15), // 둥근 네모
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    '로그인',
-                    style: TextStyle(
-                      fontSize: 18, // 글자 크기
-                      fontWeight: FontWeight.bold, // 굵게
+                    child: const Text(
+                      '로그인',
+                      style: TextStyle(
+                        fontSize: 18, // 글자 크기
+                        fontWeight: FontWeight.bold, // 굵게
+                      ),
                     ),
                   ),
                 ),
-              ),
         ],
       ),
     );

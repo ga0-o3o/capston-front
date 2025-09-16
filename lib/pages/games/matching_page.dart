@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert'; // 수정: JSON 파싱을 위해 추가
+import 'dart:async'; // 수정: 주기적인 호출(Timer)을 위해 추가
 
 /// 매칭 페이지: 매칭 참가 → 준비 완료 → 게임 시작 → 게임 화면 이동
 class MatchingPage extends StatefulWidget {
@@ -28,10 +30,20 @@ class _MatchingPageState extends State<MatchingPage> {
 
   int playerCount = 1;
 
+  // 수정: 주기적인 API 호출을 위한 타이머 객체 추가
+  Timer? _pollingTimer;
+
   @override
   void initState() {
     super.initState();
     _joinMatch();
+  }
+
+  // 수정: 위젯이 사라질 때 타이머를 취소하는 dispose 메서드 추가
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   void _waitMode() {
@@ -63,37 +75,33 @@ class _MatchingPageState extends State<MatchingPage> {
         url,
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer $token", // JWT 토큰 헤더로 전달
+          "Authorization": "Bearer $token",
         },
-        body: '''
-    {
-      "playerId": "$playerId",
-      "playerNickname": "$nickname",
-      "rank": "$rank",
-      "token": "$token"
-    }
-    ''',
+        body: jsonEncode({
+          "playerId": playerId,
+          "nickname": nickname,
+          "rank": rank,
+          "token": token,
+        }),
       );
 
       if (response.statusCode == 200) {
         final body = response.body;
-        print("매칭 응답: $body");
 
         if (body.startsWith("매칭 성공! 방 ID:")) {
           roomCounter++;
           final id = body.replaceFirst("매칭 성공! 방 ID:", "").trim();
 
-          final prefs = await SharedPreferences.getInstance();
-          final nickname = prefs.getString("user_nickname") ?? "알 수 없음";
-
+          // 수정: 매칭 성공 시, playerNicknames를 초기화하는 로직 제거. 폴링으로 갱신될 것임.
           setState(() {
             roomId = id;
-            playerNicknames = [nickname]; // 본인 닉네임 추가
-            playerCount = 1; // 현재는 자기 자신만
             isLoading = false;
           });
 
-          print("매칭 성공: 서버ID=$id, 화면표시=방$roomCounter, 닉네임=$nickname");
+          print("매칭 성공: 서버ID=$id, 화면표시=방$roomCounter");
+
+          // 수정: 매칭 성공 후, 주기적으로 플레이어 목록을 업데이트하는 로직 시작
+          _startPollingRoomInfo();
           return;
         } else {
           setState(() {
@@ -121,34 +129,42 @@ class _MatchingPageState extends State<MatchingPage> {
     }
   }
 
-  Future<void> _updatePlayerCount() async {
-    if (roomId == null) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    final myNickname = prefs.getString("user_nickname") ?? "알 수 없음";
-
-    // playerCount만큼 본인 닉네임으로 리스트 생성
-    setState(() {
-      playerCount = playerCount; // 서버에서 받아온 참여자 수로 유지 가능
-      playerNicknames = List.generate(playerCount, (_) => myNickname);
+  // 수정: 주기적으로 방 정보를 폴링하는 메서드 추가
+  void _startPollingRoomInfo() {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      _updatePlayerList();
     });
+  }
 
+  // 수정: 플레이어 목록을 가져오는 새로운 메서드 추가
+  Future<void> _updatePlayerList() async {
+    if (roomId == null) return;
     try {
-      final url = Uri.parse("http://localhost:8080/room/$roomId/player-count");
+      final url = Uri.parse("http://localhost:8080/room/$roomId/players");
       final response = await http.get(url);
+
       if (response.statusCode == 200) {
-        final count = int.tryParse(response.body);
-        if (count != null) {
-          setState(() {
-            playerCount = count;
-          });
-          print("참여자 수 업데이트: $playerCount 명");
-        }
+        final List<String> fetchedNicknames =
+            List<String>.from(json.decode(response.body));
+
+        if (!mounted) return; // 위젯이 삭제되었는지 확인
+
+        setState(() {
+          playerNicknames = fetchedNicknames;
+          // UI의 상태 메시지를 참여자 수에 따라 변경
+          if (playerNicknames.length > 1) {
+            statusMessage = "매칭 성공! 방 ID: $roomId";
+          }
+        });
+        print("참여자 목록 업데이트: $playerNicknames");
       }
     } catch (e) {
-      print("참여자 수 업데이트 에러: $e");
+      print("플레이어 목록 업데이트 에러: $e");
     }
   }
+
+  // 기존 _updatePlayerCount() 메서드는 사용되지 않으므로 제거하거나 그대로 둡니다.
+  // 이 코드에서는 삭제하여 간결하게 만듭니다.
 
   Future<void> _setReady() async {
     if (roomId == null) return;
@@ -245,6 +261,8 @@ class _MatchingPageState extends State<MatchingPage> {
 
       if (response.statusCode == 200 && response.body == "게임이 시작되었습니다!") {
         if (!mounted) return;
+        // 수정: 게임 시작 시 타이머 중단
+        _pollingTimer?.cancel();
         print("게임 시작 성공, 이동 중...");
         Navigator.pushReplacement(
           context,
@@ -275,56 +293,55 @@ class _MatchingPageState extends State<MatchingPage> {
         title: const Text("플레이어 매칭"),
         backgroundColor: const Color(0xFF4E6E99),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch, // 좌우 꽉 채우기
-        children: [
-          if (isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: LinearProgressIndicator(), // 혹은 CircularProgressIndicator
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF4E6E99), width: 5),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 상태 메시지 표시
+            Text(statusMessage, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 16),
+
+            // 로딩 표시
+            if (isLoading || isReadyLoading || isStartingGame)
+              const LinearProgressIndicator(),
+
+            const SizedBox(height: 16),
+
+            // 매칭 성공 시만 방 UI 표시
+            if (roomId != null)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF4E6E99), width: 5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("방 ${playerNicknames.length}명", // 수정: 방 번호 대신 참여자 수 표시
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    // 수정: 플레이어 닉네임 목록을 동적으로 표시
+                    ...playerNicknames.map((n) => Text(n)).toList(),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(statusMessage, style: TextStyle(fontSize: 16)),
-                  ),
-                  if (isLoading) const LinearProgressIndicator(),
-                  if (roomId != null)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: const Color(0xFF4E6E99), width: 5),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("방 $roomCounter",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          ...playerNicknames.map((n) => Text(n)).toList(),
-                        ],
-                      ),
-                    ),
-                ],
+            const SizedBox(height: 16),
+            if (roomId != null && !isReadyLoading && !isStartingGame)
+              ElevatedButton(
+                onPressed: _setReady,
+                child: const Text('준비 완료!'),
               ),
-            ),
-        ],
+            const SizedBox(height: 8),
+            if (roomId != null && !isStartingGame)
+              ElevatedButton(
+                onPressed: _startGame,
+                child: const Text('게임 시작!'),
+              ),
+          ],
+        ),
       ),
     );
   }
