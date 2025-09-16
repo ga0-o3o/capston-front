@@ -1,358 +1,330 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
-import 'multiplayer_game_page.dart';
+import 'dart:convert';
+import 'dart:async';
 
+/// 매칭 페이지: 매칭 참가 → 준비 완료 → 게임 시작 → 게임 화면 이동
 class MatchingPage extends StatefulWidget {
-  final Widget Function(List<String> userIds, String hostToken)
-      gameWidgetBuilder;
-  final String gameId; // 게임 종류
+  final Widget Function(String roomId) gameWidgetBuilder;
 
   const MatchingPage({
     Key? key,
     required this.gameWidgetBuilder,
-    required this.gameId,
   }) : super(key: key);
 
   @override
   State<MatchingPage> createState() => _MatchingPageState();
 }
 
-class Room {
-  final int maxPlayers;
-  final String gameId;
-  final String rank;
-  final String roomName;
-  List<String> playerIds = [];
-  Map<String, String> nicknames = {};
-  Map<String, bool> readyStatus = {}; // userId -> 준비 여부
-  String? hostId;
-  String? hostToken;
-
-  Room(
-      {required this.gameId,
-      required this.rank,
-      required this.roomName,
-      this.maxPlayers = 5});
-
-  bool get isFull => playerIds.length >= maxPlayers;
-
-  void addPlayer(String userId, String nickname, String? token) {
-    if (isFull) return;
-    playerIds.add(userId);
-    nicknames[userId] = nickname;
-    readyStatus[userId] = false; // 처음엔 준비 상태 false
-    if (hostId == null) {
-      hostId = userId;
-      hostToken = token;
-    }
-  }
-
-  void removePlayer(String userId) {
-    playerIds.remove(userId);
-    nicknames.remove(userId);
-    readyStatus.remove(userId);
-    if (hostId == userId && playerIds.isNotEmpty) {
-      hostId = playerIds.first;
-    }
-    if (playerIds.isEmpty) {
-      hostId = null;
-      hostToken = null;
-    }
-  }
-
-  void setReady(String userId) {
-    if (playerIds.contains(userId)) {
-      readyStatus[userId] = true;
-    }
-  }
-
-  bool get allReady =>
-      readyStatus.isNotEmpty &&
-      readyStatus.values.length == playerIds.length &&
-      readyStatus.values.every((v) => v);
-}
-
 class _MatchingPageState extends State<MatchingPage> {
-  final List<Room> rooms = [];
-  String? currentUserId;
-  late WebSocketChannel channel;
+  String statusMessage = "매칭 요청 중...";
+  bool isLoading = true;
+  String? roomId;
+  bool isReadyLoading = false;
+  bool isStartingGame = false;
+
+  List<String> playerNicknames = [];
+  Timer? _pollingTimer;
+
+  bool allReady = false; // 모든 플레이어 준비 여부
+  Map<String, bool> readyStatus = {}; // 닉네임별 준비 상태
 
   @override
   void initState() {
     super.initState();
-    _addCurrentUser().then((_) {
-      joinMatchmaking();
-    });
-  }
-
-  Future<void> _addCurrentUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userIdFromPrefs = prefs.getString("user_id");
-    final userNickNameFromPrefs = prefs.getString("user_nickname");
-    final tokenFromPrefs = prefs.getString("jwt_token");
-    final rankFromPrefs = prefs.getString("user_rank");
-
-    if (userIdFromPrefs != null &&
-        userNickNameFromPrefs != null &&
-        rankFromPrefs != null) {
-      currentUserId = userIdFromPrefs;
-
-      Room? targetRoom;
-
-      // 같은 게임, 같은 랭크 방 찾기
-      for (var room in rooms) {
-        if (!room.isFull &&
-            room.gameId == widget.gameId &&
-            room.rank == rankFromPrefs) {
-          targetRoom = room;
-          break;
-        }
-      }
-
-      // 없으면 새 방 생성
-      if (targetRoom == null) {
-        int count = rooms
-            .where((r) => r.gameId == widget.gameId && r.rank == rankFromPrefs)
-            .length;
-
-        String newRoomName = "${widget.gameId}_${count + 1}";
-        targetRoom = Room(
-          gameId: widget.gameId,
-          rank: rankFromPrefs,
-          roomName: newRoomName,
-        );
-
-        rooms.add(targetRoom);
-      }
-
-      setState(() {
-        targetRoom!
-            .addPlayer(userIdFromPrefs, userNickNameFromPrefs, tokenFromPrefs);
-      });
-    }
-  }
-
-  // -------------------- 매칭 API 호출 --------------------
-  Future<void> joinMatchmaking() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("jwt_token");
-    if (token == null) return;
-
-    final url = Uri.parse("http://localhost:8080/api/game/lobby/join");
-    final response = await http.post(
-      url,
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-      body: '{}',
-    );
-
-    if (response.statusCode == 200) {
-      print("매칭 요청 완료");
-      _connectWebSocket(token);
-    } else {
-      print("매칭 요청 실패: ${response.statusCode}");
-    }
-  }
-
-  // -------------------- WebSocket 연결 --------------------
-  void _connectWebSocket(String token) {
-    channel = WebSocketChannel.connect(
-      Uri.parse("ws://localhost:8080/ws/matchmaking?token=$token"),
-    );
-
-    channel.stream.listen((message) {
-      print("WebSocket 메시지: $message");
-      if (message.toString().startsWith("Match found!")) {
-        final sessionId = message.toString().split("Session ID: ").last;
-        print("매칭 완료! 세션 ID: $sessionId");
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => widget.gameWidgetBuilder([currentUserId!], token),
-          ),
-        );
-      }
-    });
-  }
-
-  void _startGame(Room room) {
-    if (room.playerIds.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("최소 2명 이상이어야 게임을 시작할 수 있습니다.")),
-      );
-      return;
-    }
-
-    if (room.hostToken == null) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            widget.gameWidgetBuilder(room.playerIds, room.hostToken!),
-      ),
-    );
-  }
-
-  void _setReady(Room room) {
-    if (currentUserId == null) return;
-
-    setState(() {
-      room.setReady(currentUserId!);
-
-      if (room.allReady && currentUserId == room.hostId) {
-        _startGame(room);
-      }
-    });
+    _joinMatch();
   }
 
   @override
   void dispose() {
-    _leaveMatchmaking(); // 서버에 나감 알림
-    channel.sink.close();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _leaveMatchmaking() async {
+  /// 매칭 요청
+  Future<void> _joinMatch() async {
     final prefs = await SharedPreferences.getInstance();
+    final playerId = prefs.getString("user_id");
+    final nickname = prefs.getString("user_nickname");
+    final rank = prefs.getString("user_rank");
     final token = prefs.getString("jwt_token");
-    if (token == null) return;
 
-    final url = Uri.parse("http://localhost:8080/api/game/lobby/leave");
-    final response = await http.post(
-      url,
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-      body: '{}',
-    );
+    if (playerId == null || nickname == null || rank == null || token == null) {
+      setState(() {
+        statusMessage = "필수 사용자 정보가 없습니다.";
+        isLoading = false;
+      });
+      print("매칭 실패: 필수 사용자 정보 없음");
+      return;
+    }
 
-    if (response.statusCode == 200) {
-      print("매칭에서 나감 알림 완료");
-    } else {
-      print("매칭 나감 실패: ${response.statusCode}");
+    try {
+      final url = Uri.parse("http://localhost:8080/join-match");
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "playerId": playerId,
+          "nickname": nickname,
+          "rank": rank,
+          "token": token,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final body = response.body;
+
+        if (body.startsWith("매칭 성공! 방 ID:")) {
+          final id = body.replaceFirst("매칭 성공! 방 ID:", "").trim();
+
+          setState(() {
+            roomId = id;
+            isLoading = false;
+            playerNicknames = [nickname]; // 내 닉네임 먼저 추가
+          });
+
+          print("매칭 성공: 서버ID=$id");
+
+          // 첫 갱신을 1초 뒤 호출하고 주기적 갱신 시작
+          Future.delayed(const Duration(seconds: 1), () {
+            _updatePlayerList();
+            _pollingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+              _updatePlayerList();
+            });
+          });
+          return;
+        } else {
+          setState(() {
+            statusMessage = body;
+            isLoading = false;
+          });
+          print("매칭 대기: $body");
+          Future.delayed(const Duration(seconds: 3), () {
+            if (roomId == null) _joinMatch();
+          });
+        }
+      } else {
+        setState(() {
+          statusMessage = "매칭 요청 실패: ${response.statusCode}";
+          isLoading = false;
+        });
+        print("매칭 요청 실패: HTTP ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() {
+        statusMessage = "에러 발생: $e";
+        isLoading = false;
+      });
+      print("매칭 에러 발생: $e");
     }
   }
 
-  // -------------------- UI --------------------
+  Future<void> _updatePlayerList() async {
+    if (roomId == null) return;
+    try {
+      final url = Uri.parse("http://localhost:8080/room/$roomId/players");
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> list = json.decode(response.body);
+
+        final fetchedPlayers = list.map((e) {
+          if (e is Map<String, dynamic>) {
+            return {
+              'nickname': e['nickname']?.toString() ?? '',
+              'ready': e['ready'] as bool? ?? false,
+            };
+          }
+          return {'nickname': '', 'ready': false};
+        }).toList();
+
+        if (!mounted) return;
+
+        setState(() {
+          playerNicknames =
+              fetchedPlayers.map((p) => p['nickname'] as String).toList();
+          readyStatus = {
+            for (var p in fetchedPlayers)
+              if (p['nickname'] != null)
+                (p['nickname'] as String): (p['ready'] as bool? ?? false)
+          };
+          allReady = readyStatus.isNotEmpty &&
+              readyStatus.values.every((v) => v == true);
+          if (playerNicknames.isNotEmpty) {
+            statusMessage = "매칭 성공! 방 ID: $roomId";
+          }
+        });
+        print("참여자 목록 업데이트: $playerNicknames, 준비 상태: $readyStatus");
+      }
+    } catch (e) {
+      print("플레이어 목록 업데이트 에러: $e");
+    }
+  }
+
+  /// 준비 상태 전송
+  Future<void> _setReady() async {
+    if (roomId == null) return;
+
+    setState(() {
+      isReadyLoading = true;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final playerId = prefs.getString("user_id");
+    if (playerId == null) {
+      setState(() {
+        statusMessage = "playerId가 없습니다.";
+        isReadyLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final url = Uri.parse("http://localhost:8080/set-ready");
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "roomId": roomId,
+          "playerId": playerId,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          statusMessage = response.body;
+        });
+
+        if (response.body.startsWith("모든 플레이어 준비 완료!")) {
+          _startGame();
+        }
+      } else {
+        setState(() {
+          statusMessage = "준비 상태 변경 실패: ${response.statusCode}";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        statusMessage = "에러 발생: $e";
+      });
+    } finally {
+      setState(() {
+        isReadyLoading = false;
+      });
+    }
+  }
+
+  /// 게임 시작 요청
+  Future<void> _startGame() async {
+    if (roomId == null) return;
+
+    setState(() {
+      isStartingGame = true;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final playerId = prefs.getString("user_id");
+    if (playerId == null) {
+      setState(() {
+        statusMessage = "playerId가 없습니다.";
+        isStartingGame = false;
+      });
+      return;
+    }
+
+    try {
+      final url = Uri.parse("http://localhost:8080/start-game");
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "roomId": roomId,
+          "playerId": playerId,
+        }),
+      );
+
+      if (response.statusCode == 200 && response.body == "게임이 시작되었습니다!") {
+        if (!mounted) return;
+        _pollingTimer?.cancel();
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => widget.gameWidgetBuilder(roomId!)),
+        );
+      } else {
+        setState(() {
+          statusMessage = "게임 시작 실패: ${response.body}";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        statusMessage = "에러 발생: $e";
+      });
+    } finally {
+      setState(() {
+        isStartingGame = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        // 뒤로가기 버튼 눌렀을 때 서버에 나감 알림
-        await _leaveMatchmaking();
-
-        // WebSocket 종료
-        channel.sink.close();
-
-        // true 반환하면 화면 pop 됨
-        return true;
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("플레이어 매칭"),
-          backgroundColor: const Color(0xFF4E6E99),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              Expanded(
-                child: rooms.isEmpty
-                    ? const Center(child: Text("현재 매칭 중인 방이 없습니다."))
-                    : ListView.builder(
-                        itemCount: rooms.length,
-                        itemBuilder: (context, index) {
-                          final room = rooms[index];
-                          final isReady = currentUserId != null &&
-                              room.readyStatus[currentUserId!] == true;
-
-                          return Card(
-                            color: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              side: const BorderSide(
-                                  color: Color(0xFF4E6E99), width: 2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "${room.roomName} (${room.playerIds.length}/5)",
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    room.playerIds.map((id) {
-                                      final nickname = room.nicknames[id] ?? id;
-                                      final ready =
-                                          room.readyStatus[id] ?? false;
-                                      return "$nickname ${ready ? '✅ 준비 완료' : '님을 ⌛ 기다리는 중..'}";
-                                    }).join(", "),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  !isReady
-                                      ? ElevatedButton(
-                                          onPressed: () => _setReady(room),
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor:
-                                                const Color(0xFF4E6E99),
-                                            foregroundColor: Colors.white,
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                          ),
-                                          child: const Text("준비 완료"),
-                                        )
-                                      : Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Text(
-                                              "준비 완료",
-                                              style: TextStyle(
-                                                fontStyle: FontStyle.italic,
-                                                color: Colors.black54,
-                                              ),
-                                            ),
-                                            if (room.allReady &&
-                                                room.playerIds.length >= 2 &&
-                                                currentUserId == room.hostId)
-                                              ElevatedButton(
-                                                onPressed: () =>
-                                                    _startGame(room),
-                                                style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.green,
-                                                  foregroundColor: Colors.white,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            8),
-                                                  ),
-                                                ),
-                                                child: const Text("게임 시작"),
-                                              ),
-                                          ],
-                                        ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("플레이어 매칭"),
+        backgroundColor: const Color(0xFF4E6E99),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(statusMessage, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 16),
+            if (isLoading || isReadyLoading || isStartingGame)
+              const LinearProgressIndicator(),
+            const SizedBox(height: 16),
+            if (roomId != null)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF4E6E99), width: 5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("방 ${playerNicknames.length}명",
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ...playerNicknames.map((n) {
+                      final ready = readyStatus[n] ?? false;
+                      return Text("$n ${ready ? '(준비 완료)' : ''}");
+                    }).toList(),
+                  ],
+                ),
               ),
-            ],
-          ),
+            const SizedBox(height: 16),
+            if (roomId != null &&
+                !isReadyLoading &&
+                !isStartingGame &&
+                playerNicknames.length >= 2) // 플레이어 2명 이상일 때만
+              ElevatedButton(
+                onPressed: _setReady,
+                child: const Text('준비 완료!'),
+              ),
+            const SizedBox(height: 8),
+            // 게임 시작 버튼: 모든 플레이어 준비 완료
+            if (roomId != null && !isStartingGame && allReady)
+              ElevatedButton(
+                onPressed: _startGame,
+                child: const Text('게임 시작!'),
+              ),
+          ],
         ),
       ),
     );

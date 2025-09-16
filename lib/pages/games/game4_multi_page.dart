@@ -71,13 +71,13 @@ class WordChainMultiGame extends FlameGame {
 
 // ------------------ 게임 페이지 ------------------
 class Game4MultiPage extends StatefulWidget {
-  final List<String> userIds; // 멀티플레이어 유저 정보
-  final String hostToken;
+  final List<String> userIds; // 플레이어 ID
+  final List<String> tokens; // 플레이어 토큰
 
   const Game4MultiPage({
     Key? key,
     required this.userIds,
-    required this.hostToken,
+    required this.tokens,
   }) : super(key: key);
 
   @override
@@ -86,8 +86,7 @@ class Game4MultiPage extends StatefulWidget {
 
 class _Game4MultiPageState extends State<Game4MultiPage> {
   late WordChainMultiGame game;
-  final TextEditingController controller = TextEditingController();
-
+  final Map<String, TextEditingController> controllers = {};
   Timer? _timer;
   int remainingTime = 120;
 
@@ -96,6 +95,12 @@ class _Game4MultiPageState extends State<Game4MultiPage> {
     super.initState();
     game = WordChainMultiGame();
     game.startGame();
+
+    // 플레이어별 컨트롤러 생성
+    for (var userId in widget.userIds) {
+      controllers[userId] = TextEditingController();
+    }
+
     _startTimer();
   }
 
@@ -120,7 +125,13 @@ class _Game4MultiPageState extends State<Game4MultiPage> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text("게임 종료"),
-        content: Text("P1: ${game.scoreP1}점, P2: ${game.scoreP2}점"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: widget.userIds.map((u) {
+            int score = (u == "P1" ? game.scoreP1 : game.scoreP2);
+            return Text("$u: $score 점");
+          }).toList(),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -131,24 +142,23 @@ class _Game4MultiPageState extends State<Game4MultiPage> {
     );
   }
 
-  void _submitWord() {
+  void _submitWord(String userId) {
     if (game.gameOver) return;
 
-    bool success = game.submitWord(controller.text);
-    controller.clear();
+    bool success = game.submitWord(controllers[userId]?.text ?? "");
+    controllers[userId]?.clear();
     setState(() {});
 
     if (!success) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("잘못된 단어입니다!")));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("잘못된 단어입니다!")));
     }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    controller.dispose();
+    for (var c in controllers.values) c.dispose();
     super.dispose();
   }
 
@@ -169,22 +179,39 @@ class _Game4MultiPageState extends State<Game4MultiPage> {
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Text("P1: ${game.scoreP1}"),
-                Text("P2: ${game.scoreP2}"),
-              ],
+              children: widget.userIds.map((u) {
+                int score = (u == "P1" ? game.scoreP1 : game.scoreP2);
+                return Text("$u: $score");
+              }).toList(),
             ),
             const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "단어 입력",
+            Expanded(
+              child: ListView(
+                children: widget.userIds.map((u) {
+                  return Column(
+                    children: [
+                      TextField(
+                        controller: controllers[u],
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: "$u 단어 입력",
+                        ),
+                        onSubmitted: (_) => _submitWord(u),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () => _submitWord(u),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4E6E99),
+                        ),
+                        child: const Text("제출"),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                }).toList(),
               ),
-              onSubmitted: (_) => _submitWord(),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _submitWord, child: const Text("제출")),
             const SizedBox(height: 16),
             Expanded(
               child: ListView(

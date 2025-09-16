@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 
 class Game2MultiPage extends StatefulWidget {
   final List<String> userIds;
-  final String hostToken;
+  final List<String> tokens;
 
   const Game2MultiPage({
     Key? key,
     required this.userIds,
-    required this.hostToken,
+    required this.tokens,
   }) : super(key: key);
 
   @override
@@ -53,7 +53,6 @@ class _Game2MultiPageState extends State<Game2MultiPage> {
     if (gameOver) return;
 
     final submitted = controller.text.trim();
-
     if (submitted.isEmpty) return;
 
     // 점수 예제: 단어 수 기준
@@ -86,7 +85,9 @@ class _Game2MultiPageState extends State<Game2MultiPage> {
       builder: (_) => AlertDialog(
         title: const Text("게임 종료"),
         content: Text(
-            "게임이 종료되었습니다!\n총 제출한 답: ${submittedAnswers.length}개\n플레이어1 점수: ${playerScores[1]}\n플레이어2 점수: ${playerScores[2]}"),
+          "게임이 종료되었습니다!\n총 제출한 답: ${submittedAnswers.length}개\n"
+          "플레이어1 점수: ${playerScores[1]}\n플레이어2 점수: ${playerScores[2]}",
+        ),
         actions: [
           TextButton(
             onPressed: () {

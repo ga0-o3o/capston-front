@@ -26,13 +26,13 @@ class Game6Multi extends FlameGame {
 
 // ------------------ 게임 페이지 ------------------
 class Game6MultiPage extends StatefulWidget {
-  final List<String> userIds; // 플레이어 이름
-  final String hostToken;
+  final List<String> userIds;
+  final List<String> tokens;
 
   const Game6MultiPage({
     Key? key,
     required this.userIds,
-    required this.hostToken,
+    required this.tokens,
   }) : super(key: key);
 
   @override
@@ -43,7 +43,7 @@ class _Game6MultiPageState extends State<Game6MultiPage> {
   late Game6Multi game;
 
   int totalTime = 120;
-  int lives = 3;
+  Map<String, int> lives = {};
   bool gameOver = false;
   Timer? gameTimer;
 
@@ -51,6 +51,12 @@ class _Game6MultiPageState extends State<Game6MultiPage> {
   void initState() {
     super.initState();
     game = Game6Multi();
+
+    // 각 플레이어 초기 목숨 3으로 설정
+    for (var userId in widget.userIds) {
+      lives[userId] = 3;
+    }
+
     _startGameTimer();
   }
 
@@ -83,7 +89,12 @@ class _Game6MultiPageState extends State<Game6MultiPage> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text("게임 종료"),
-        content: const Text("멀티 모드 게임이 종료되었습니다."),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: widget.userIds.map((u) {
+            return Text("$u 남은 목숨: ${lives[u]}");
+          }).toList(),
+        ),
         actions: [
           TextButton(
             onPressed: () {
@@ -114,10 +125,16 @@ class _Game6MultiPageState extends State<Game6MultiPage> {
               children: [
                 Text("총 시간: ${totalTime}s"),
                 Row(
-                  children: List.generate(
-                    lives,
-                    (index) => const Icon(Icons.favorite, color: Colors.red),
-                  ),
+                  children: widget.userIds.map((u) {
+                    int count = lives[u] ?? 0;
+                    return Row(
+                      children: List.generate(
+                        count,
+                        (index) =>
+                            const Icon(Icons.favorite, color: Colors.red),
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
             ),
