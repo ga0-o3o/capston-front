@@ -4,13 +4,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'matching_page.dart';
 
 /// ------------------- 멀티플레이어 단어 게임 로직 -----------------
 class MultiplayerFastWordGame {
   final int maxPlayers = 5;
-  Map<String, List<Map<String, dynamic>>> playerWordBanks =
-      {}; // userId별 단어 리스트
+  Map<String, List<Map<String, dynamic>>> playerWordBanks = {};
   Map<String, int> scores = {};
   Map<String, int> lives = {};
   Map<String, String?> currentWords = {};
@@ -19,7 +17,6 @@ class MultiplayerFastWordGame {
 
   VoidCallback? onUpdate;
 
-  /// 게임 시작: userIds 배열로 POST 요청해서 단어 목록 가져오기
   Future<void> startGame(List<String> userIds, String token) async {
     final url = Uri.parse("http://localhost:8080/api/personal-words/for-game");
     final response = await http.post(
@@ -34,7 +31,6 @@ class MultiplayerFastWordGame {
     if (response.statusCode == 200) {
       final List<dynamic> wordsList = jsonDecode(response.body);
 
-      // userId별 단어 분류
       for (var word in wordsList) {
         String userId = word["userId"];
         playerWordBanks
@@ -42,7 +38,6 @@ class MultiplayerFastWordGame {
             .add(Map<String, dynamic>.from(word));
       }
 
-      // 초기 상태 설정
       for (var userId in userIds) {
         scores[userId] = 0;
         lives[userId] = 3;
@@ -55,7 +50,6 @@ class MultiplayerFastWordGame {
     }
   }
 
-  /// 특정 플레이어의 다음 단어
   String? _nextWord(String userId) {
     final bank = playerWordBanks[userId];
     if (bank == null || bank.isEmpty) return null;
@@ -63,7 +57,6 @@ class MultiplayerFastWordGame {
     return word["wordEn"];
   }
 
-  /// 플레이어 단어 제출
   void submitWord(String userId, String word) {
     if (gameOver || currentWords[userId] == null) return;
 
@@ -80,7 +73,6 @@ class MultiplayerFastWordGame {
       currentWords[userId] = _nextWord(userId);
     }
 
-    // 전체 게임 종료 체크
     if (lives.values.every((l) => l <= 0)) {
       gameOver = true;
     }
@@ -92,13 +84,9 @@ class MultiplayerFastWordGame {
 /// ----------------- 게임 페이지 -----------------
 class Game1Page extends StatefulWidget {
   final List<String> userIds;
-  final String hostToken;
+  final List<String> tokens;
 
-  const Game1Page({
-    Key? key,
-    required this.userIds,
-    required this.hostToken,
-  }) : super(key: key);
+  const Game1Page({super.key, required this.userIds, required this.tokens});
 
   @override
   State<Game1Page> createState() => _Game1PageState();
@@ -120,10 +108,10 @@ class _Game1PageState extends State<Game1Page> {
 
   Future<void> _fetchWordsAndStart() async {
     try {
-      // 모든 플레이어(userIds)를 방장의 토큰으로 서버 요청
-      await game.startGame(widget.userIds, widget.hostToken);
-
-      for (var userId in widget.userIds) {
+      for (int i = 0; i < widget.userIds.length; i++) {
+        String userId = widget.userIds[i];
+        String token = widget.tokens[i];
+        await game.startGame([userId], token);
         controllers[userId] = TextEditingController();
         _startPlayerTimer(userId, gameDuration);
       }

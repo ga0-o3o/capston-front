@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 import 'games/game1_page.dart' as game1;
 import 'games/game2_page.dart';
@@ -11,9 +12,10 @@ import 'games/game5_page.dart';
 import 'games/game5_multi_page.dart';
 import 'games/game6_page.dart';
 import 'games/game6_multi_page.dart';
+import 'games/dummy_game_page.dart';
 import 'games/matching_page.dart';
-import 'games/multiplayer_game_page.dart' as multi;
 
+// -------------------- GameMenuPage --------------------
 class GameMenuPage extends StatelessWidget {
   const GameMenuPage({Key? key}) : super(key: key);
 
@@ -26,15 +28,10 @@ class GameMenuPage extends StatelessWidget {
     "단어 타워 쌓기",
   ];
 
-  Future<String?> _getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString("userId");
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F0E9), // 배경 색상
+      backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         title: const Text("게임 메뉴"),
         backgroundColor: const Color(0xFF4E6E99),
@@ -43,104 +40,46 @@ class GameMenuPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: GridView.builder(
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2, // 한 줄에 2개
+            crossAxisCount: 2,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 20 / 17, // 이미지 + 제목 비율 고려
+            childAspectRatio: 20 / 17,
           ),
           itemCount: gameTitles.length,
           itemBuilder: (context, index) {
             String imagePath = "assets/images/game${index + 1}.png";
             return _gameThumbnail(
               imagePath,
-              () {
-                // 클릭 시 페이지 이동
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) {
-                      switch (index) {
-                        case 0:
-                          return MatchingPage(
-                            gameWidgetBuilder: (userIds, hostToken) =>
-                                multi.MultiplayerGamePage(
-                              userIds: userIds,
-                              hostToken: hostToken,
-                              gameId: "game1",
-                            ),
-                            gameId: "game1",
-                          );
-
-                        case 1:
-                          return StartPageWithModes(
-                            title: "제시어 영작 게임",
-                            soloPage: const Game2Page(),
-                            multiPage: MatchingPage(
-                              gameId: "game2",
-                              gameWidgetBuilder: (userIds, hostToken) =>
-                                  multi.MultiplayerGamePage(
-                                userIds: userIds,
-                                hostToken: hostToken,
-                                gameId: "game2",
-                              ),
-                            ),
-                          );
-
-                        case 2:
-                          return Game3Page(); // 게임3: 싱글만 존재
-                        case 3:
-                          return StartPageWithModes(
-                            title: "끝말잇기",
-                            soloPage: const Game4Page(),
-                            multiPage: MatchingPage(
-                              gameId: "game4",
-                              gameWidgetBuilder: (userIds, hostToken) =>
-                                  multi.MultiplayerGamePage(
-                                userIds: userIds,
-                                hostToken: hostToken,
-                                gameId: "game4",
-                              ),
-                            ),
-                          );
-
-                        case 4:
-                          return StartPageWithModes(
-                            title: "빙고 게임",
-                            soloPage: const Game5Page(),
-                            multiPage: MatchingPage(
-                              gameId: "game5",
-                              gameWidgetBuilder: (userIds, hostToken) =>
-                                  multi.MultiplayerGamePage(
-                                userIds: userIds,
-                                hostToken: hostToken,
-                                gameId: "game5",
-                              ),
-                            ),
-                          );
-
-                        case 5:
-                          return StartPageWithModes(
-                            title: "단어 타워 쌓기",
-                            soloPage: const Game6Page(),
-                            multiPage: MatchingPage(
-                              gameId: "game6",
-                              gameWidgetBuilder: (userIds, hostToken) =>
-                                  multi.MultiplayerGamePage(
-                                userIds: userIds,
-                                hostToken: hostToken,
-                                gameId: "game6",
-                              ),
-                            ),
-                          );
-
-                        default:
-                          return const SizedBox(); // 안전하게 반환
-                      }
-                    },
-                  ),
-                );
+              () async {
+                if (index == 0) {
+                  // 게임 1: 바로 매칭 페이지로 이동
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => MatchingPage(
+                        gameWidgetBuilder: (roomId) =>
+                            DummyGamePage(userIds: [], tokens: []),
+                      ),
+                    ),
+                  );
+                } else {
+                  // 게임 2~6: 모드 선택 페이지
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StartPageWithModes(
+                        title: gameTitles[index],
+                        soloPage: DummyGamePage(userIds: [], tokens: []),
+                        multiPageBuilder: (userIds, tokens) => MatchingPage(
+                          gameWidgetBuilder: (roomId) =>
+                              DummyGamePage(userIds: userIds, tokens: tokens),
+                        ),
+                      ),
+                    ),
+                  );
+                }
               },
-              gameTitles[index], // 제목 전달
+              gameTitles[index],
             );
           },
         ),
@@ -148,7 +87,6 @@ class GameMenuPage extends StatelessWidget {
     );
   }
 
-  // 클릭 가능한 게임 썸네일 (이미지 + 제목)
   Widget _gameThumbnail(String imagePath, VoidCallback onTap, String title) {
     return GestureDetector(
       onTap: onTap,
@@ -190,16 +128,17 @@ class GameMenuPage extends StatelessWidget {
   }
 }
 
+// -------------------- StartPageWithModes --------------------
 class StartPageWithModes extends StatelessWidget {
   final String title;
   final Widget soloPage;
-  final Widget multiPage;
+  final Widget Function(List<String>, List<String>) multiPageBuilder;
 
   const StartPageWithModes({
     super.key,
     required this.title,
     required this.soloPage,
-    required this.multiPage,
+    required this.multiPageBuilder,
   });
 
   @override
@@ -213,16 +152,17 @@ class StartPageWithModes extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _modeButton(context, "혼자 하기", soloPage),
+            _modeButton(context, "혼자 하기", (_, __) => soloPage),
             const SizedBox(width: 20),
-            _modeButton(context, "같이 하기", multiPage),
+            _modeButton(context, "같이 하기", multiPageBuilder),
           ],
         ),
       ),
     );
   }
 
-  Widget _modeButton(BuildContext context, String label, Widget page) {
+  Widget _modeButton(BuildContext context, String label,
+      Widget Function(List<String>, List<String>) pageBuilder) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: const Color(0xFF4E6E99),
@@ -230,8 +170,24 @@ class StartPageWithModes extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
       ),
-      onPressed: () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+      onPressed: () async {
+        final prefs = await SharedPreferences.getInstance();
+        final myId = prefs.getString("user_id") ?? "unknown";
+        final myToken = prefs.getString("jwt_token") ?? "";
+
+        if (label == "같이 하기") {
+          final userIds = [myId];
+          final tokens = [myToken];
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => pageBuilder(userIds, tokens)),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => pageBuilder([], [])),
+          );
+        }
       },
       child: Text(
         label,
