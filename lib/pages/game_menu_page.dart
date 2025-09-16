@@ -1,32 +1,78 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 
 import 'games/game1_page.dart' as game1;
 import 'games/game2_page.dart';
-import 'games/game2_multi_page.dart';
 import 'games/game3_page.dart';
 import 'games/game4_page.dart';
 import 'games/game4_multi_page.dart';
-import 'games/game5_page.dart';
 import 'games/game5_multi_page.dart';
 import 'games/game6_page.dart';
-import 'games/game6_multi_page.dart';
+
 import 'games/dummy_game_page.dart';
 import 'games/matching_page.dart';
+
+// -------------------- GameInfo --------------------
+class GameInfo {
+  final String title;
+  final Widget? soloPage;
+  final Widget Function(List<String>, List<String>)? multiPageBuilder;
+
+  const GameInfo({
+    required this.title,
+    this.soloPage,
+    this.multiPageBuilder,
+  });
+
+  bool get isSoloOnly => soloPage != null && multiPageBuilder == null;
+  bool get isMultiOnly => soloPage == null && multiPageBuilder != null;
+  bool get hasBoth => soloPage != null && multiPageBuilder != null;
+}
 
 // -------------------- GameMenuPage --------------------
 class GameMenuPage extends StatelessWidget {
   const GameMenuPage({Key? key}) : super(key: key);
 
-  final List<String> gameTitles = const [
-    "단어 빨리 맞히기",
-    "제시어 영작 게임",
-    "미로 탈출",
-    "끝말 잇기",
-    "빙고 게임",
-    "단어 타워 쌓기",
+  final List<GameInfo> games = const [
+    // 게임 1: 멀티만
+    GameInfo(
+      title: "단어 빨리 맞히기",
+      multiPageBuilder: _dummyMultiPage,
+    ),
+    // 게임 2: 솔로만
+    GameInfo(
+      title: "제시어 영작 게임",
+      soloPage: Game2Page(),
+    ),
+    // 게임 3: 솔로만
+    GameInfo(
+      title: "미로 탈출",
+      soloPage: Game3Page(),
+    ),
+    // 게임 4: 솔로 + 멀티
+    GameInfo(
+      title: "끝말 잇기",
+      soloPage: Game4Page(),
+      multiPageBuilder: _dummyMultiPage,
+    ),
+    // 게임 5: 멀티만
+    GameInfo(
+      title: "빙고 게임",
+      multiPageBuilder: _dummyMultiPage,
+    ),
+    // 게임 6: 솔로만
+    GameInfo(
+      title: "단어 타워 쌓기",
+      soloPage: Game6Page(),
+    ),
   ];
+
+  static Widget _dummyMultiPage(List<String> userIds, List<String> tokens) {
+    return MatchingPage(
+      gameWidgetBuilder: (roomId) =>
+          DummyGamePage(userIds: userIds, tokens: tokens),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,46 +91,47 @@ class GameMenuPage extends StatelessWidget {
             mainAxisSpacing: 16,
             childAspectRatio: 20 / 17,
           ),
-          itemCount: gameTitles.length,
+          itemCount: games.length,
           itemBuilder: (context, index) {
-            String imagePath = "assets/images/game${index + 1}.png";
+            final game = games[index];
+            final imagePath = "assets/images/game${index + 1}.png";
             return _gameThumbnail(
               imagePath,
-              () async {
-                if (index == 0) {
-                  // 게임 1: 바로 매칭 페이지로 이동
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MatchingPage(
-                        gameWidgetBuilder: (roomId) =>
-                            DummyGamePage(userIds: [], tokens: []),
-                      ),
-                    ),
-                  );
-                } else {
-                  // 게임 2~6: 모드 선택 페이지
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => StartPageWithModes(
-                        title: gameTitles[index],
-                        soloPage: DummyGamePage(userIds: [], tokens: []),
-                        multiPageBuilder: (userIds, tokens) => MatchingPage(
-                          gameWidgetBuilder: (roomId) =>
-                              DummyGamePage(userIds: userIds, tokens: tokens),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-              },
-              gameTitles[index],
+              () => _onGameSelected(context, game),
+              game.title,
             );
           },
         ),
       ),
     );
+  }
+
+  void _onGameSelected(BuildContext context, GameInfo game) {
+    if (game.isSoloOnly) {
+      // 솔로 전용 → 바로 실행
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => game.soloPage!),
+      );
+    } else if (game.isMultiOnly) {
+      // 멀티 전용 → 바로 매칭 페이지
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => game.multiPageBuilder!([], [])),
+      );
+    } else if (game.hasBoth) {
+      // 솔로 + 멀티 → StartPageWithModes 선택 페이지
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => StartPageWithModes(
+            title: game.title,
+            soloPage: game.soloPage!,
+            multiPageBuilder: game.multiPageBuilder!,
+          ),
+        ),
+      );
+    }
   }
 
   Widget _gameThumbnail(String imagePath, VoidCallback onTap, String title) {
