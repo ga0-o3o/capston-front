@@ -21,7 +21,6 @@ class WordMenuPage extends StatefulWidget {
 }
 
 class _WordMenuPageState extends State<WordMenuPage> {
-  // HSV 기본값
   Map<String, int> _hsvValues = {'h': 120, 's': 255, 'v': 255};
 
   final _items = <WordItem>[
@@ -70,10 +69,15 @@ class _WordMenuPageState extends State<WordMenuPage> {
     final t = s.trim();
     final out = <String>[];
     if (t.isEmpty) return out;
-    if (!t.toLowerCase().contains(target.toLowerCase()))
+    if (!t.toLowerCase().contains(target.toLowerCase())) {
       out.add('문장에 "$target" 단어가 포함되어야 해요.');
-    if (t.split(RegExp(r'\s+')).length < 4) out.add('문장은 4단어 이상으로 작성해 주세요.');
-    if (!RegExp(r'[.!?]$').hasMatch(t)) out.add('문장 끝에 마침표/물음표를 붙이면 더 좋아요.');
+    }
+    if (t.split(RegExp(r'\s+')).length < 4) {
+      out.add('문장은 4단어 이상으로 작성해 주세요.');
+    }
+    if (!RegExp(r'[.!?]$').hasMatch(t)) {
+      out.add('문장 끝에 마침표/물음표를 붙이면 더 좋아요.');
+    }
     return out;
   }
 
@@ -100,21 +104,22 @@ class _WordMenuPageState extends State<WordMenuPage> {
           builder: (_) => Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('작문을 조금만 고쳐볼까요?',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  ...issues.map((e) => Row(
-                      children: [const Text('• '), Expanded(child: Text(e))])),
-                  const SizedBox(height: 8),
-                  Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('닫기'))),
-                ]),
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('작문을 조금만 고쳐볼까요?',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                ...issues.map((e) => Row(
+                    children: [const Text('• '), Expanded(child: Text(e))])),
+                const SizedBox(height: 8),
+                Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('닫기'))),
+              ],
+            ),
           ),
         );
         return;
@@ -145,26 +150,107 @@ class _WordMenuPageState extends State<WordMenuPage> {
         ),
         body: Stack(
           children: [
-            TabBarView(children: [
-              _buildListView(_items),
-              _buildListView(_items.where((e) => e.favorite).toList()),
-              _buildQuizTab(),
-            ]),
+            TabBarView(
+              children: [
+                _buildListView(_items),
+                _buildListView(_items.where((e) => e.favorite).toList()),
+                _buildQuizTab(),
+              ],
+            ),
             if (_uploading)
               Positioned.fill(
                 child: Container(
-                    color: Colors.black.withOpacity(0.15),
-                    child: const Center(child: CircularProgressIndicator())),
+                  color: Colors.black.withOpacity(0.15),
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
               ),
           ],
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: const Color(0xFF4E6E99),
           child: const Icon(Icons.add, color: Colors.white),
-          onPressed: _openImageSourceSheet,
+          onPressed: _openAddMenu, // 수동 추가/이미지 추가 선택
         ),
       ),
     );
+  }
+
+  Future<void> _openAddMenu() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Wrap(children: [
+          ListTile(
+            leading: const Icon(Icons.keyboard),
+            title: const Text('직접 추가 (영단어/뜻 입력)'),
+            onTap: () => Navigator.pop(context, 'manual'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.image_search),
+            title: const Text('이미지로 추가 (형광펜 인식)'),
+            onTap: () => Navigator.pop(context, 'image'),
+          ),
+        ]),
+      ),
+    );
+
+    if (choice == 'manual') {
+      await _openAddDialog();
+    } else if (choice == 'image') {
+      await _openImageSourceSheet();
+    }
+  }
+
+  Future<void> _openAddDialog() async {
+    final en = TextEditingController();
+    final ko = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('단어 추가'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: en,
+                decoration: const InputDecoration(labelText: '영단어'),
+                textInputAction: TextInputAction.next),
+            TextField(
+                controller: ko,
+                decoration: const InputDecoration(labelText: '뜻')),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('추가')),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+    final w = en.text.trim();
+    final m = ko.text.trim();
+    if (w.isEmpty || m.isEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('영단어와 뜻을 모두 입력하세요.')));
+      return;
+    }
+    final exists = _items.any((e) => e.word.toLowerCase() == w.toLowerCase());
+    if (exists) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('"$w"는 이미 단어장에 있습니다.')));
+      return;
+    }
+    setState(() => _items.insert(0, WordItem(word: w, meaning: m)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('"$w" 추가됨')));
   }
 
   Future<void> _openImageSourceSheet() async {
@@ -216,7 +302,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
     await _uploadFlow(bytes, x.name);
   }
 
-  /// 업로드 → OCR 단어 → 1차 검토 → 정의 조회 → 2차 검토 → 단어장 반영
   Future<void> _uploadFlow(Uint8List bytes, String filename) async {
     setState(() => _uploading = true);
     try {
@@ -226,7 +311,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
         return;
       }
 
-      // 1) 업로드 + OCR
       final words = await DjangoApi.uploadAndExtract(
         bytes: bytes,
         filename: filename,
@@ -240,23 +324,19 @@ class _WordMenuPageState extends State<WordMenuPage> {
         return;
       }
 
-      // 2) 1차 검토/수정
       final edited = await showReviewWordsSheet(context, initialWords: words);
       if (edited == null || edited.isEmpty) return;
 
-      // 3) 정의 조회 (백엔드 → ChatGPT)
       List<DefinitionItem> defs;
       try {
         defs = await DjangoApi.defineWords(edited);
       } catch (_) {
-        // 실패 시 수동 입력 모드
         defs = edited
             .map((w) =>
                 DefinitionItem(word: w, meaning: '', pos: '', example: ''))
             .toList();
       }
 
-      // 4) 2차 검토(뜻/품사/예문 수정) → 단어장 반영
       final confirmed = await showReviewMeaningsSheet(context, defs: defs);
       if (confirmed == null || confirmed.isEmpty) return;
 
@@ -267,7 +347,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
           final mean = (m['meaning'] ?? '').trim();
           if (w.isEmpty) continue;
           if (exist.add(w.toLowerCase())) {
-            _items.add(WordItem(word: w, meaning: mean));
+            _items.insert(0, WordItem(word: w, meaning: mean));
           }
         }
       });
@@ -283,6 +363,38 @@ class _WordMenuPageState extends State<WordMenuPage> {
     }
   }
 
+  // === 여기부터 삭제(X 버튼) 관련 헬퍼 ===
+  Future<void> _confirmDelete(WordItem it) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('삭제하시겠어요?'),
+        content: Text('${it.word} - ${it.meaning}'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('삭제')),
+        ],
+      ),
+    );
+    if (ok == true) _removeByWord(it.word);
+  }
+
+  void _removeByWord(String word) {
+    final idx =
+        _items.indexWhere((e) => e.word.toLowerCase() == word.toLowerCase());
+    if (idx >= 0) {
+      setState(() => _items.removeAt(idx));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('"$word" 삭제됨')));
+    }
+  }
+  // === 삭제 헬퍼 끝 ===
+
+  /// 리스트(내 단어/즐겨찾기) — 카드 내부 우측 상단 X 버튼
   Widget _buildListView(List<WordItem> data) {
     if (data.isEmpty) return const Center(child: Text('아직 단어가 없습니다.'));
     return ListView.separated(
@@ -291,24 +403,41 @@ class _WordMenuPageState extends State<WordMenuPage> {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
         final it = data[i];
-        return Card(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          elevation: 2,
-          child: ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            title: Text(it.word,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-            subtitle:
-                Text(it.meaning, style: const TextStyle(color: Colors.black54)),
-            trailing: IconButton(
-              icon: Icon(it.favorite ? Icons.star : Icons.star_border,
-                  color: Colors.amber[700]),
-              onPressed: () => setState(() => it.favorite = !it.favorite),
+
+        return Stack(
+          children: [
+            // 카드 본문
+            Card(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              elevation: 2,
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                title: Text(it.word,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700)),
+                subtitle: Text(it.meaning,
+                    style: const TextStyle(color: Colors.black54)),
+                trailing: IconButton(
+                  icon: Icon(it.favorite ? Icons.star : Icons.star_border,
+                      color: Colors.amber[700]),
+                  onPressed: () => setState(() => it.favorite = !it.favorite),
+                ),
+              ),
             ),
-          ),
+            // 우측 상단 X 버튼(깔끔하게 아이콘만)
+            Positioned(
+              right: 6,
+              top: 6,
+              child: IconButton(
+                icon: const Icon(Icons.close, size: 18, color: Colors.black54),
+                padding: EdgeInsets.zero, // 여백 제거
+                constraints: const BoxConstraints(), // 최소 크기만 차지
+                onPressed: () => _confirmDelete(it),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -366,10 +495,9 @@ class _WordMenuPageState extends State<WordMenuPage> {
             onPressed: _confirmQuiz,
             child: const Text('확인',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                )),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white)),
           ),
         ),
       ]),
