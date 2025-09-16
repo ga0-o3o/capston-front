@@ -27,6 +27,9 @@ class _MatchingPageState extends State<MatchingPage> {
   List<String> playerNicknames = [];
   Timer? _pollingTimer;
 
+  bool allReady = false; // 모든 플레이어 준비 여부
+  Map<String, bool> readyStatus = {}; // 닉네임별 준비 상태
+
   @override
   void initState() {
     super.initState();
@@ -120,7 +123,6 @@ class _MatchingPageState extends State<MatchingPage> {
     }
   }
 
-  /// 서버에서 플레이어 목록 가져오기
   Future<void> _updatePlayerList() async {
     if (roomId == null) return;
     try {
@@ -130,18 +132,33 @@ class _MatchingPageState extends State<MatchingPage> {
       if (response.statusCode == 200) {
         final List<dynamic> list = json.decode(response.body);
 
-        // 서버가 문자열 배열이면
-        final fetchedNicknames = list.map((e) => e.toString()).toList();
+        final fetchedPlayers = list.map((e) {
+          if (e is Map<String, dynamic>) {
+            return {
+              'nickname': e['nickname']?.toString() ?? '',
+              'ready': e['ready'] as bool? ?? false,
+            };
+          }
+          return {'nickname': '', 'ready': false};
+        }).toList();
 
         if (!mounted) return;
 
         setState(() {
-          playerNicknames = fetchedNicknames;
+          playerNicknames =
+              fetchedPlayers.map((p) => p['nickname'] as String).toList();
+          readyStatus = {
+            for (var p in fetchedPlayers)
+              if (p['nickname'] != null)
+                (p['nickname'] as String): (p['ready'] as bool? ?? false)
+          };
+          allReady = readyStatus.isNotEmpty &&
+              readyStatus.values.every((v) => v == true);
           if (playerNicknames.isNotEmpty) {
             statusMessage = "매칭 성공! 방 ID: $roomId";
           }
         });
-        print("참여자 목록 업데이트: $playerNicknames");
+        print("참여자 목록 업데이트: $playerNicknames, 준비 상태: $readyStatus");
       }
     } catch (e) {
       print("플레이어 목록 업데이트 에러: $e");
@@ -284,18 +301,25 @@ class _MatchingPageState extends State<MatchingPage> {
                     Text("방 ${playerNicknames.length}명",
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    ...playerNicknames.map((n) => Text(n)).toList(),
+                    ...playerNicknames.map((n) {
+                      final ready = readyStatus[n] ?? false;
+                      return Text("$n ${ready ? '(준비 완료)' : ''}");
+                    }).toList(),
                   ],
                 ),
               ),
             const SizedBox(height: 16),
-            if (roomId != null && !isReadyLoading && !isStartingGame)
+            if (roomId != null &&
+                !isReadyLoading &&
+                !isStartingGame &&
+                playerNicknames.length >= 2) // 플레이어 2명 이상일 때만
               ElevatedButton(
                 onPressed: _setReady,
                 child: const Text('준비 완료!'),
               ),
             const SizedBox(height: 8),
-            if (roomId != null && !isStartingGame)
+            // 게임 시작 버튼: 모든 플레이어 준비 완료
+            if (roomId != null && !isStartingGame && allReady)
               ElevatedButton(
                 onPressed: _startGame,
                 child: const Text('게임 시작!'),
