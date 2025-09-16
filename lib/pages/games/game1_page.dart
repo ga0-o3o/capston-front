@@ -107,17 +107,20 @@ class _Game1PageState extends State<Game1Page> {
   }
 
   Future<void> _fetchWordsAndStart() async {
-    try {
-      for (int i = 0; i < widget.userIds.length; i++) {
-        String userId = widget.userIds[i];
-        String token = widget.tokens[i];
-        await game.startGame([userId], token);
-        controllers[userId] = TextEditingController();
-        _startPlayerTimer(userId, gameDuration);
-      }
-    } catch (e) {
-      print("게임 시작 실패: $e");
+    for (int i = 0; i < widget.userIds.length; i++) {
+      String userId = widget.userIds[i];
+      game.playerWordBanks[userId] = [
+        {"wordEn": "apple"},
+        {"wordEn": "banana"},
+        {"wordEn": "cherry"},
+      ];
+      game.scores[userId] = 0;
+      game.lives[userId] = 3;
+      game.currentWords[userId] = game.playerWordBanks[userId]![0]["wordEn"];
+      controllers[userId] = TextEditingController();
+      _startPlayerTimer(userId, gameDuration);
     }
+    game.onUpdate?.call();
   }
 
   void _startPlayerTimer(String userId, int duration) {
