@@ -79,35 +79,276 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
     final newNickname = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('닉네임 변경'),
-        content: TextField(
-          controller: _controller,
-          decoration: const InputDecoration(labelText: '새 닉네임'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, null),
-            child: const Text('취소'),
+      builder: (context) {
+        final TextEditingController _controller =
+            TextEditingController(text: nickname);
+
+        return Dialog(
+          backgroundColor: Colors.transparent, // 배경 투명
+          child: SizedBox(
+            width: 350,
+            height: 350,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 배경 이미지
+                Image.asset(
+                  'assets/images/dialog1.png',
+                  width: 350,
+                  height: 350,
+                  fit: BoxFit.contain,
+                ),
+
+                // 중앙 텍스트와 입력, 버튼
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      '닉네임 변경',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: TextField(
+                        controller: _controller,
+                        decoration: const InputDecoration(
+                          labelText: '새 닉네임',
+                          fillColor: Colors.white,
+                          filled: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () =>
+                              Navigator.pop(context), // null 반환 없이 단순 닫기
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFCC8C8),
+                            foregroundColor: Colors.black,
+                            minimumSize: const Size(100, 40),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(0),
+                              side: const BorderSide(
+                                  color: Colors.black, width: 2),
+                            ),
+                          ),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () =>
+                              Navigator.pop(context, _controller.text.trim()),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4E6E99),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(100, 40),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(0),
+                              side: const BorderSide(
+                                  color: Colors.black, width: 2),
+                            ),
+                          ),
+                          child: const Text(
+                            '변경',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, _controller.text.trim()),
-            child: const Text('변경'),
-          ),
-        ],
-      ),
+        );
+      },
     );
 
-    if (newNickname == null || newNickname.isEmpty || newNickname.length > 12) {
+    if (newNickname == null) {
+      // 취소한 경우는 아무 처리 없이 종료
+      return;
+    }
+
+    if (newNickname.isEmpty || newNickname.length > 12) {
       showDialog(
         context: context,
-        builder: (context) => const AlertDialog(
-          title: Text("경고"),
-          content: Text("닉네임은 1자 이상 12자 이하로 해주세요."),
-        ),
+        barrierDismissible: false, // 바깥 클릭으로 닫히지 않게
+        builder: (BuildContext context) {
+          return Dialog(
+            backgroundColor: Colors.transparent, // 배경 투명
+            child: SizedBox(
+              width: 370,
+              height: 300,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 배경 이미지
+                  Image.asset(
+                    'assets/images/dialog2.png',
+                    width: 300,
+                    height: 300,
+                    fit: BoxFit.contain,
+                  ),
+
+                  // 중앙에 텍스트와 버튼 배치
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '경고',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        '닉네임은 1자 이상 12자 이하로 해주세요.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFCC8C8),
+                          foregroundColor: Colors.black,
+                          minimumSize: const Size(100, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0), // 네모
+                            side: const BorderSide(
+                              color: Colors.black,
+                              width: 2, // 테두리 두께
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          '확인',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       );
       return;
     }
+
+    // 새 닉네임 길이가 정상일 경우 확인 다이얼로그
+    // 새 닉네임 길이가 정상일 경우 확인 다이얼로그
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: SizedBox(
+            width: 370,
+            height: 300,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // 배경 이미지
+                Image.asset(
+                  'assets/images/dialog2.png',
+                  width: 300,
+                  height: 300,
+                  fit: BoxFit.contain,
+                ),
+                // 중앙 텍스트와 버튼
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      '닉네임 변경 확인',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      '정말로 닉네임을 변경하시겠습니까?',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFCC8C8),
+                            foregroundColor: Colors.black,
+                            minimumSize: const Size(100, 40),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(0),
+                              side: const BorderSide(
+                                  color: Colors.black, width: 2),
+                            ),
+                          ),
+                          child: const Text('취소',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4E6E99),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(100, 40),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(0),
+                              side: const BorderSide(
+                                  color: Colors.black, width: 2),
+                            ),
+                          ),
+                          child: const Text('변경',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // 취소하면 종료
+    if (confirm != true) return;
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');

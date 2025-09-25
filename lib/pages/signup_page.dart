@@ -53,23 +53,77 @@ class _SignupPageState extends State<SignupPage> {
 
       if (response.statusCode == 200) {
         if (!mounted) return;
+
         showDialog(
           context: context,
-          builder: (_) => AlertDialog(
-            title: const Text("회원가입 성공"),
-            content: const Text("회원가입이 완료되었습니다. 로그인 해주세요."),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                  );
-                },
-                child: const Text("확인"),
+          barrierDismissible: false, // 바깥 터치로 닫히지 않도록
+          builder: (_) => Dialog(
+            backgroundColor: Colors.transparent,
+            child: SizedBox(
+              width: 350,
+              height: 300,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // 배경 이미지
+                  Image.asset(
+                    'assets/images/dialog1.png',
+                    width: 350,
+                    height: 300,
+                    fit: BoxFit.contain,
+                  ),
+                  // 중앙 텍스트와 버튼
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '회원가입 성공',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        '회원가입이 완료되었습니다.\n로그인 해주세요.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const LoginPage()),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4E6E99),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(100, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0),
+                            side:
+                                const BorderSide(color: Colors.black, width: 2),
+                          ),
+                        ),
+                        child: const Text(
+                          '확인',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       } else if (response.statusCode == 400) {
