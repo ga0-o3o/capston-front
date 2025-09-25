@@ -108,12 +108,11 @@ class _SignupPageState extends State<SignupPage> {
             children: [
               // 상단 GIF
               Center(
-                child: Image.asset(
-                  'assets/images/Saving_Cat1.gif',
-                  width: 320,
-                  height: 320,
-                ),
-              ),
+                  child: const Image(
+                image: AssetImage('assets/images/Saving_Cat1.gif'),
+                width: 320,
+                height: 320,
+              )),
               // 회원가입 카드
               Center(
                 child: Container(
