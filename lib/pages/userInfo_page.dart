@@ -261,7 +261,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
     }
 
     // 새 닉네임 길이가 정상일 경우 확인 다이얼로그
-    // 새 닉네임 길이가 정상일 경우 확인 다이얼로그
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) {

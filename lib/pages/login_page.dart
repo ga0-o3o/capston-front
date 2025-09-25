@@ -189,10 +189,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LoadingPage()),
-    );
+    setState(() => _isLoading = true);
 
     try {
       final response = await http.post(
@@ -216,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
         await _saveName(name);
         await _saveNickname(nickname);
 
-        Navigator.pop(context);
+        if (!mounted) return;
 
         Navigator.pushReplacement(
           context,
@@ -226,12 +223,12 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("환영합니다, $nickname 님!")));
       } else {
-        Navigator.pop(context);
         setState(() => _errorMessage = "로그인 실패: 서버 오류(${response.statusCode})");
       }
     } catch (e) {
-      Navigator.pop(context);
       setState(() => _errorMessage = "네트워크 오류: $e");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -313,32 +310,34 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 250, 248, 246),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              const SizedBox(height: 30),
-              Center(
-                child: Image.asset(
-                  'assets/images/covering_cat1.gif',
-                  width: 200,
-                  height: 200,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 30),
+                    Center(
+                      child: Image.asset(
+                        'assets/images/covering_cat1.gif',
+                        width: 200,
+                        height: 200,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Log in on HiLight :)',
+                      style: TextStyle(fontSize: 26, color: Colors.black),
+                    ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 48),
+                      child: _buildLoginForm(),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildSNSLogin(),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
-              const Text(
-                'Log in on HiLight :)',
-                style: TextStyle(fontSize: 26, color: Colors.black),
-              ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48),
-                child: _buildLoginForm(),
-              ),
-              const SizedBox(height: 20),
-              _buildSNSLogin(),
-            ],
-          ),
-        ),
       ),
     );
   }

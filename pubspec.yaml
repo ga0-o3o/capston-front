@@ -26,6 +26,7 @@ dependencies:
   file_picker: ^8.3.7
   web_socket_channel: ^2.3.0
   audioplayers: 6.5.1
+  video_player: ^2.6.1
 
 dev_dependencies:
   flutter_test:
@@ -39,3 +40,4 @@ flutter:
     - assets/images/char/
     - assets/images/game/part6/
     - assets/audios/
+    - assets/videos/

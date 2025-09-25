@@ -1,4 +1,3 @@
-// lib/pages/main_menu_page.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,7 +15,17 @@ class MainMenuPage extends StatefulWidget {
 }
 
 class _MainMenuPageState extends State<MainMenuPage> {
-  String selectedCharacter = 'assets/images/char/char0.png';
+  int _selectedCharacterIndex = 0; // 추가: 캐릭터 번호
+  int _currentIndex = 0; // 현재 선택된 탭 인덱스
+
+  final List<Widget> _pages = [
+    SizedBox(), // 홈
+    const WordMenuPage(),
+    const GameMenuPage(),
+    const LevelTestPage(),
+    const SizedBox(), // 채팅
+    const SizedBox(), // 토론
+  ];
 
   @override
   void initState() {
@@ -26,9 +35,16 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   Future<void> _loadSelectedCharacter() async {
     final prefs = await SharedPreferences.getInstance();
+    final selectedPath =
+        prefs.getString('user_character') ?? 'assets/images/char/char0.png';
+
+    // char{숫자} 부분만 추출
+    final regex = RegExp(r'char(\d+)');
+    final match = regex.firstMatch(selectedPath);
+    final index = match != null ? int.parse(match.group(1)!) : 0;
+
     setState(() {
-      selectedCharacter =
-          prefs.getString('user_character') ?? 'assets/images/char/char0.png';
+      _selectedCharacterIndex = index;
     });
   }
 
@@ -36,87 +52,125 @@ class _MainMenuPageState extends State<MainMenuPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 상단 로고 + 사용자 프로필
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: _currentIndex == 0
+          ? SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Image.asset('assets/images/title.png',
-                      height: 60, fit: BoxFit.contain),
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const UserInfoPage()),
-                          );
-                          _loadSelectedCharacter();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(
-                              color: Colors.white, shape: BoxShape.circle),
-                          child: CircleAvatar(
-                              radius: 30,
-                              backgroundImage: AssetImage(selectedCharacter)),
+                  // 상단 타이틀과 프로필
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Image.asset('assets/images/title.png',
+                            height: 60, fit: BoxFit.contain),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Center(
+                    child: GestureDetector(
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const UserInfoPage()),
+                        );
+                        _loadSelectedCharacter(); // 돌아온 뒤 GIF 업데이트
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4), // 테두리 두께
+                        decoration: BoxDecoration(
+                          color: Colors.white, // 테두리 색상
+                          shape: BoxShape.circle,
+                        ),
+                        child: ClipOval(
+                          child: SizedBox(
+                            width: 180,
+                            height: 180,
+                            child: Image.asset(
+                              'assets/videos/char${_selectedCharacterIndex}_run.gif',
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
+            )
+          : _pages[_currentIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Color(0xFFEBE3D5),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: List.generate(6, (index) {
+            final isSelected = _currentIndex == index;
+            final icons = [
+              Icons.home,
+              Icons.book,
+              Icons.videogame_asset,
+              Icons.assessment,
+              Icons.chat,
+              Icons.forum,
+            ];
+            final labels = ['홈', '단어장', '게임', '레벨 테스트', '채팅', '토론'];
 
-            // 버튼 목록
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    _menuButton(context, '📚 단어장', () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const WordMenuPage()),
-                      );
-                    }),
-                    const SizedBox(height: 16),
-                    _menuButton(context, '🎮 게임', () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const GameMenuPage()),
-                      );
-                    }),
-                    const SizedBox(height: 16),
-                    _menuButton(context, '📈 레벨 테스트', () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const LevelTestPage()),
-                      );
-                    }),
-                    const SizedBox(height: 16),
-                    _menuButton(context, '💬 채팅', () {}),
-                    const SizedBox(height: 16),
-                    _menuButton(context, '토론', () {}, icon: Icons.forum),
-                  ],
-                ),
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _currentIndex = index;
+                });
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    padding: EdgeInsets.all(isSelected ? 8 : 0),
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected ? Color(0xFF3D4C63) : Colors.transparent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: AnimatedScale(
+                      scale: isSelected ? 1.3 : 1.0,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      child: Icon(
+                        icons[index],
+                        color: isSelected ? Colors.white : Color(0xFF3D4C63),
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    labels[index],
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? Colors.black : Colors.grey[800],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            );
+          }),
         ),
       ),
     );
   }
 
-  // 공통 버튼
   Widget _menuButton(BuildContext context, String title, VoidCallback onPressed,
       {IconData? icon}) {
     return SizedBox(
