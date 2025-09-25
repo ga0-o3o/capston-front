@@ -7,6 +7,7 @@ import 'signup_page.dart';
 import 'mainMenuPage.dart';
 import 'levelTest_Page.dart';
 import 'loading_page.dart';
+import 'dart:html' as html;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,6 +16,110 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
+// -------------------- 버튼 소리 --------------------
+class SoundEffect {
+  static void playButton() {
+    final audio = html.AudioElement('assets/audios/button_click.mp3');
+    audio.play();
+  }
+}
+
+// -------------------- 애니메이션 버튼 --------------------
+class AnimatedButton extends StatefulWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final double fontSize;
+  final Widget? icon;
+
+  const AnimatedButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    this.fontSize = 16,
+    this.icon,
+  });
+
+  @override
+  State<AnimatedButton> createState() => _AnimatedButtonState();
+}
+
+class _AnimatedButtonState extends State<AnimatedButton> {
+  bool _isPressed = false;
+
+  void _onTapDown(TapDownDetails details) {
+    setState(() => _isPressed = true);
+    SoundEffect.playButton(); // 딸칵 소리
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    setState(() => _isPressed = false);
+    widget.onPressed();
+  }
+
+  void _onTapCancel() => setState(() => _isPressed = false);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        width: 250,
+        height: 50,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: widget.backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: _isPressed
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black26,
+                    offset: const Offset(0, 4),
+                    blurRadius: 4,
+                  ),
+                ],
+        ),
+        transform: _isPressed
+            ? Matrix4.translationValues(0, 3, 0)
+            : Matrix4.identity(),
+        child: widget.icon != null
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  widget.icon!,
+                  const SizedBox(width: 8),
+                  Text(
+                    widget.text,
+                    style: TextStyle(
+                      color: widget.foregroundColor,
+                      fontSize: widget.fontSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                widget.text,
+                style: TextStyle(
+                  color: widget.foregroundColor,
+                  fontSize: widget.fontSize,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+// -------------------- LoginPage State --------------------
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -30,7 +135,6 @@ class _LoginPageState extends State<LoginPage> {
     _checkSavedToken();
   }
 
-  // 이미 로그인된 토큰이 있는지 확인
   Future<void> _checkSavedToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');
@@ -39,7 +143,6 @@ class _LoginPageState extends State<LoginPage> {
     if (token != null && expiry != null) {
       final now = DateTime.now().millisecondsSinceEpoch;
       if (now < expiry) {
-        // 토큰 유효 → 바로 메인 메뉴로 이동
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => MainMenuPage(userName: '사용자')),
@@ -48,7 +151,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // 토큰 저장 (만료 시간 1시간)
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('jwt_token', token);
@@ -58,25 +160,21 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // 사용자 랭크 저장
   Future<void> _saveRank(String rank) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_rank', rank);
   }
 
-  // 닉네임 저장
   Future<void> _saveNickname(String nickname) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_nickname', nickname);
   }
 
-  // 이름 저장
   Future<void> _saveName(String name) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', name);
   }
 
-  // ID 저장
   Future<void> _saveID(String id) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_id', id);
@@ -91,7 +189,6 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // 로딩 페이지로 이동
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const LoadingPage()),
@@ -101,10 +198,7 @@ class _LoginPageState extends State<LoginPage> {
       final response = await http.post(
         Uri.parse("http://localhost:8080/api/v1/auth/login"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "loginId": id,
-          "loginPw": pw,
-        }),
+        body: jsonEncode({"loginId": id, "loginPw": pw}),
       );
 
       if (response.statusCode == 200) {
@@ -122,30 +216,26 @@ class _LoginPageState extends State<LoginPage> {
         await _saveName(name);
         await _saveNickname(nickname);
 
-        // 로딩 페이지 닫기
         Navigator.pop(context);
 
-        // 메인 메뉴로 이동
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => MainMenuPage(userName: nickname)),
         );
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("환영합니다, $nickname 님!")));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("환영합니다, $nickname 님!")));
       } else {
-        Navigator.pop(context); // 로딩 화면 닫기
+        Navigator.pop(context);
         setState(() => _errorMessage = "로그인 실패: 서버 오류(${response.statusCode})");
       }
     } catch (e) {
-      Navigator.pop(context); // 로딩 화면 닫기
+      Navigator.pop(context);
       setState(() => _errorMessage = "네트워크 오류: $e");
     }
   }
 
   Future<void> _loginWithKakao() async {
-    // 로딩 화면 띄우기
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const LoadingPage()),
@@ -161,26 +251,16 @@ class _LoginPageState extends State<LoginPage> {
         token = await UserApi.instance.loginWithKakaoAccount();
       }
 
-      print("✅ 카카오 로그인 성공 → 토큰 발급됨: ${token.accessToken}");
-
       User kakaoUser = await UserApi.instance.me();
       final kakaoId = kakaoUser.id.toString();
       final kakaoName = kakaoUser.kakaoAccount?.profile?.nickname ?? "사용자";
 
-      // 서버에 accessToken만 전송
       final response = await http.post(
         Uri.parse("http://localhost:8080/api/v1/auth/kakao"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "loginId": kakaoId,
-          "name": kakaoName,
-        }),
+        body: jsonEncode({"loginId": kakaoId, "name": kakaoName}),
       );
 
-      print('🔹 서버 응답 StatusCode: ${response.statusCode}');
-      print('🔹 서버 응답 Body: ${response.body}');
-
-      // 로딩 화면 닫기
       Navigator.pop(context);
 
       if (response.statusCode == 200) {
@@ -192,16 +272,14 @@ class _LoginPageState extends State<LoginPage> {
         final rank = data['userRank'] ?? 'Beginner';
         final id = data['loginId'];
 
-        // SharedPreferences 저장
         await _saveToken(token);
         await _saveID(id);
         await _saveRank(rank);
         await _saveName(name);
         await _saveNickname(nickname);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("환영합니다, $nickname 님!")),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("환영합니다, $nickname 님!")));
 
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pushReplacement(
@@ -211,13 +289,10 @@ class _LoginPageState extends State<LoginPage> {
         });
       } else {
         setState(
-          () => _errorMessage = "카카오 로그인 후 서버 저장 실패: ${response.statusCode}",
-        );
+            () => _errorMessage = "카카오 로그인 후 서버 저장 실패: ${response.statusCode}");
       }
     } catch (error) {
-      // 로딩 화면 닫기
       Navigator.pop(context);
-
       setState(() {
         _errorMessage = '카카오 로그인 실패: $error';
       });
@@ -291,17 +366,17 @@ class _LoginPageState extends State<LoginPage> {
         children: [
           TextField(
             controller: _idController,
-            focusNode: _idFocus, // FocusNode 지정
+            focusNode: _idFocus,
             decoration: _inputDecoration('아이디', Icons.person),
             textInputAction: TextInputAction.next,
             onSubmitted: (_) {
-              FocusScope.of(context).requestFocus(_pwFocus); // 비밀번호 칸으로 포커스 이동
+              FocusScope.of(context).requestFocus(_pwFocus);
             },
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _passwordController,
-            focusNode: _pwFocus, // FocusNode 지정
+            focusNode: _pwFocus,
             obscureText: _obscurePassword,
             decoration: InputDecoration(
               labelText: '비밀번호',
@@ -333,38 +408,20 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
             textInputAction: TextInputAction.done,
-            onSubmitted: (_) {
-              _loginWithId(); // 엔터 시 로그인 실행
-            },
+            onSubmitted: (_) => _loginWithId(),
           ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 12),
             Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
           ],
           const SizedBox(height: 20),
-          _isLoading
-              ? const CircularProgressIndicator()
-              : SizedBox(
-                  width: 200,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _loginWithId,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4E6E99),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15), // 둥근 네모
-                      ),
-                    ),
-                    child: const Text(
-                      '로그인',
-                      style: TextStyle(
-                        fontSize: 18, // 글자 크기
-                        fontWeight: FontWeight.bold, // 굵게
-                      ),
-                    ),
-                  ),
-                ),
+          AnimatedButton(
+            text: '로그인',
+            backgroundColor: const Color(0xFF4E6E99),
+            foregroundColor: Colors.white,
+            fontSize: 18,
+            onPressed: _loginWithId,
+          ),
         ],
       ),
     );
@@ -398,29 +455,18 @@ class _LoginPageState extends State<LoginPage> {
         ),
         const SizedBox(height: 8),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 150), // 버튼 좌우 공간 조절
-          child: SizedBox(
-            width: 250, // 화면 가로 전체 사용
-            height: 40, // 버튼 높이
-            child: ElevatedButton.icon(
-              icon: SizedBox(
-                height: 24, // 로고 크기
-                width: 24,
-                child: Image.asset('assets/images/kakao_logo.png'),
-              ),
-              label: const Text(
-                '카카오톡 로그인',
-                style: TextStyle(fontSize: 18), // 글자 크기
-              ),
-              onPressed: _loginWithKakao,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFE812),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10), // 둥근 네모
-                ),
-              ),
+          padding: const EdgeInsets.symmetric(horizontal: 150),
+          child: AnimatedButton(
+            text: '카카오톡 로그인',
+            icon: SizedBox(
+              height: 24,
+              width: 24,
+              child: Image.asset('assets/images/kakao_logo.png'),
             ),
+            backgroundColor: const Color(0xFFFFE812),
+            foregroundColor: Colors.black,
+            fontSize: 18,
+            onPressed: _loginWithKakao,
           ),
         ),
         const SizedBox(height: 12),

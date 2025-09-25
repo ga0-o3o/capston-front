@@ -51,7 +51,7 @@ class _SignupPageState extends State<SignupPage> {
         }),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode == 200) {
         if (!mounted) return;
         showDialog(
           context: context,

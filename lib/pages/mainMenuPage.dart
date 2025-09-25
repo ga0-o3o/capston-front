@@ -106,8 +106,6 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     _menuButton(context, '💬 채팅', () {}),
                     const SizedBox(height: 16),
                     _menuButton(context, '토론', () {}, icon: Icons.forum),
-                    const SizedBox(height: 16),
-                    _menuButton(context, '⚙️ 설정', () {}),
                   ],
                 ),
               ),

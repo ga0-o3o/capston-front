@@ -146,10 +146,72 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
         showDialog(
           context: context,
-          builder: (_) => const AlertDialog(
-            title: Text("알림"),
-            content: Text("닉네임이 변경되었습니다."),
-          ),
+          barrierDismissible: false, // 바깥 클릭으로 닫히지 않게
+          builder: (BuildContext context) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: SizedBox(
+                width: 300, // 다이얼로그 전체 너비 조정
+                height: 250, // 다이얼로그 전체 높이 조정
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // 배경 이미지
+                    Image.asset(
+                      'assets/images/dialog1.png',
+                      width: 300,
+                      height: 300,
+                      fit: BoxFit.contain,
+                    ),
+
+                    // 중앙에 텍스트와 버튼 배치
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          '알림',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          '닉네임이 변경되었습니다.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4E6E99),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(100, 40),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(0),
+                              side: const BorderSide(
+                                color: Colors.black,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          child: const Text('확인'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       } else {
         print("❌ PUT 요청 실패: ${response.statusCode}");
