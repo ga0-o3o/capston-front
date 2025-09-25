@@ -62,7 +62,7 @@ class _MatchingPageState extends State<MatchingPage> {
 
   /// 매칭 요청
   Future<void> _joinMatch() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance(); // 한 번만 선언
     final playerId = prefs.getString("user_id");
     final nickname = prefs.getString("user_nickname");
     final rank = prefs.getString("user_rank");

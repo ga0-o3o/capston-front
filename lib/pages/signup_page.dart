@@ -40,35 +40,37 @@ class _SignupPageState extends State<SignupPage> {
       final token = prefs.getString('jwt_token');
 
       final response = await http.post(
-        Uri.parse("http://localhost:8080/api/user/signup"),
+        Uri.parse("http://localhost:8080/api/v1/auth/signup"),
         headers: {
           "Content-Type": "application/json",
-          if (token != null) "Authorization": "Bearer $token",
         },
-        body: jsonEncode({"id": id, "pw": pw, "name": name}),
+        body: jsonEncode({
+          "loginId": id,
+          "loginPw": pw,
+          "name": name,
+        }),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         showDialog(
           context: context,
-          builder:
-              (_) => AlertDialog(
-                title: const Text("회원가입 성공"),
-                content: const Text("회원가입이 완료되었습니다. 로그인 해주세요."),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                      );
-                    },
-                    child: const Text("확인"),
-                  ),
-                ],
+          builder: (_) => AlertDialog(
+            title: const Text("회원가입 성공"),
+            content: const Text("회원가입이 완료되었습니다. 로그인 해주세요."),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                  );
+                },
+                child: const Text("확인"),
               ),
+            ],
+          ),
         );
       } else if (response.statusCode == 400) {
         setState(() {
@@ -161,19 +163,19 @@ class _SignupPageState extends State<SignupPage> {
                           _isLoading
                               ? const Center(child: CircularProgressIndicator())
                               : Center(
-                                child: ElevatedButton(
-                                  onPressed: _signup,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF4E6E99),
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size(250, 50),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
+                                  child: ElevatedButton(
+                                    onPressed: _signup,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF4E6E99),
+                                      foregroundColor: Colors.white,
+                                      minimumSize: const Size(250, 50),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
                                     ),
+                                    child: const Text("회원가입"),
                                   ),
-                                  child: const Text("회원가입"),
                                 ),
-                              ),
 
                           if (_errorMessage != null)
                             Padding(

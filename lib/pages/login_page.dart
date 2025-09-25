@@ -99,18 +99,22 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://localhost:8080/api/user/login"),
+        Uri.parse("http://localhost:8080/api/v1/auth/login"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"id": id, "pw": pw}),
+        body: jsonEncode({
+          "loginId": id,
+          "loginPw": pw,
+        }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
         final token = data['token'];
-        final user = data['user'];
-        final name = user['name'];
-        final nickname = user['nickname'];
-        final rank = user['userRank'] ?? 'Beginner';
+        final name = data['name'];
+        final nickname = data['nickname'];
+        final rank = data['userRank'] ?? 'Beginner';
+        final id = data['loginId'];
 
         await _saveToken(token);
         await _saveID(id);
@@ -124,12 +128,12 @@ class _LoginPageState extends State<LoginPage> {
         // 메인 메뉴로 이동
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => MainMenuPage(userName: name)),
+          MaterialPageRoute(builder: (_) => MainMenuPage(userName: nickname)),
         );
 
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text("환영합니다, $name 님!")));
+        ).showSnackBar(SnackBar(content: Text("환영합니다, $nickname 님!")));
       } else {
         Navigator.pop(context); // 로딩 화면 닫기
         setState(() => _errorMessage = "로그인 실패: 서버 오류(${response.statusCode})");
@@ -166,9 +170,12 @@ class _LoginPageState extends State<LoginPage> {
 
       // 서버에 저장 요청
       final response = await http.post(
-        Uri.parse("http://localhost:8080/user/save"),
+        Uri.parse("http://localhost:8080/api/v1/auth/kakao"),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"id": kakaoId, "name": kakaoName}),
+        body: jsonEncode({
+          "loginId": kakaoId,
+          "name": kakaoName,
+        }),
       );
 
       // 로딩 화면 닫기
@@ -176,18 +183,19 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
         final token = data['token'];
-        final id = data['id'];
         final name = data['name'];
         final nickname = data['nickname'];
-        final rank = data['rank'] ?? 'Beginner';
+        final rank = data['userRank'] ?? 'Beginner';
+        final id = data['loginId'];
 
         // SharedPreferences 저장
         await _saveToken(token);
         await _saveID(id);
+        await _saveRank(rank);
         await _saveName(name);
         await _saveNickname(nickname);
-        await _saveRank(rank);
 
         ScaffoldMessenger.of(
           context,

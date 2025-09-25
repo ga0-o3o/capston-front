@@ -74,9 +74,8 @@ class _UserInfoPageState extends State<UserInfoPage> {
 
   // 닉네임 변경
   Future<void> _changeNickname() async {
-    final TextEditingController _controller = TextEditingController(
-      text: nickname,
-    );
+    final TextEditingController _controller =
+        TextEditingController(text: nickname);
 
     final newNickname = await showDialog<String>(
       context: context,
@@ -102,15 +101,9 @@ class _UserInfoPageState extends State<UserInfoPage> {
     if (newNickname == null || newNickname.isEmpty || newNickname.length > 12) {
       showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text("경고"),
-          content: const Text("닉네임은 1자 이상 12자 이하로 해주세요."),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("확인"),
-            ),
-          ],
+        builder: (context) => const AlertDialog(
+          title: Text("경고"),
+          content: Text("닉네임은 1자 이상 12자 이하로 해주세요."),
         ),
       );
       return;
@@ -121,19 +114,16 @@ class _UserInfoPageState extends State<UserInfoPage> {
     final userId = prefs.getString('user_id') ?? "";
 
     if (token == null || userId.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('로그인이 필요합니다.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('로그인이 필요합니다.')));
       return;
     }
 
-    final uri = Uri.parse("http://localhost:8080/api/user/nickname");
+    final uri =
+        Uri.parse("http://localhost:8080/api/v1/users/$userId/nickname");
 
-    // ✅ 로딩 페이지 표시
     Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const LoadingPage()),
-    );
+        context, MaterialPageRoute(builder: (_) => const LoadingPage()));
 
     try {
       final response = await http.put(
@@ -142,11 +132,10 @@ class _UserInfoPageState extends State<UserInfoPage> {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
         },
-        body: jsonEncode({"id": userId, "nickname": newNickname}),
+        body: jsonEncode({"nickname": newNickname}),
       );
 
-      // ✅ 로딩 페이지 닫기
-      Navigator.pop(context);
+      Navigator.pop(context); // 로딩 닫기
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -155,32 +144,17 @@ class _UserInfoPageState extends State<UserInfoPage> {
         });
         await prefs.setString('user_nickname', nickname);
 
-        // ✅ 완료 알림 다이얼로그
         showDialog(
           context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: const Text("알림"),
-              content: const Text("닉네임이 변경되었습니다."),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text("확인"),
-                ),
-              ],
-            );
-          },
+          builder: (_) => const AlertDialog(
+            title: Text("알림"),
+            content: Text("닉네임이 변경되었습니다."),
+          ),
         );
       } else {
         print("❌ PUT 요청 실패: ${response.statusCode}");
       }
     } catch (e) {
-      // ✅ 로딩 페이지 닫기 (에러 상황에서도)
       Navigator.pop(context);
       print("⚠️ 닉네임 업데이트 중 오류: $e");
     }

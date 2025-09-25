@@ -105,6 +105,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     const SizedBox(height: 16),
                     _menuButton(context, '💬 채팅', () {}),
                     const SizedBox(height: 16),
+                    _menuButton(context, '토론', () {}, icon: Icons.forum),
+                    const SizedBox(height: 16),
                     _menuButton(context, '⚙️ 설정', () {}),
                   ],
                 ),
@@ -117,8 +119,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
   }
 
   // 공통 버튼
-  Widget _menuButton(
-      BuildContext context, String title, VoidCallback onPressed) {
+  Widget _menuButton(BuildContext context, String title, VoidCallback onPressed,
+      {IconData? icon}) {
     return SizedBox(
       width: double.infinity,
       height: 60,
@@ -130,10 +132,21 @@ class _MainMenuPageState extends State<MainMenuPage> {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 3,
         ),
-        child: Text(
-          title,
-          style: const TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              title,
+              style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+            ),
+          ],
         ),
       ),
     );
