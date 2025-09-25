@@ -161,14 +161,13 @@ class _LoginPageState extends State<LoginPage> {
         token = await UserApi.instance.loginWithKakaoAccount();
       }
 
-      print("✅ 카카오 로그인 성공 → 토큰 발급됨");
+      print("✅ 카카오 로그인 성공 → 토큰 발급됨: ${token.accessToken}");
 
       User kakaoUser = await UserApi.instance.me();
       final kakaoId = kakaoUser.id.toString();
       final kakaoName = kakaoUser.kakaoAccount?.profile?.nickname ?? "사용자";
-      print("👤 카카오 사용자 정보: id=$kakaoId, name=$kakaoName, token=$token");
 
-      // 서버에 저장 요청
+      // 서버에 accessToken만 전송
       final response = await http.post(
         Uri.parse("http://localhost:8080/api/v1/auth/kakao"),
         headers: {"Content-Type": "application/json"},
@@ -177,6 +176,9 @@ class _LoginPageState extends State<LoginPage> {
           "name": kakaoName,
         }),
       );
+
+      print('🔹 서버 응답 StatusCode: ${response.statusCode}');
+      print('🔹 서버 응답 Body: ${response.body}');
 
       // 로딩 화면 닫기
       Navigator.pop(context);
@@ -197,9 +199,9 @@ class _LoginPageState extends State<LoginPage> {
         await _saveName(name);
         await _saveNickname(nickname);
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("환영합니다, $name 님!")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("환영합니다, $nickname 님!")),
+        );
 
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pushReplacement(

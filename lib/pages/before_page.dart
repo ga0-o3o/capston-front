@@ -2,6 +2,8 @@ import 'package:english_study/pages/signup_page.dart';
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'users_page.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'dart:html' as html;
 
 class BeforePage extends StatelessWidget {
   const BeforePage({super.key});
@@ -9,82 +11,140 @@ class BeforePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFC6CBD2), // 아이보리 배경 색상
+      backgroundColor: const Color(0xFFC6CBD2),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 이미지 배치
             Image.asset(
-              'assets/images/main_character1.png', // 이미지 경로
-              width: 250, // 이미지 크기 조정
-              height: 250, // 이미지 크기 조정
+              'assets/images/main_character1.png',
+              width: 250,
+              height: 250,
             ),
             const SizedBox(height: 20),
-            // 텍스트 - "Hi, Guest"
             const Text(
               'Hi, Guest.',
               style: TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 0, 0, 0), // 텍스트 색상
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 40),
-            // 로그인 버튼
-            ElevatedButton(
+
+            // Login 버튼
+            AnimatedButton(
+              text: 'Login',
+              backgroundColor: const Color(0xFF4E6E99),
+              foregroundColor: Colors.white,
+              fontSize: 18,
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const LoginPage(),
-                  ), // 로그인 페이지로 이동
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4E6E99), // 버튼 배경 색상
-                foregroundColor: Colors.white, // 버튼 텍스트 색상
-                minimumSize: const Size(200, 50), // 버튼 크기
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10), // 둥근 모서리 (30)
-                ),
-              ),
-              child: const Text(
-                'Login',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
             ),
-            const SizedBox(height: 10),
-            // 회원가입 버튼
-            ElevatedButton(
+            const SizedBox(height: 12),
+
+            // Sign Up 버튼
+            AnimatedButton(
+              text: 'Sign Up',
+              backgroundColor: const Color(0xFFE9DED4),
+              foregroundColor: Colors.black,
+              fontSize: 18,
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const SignupPage(),
-                  ), // 회원가입 페이지로 이동
+                  MaterialPageRoute(builder: (_) => const SignupPage()),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE9DED4), // 버튼 배경 색상
-                foregroundColor: const Color.fromARGB(
-                  255,
-                  0,
-                  0,
-                  0,
-                ), // 버튼 텍스트 색상
-                minimumSize: const Size(200, 50), // 버튼 크기
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10), // 둥근 모서리 (30)
-                ),
-              ),
-              child: const Text(
-                'Sign Up',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
             ),
-            const SizedBox(height: 10),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class SoundEffect {
+  static void playButton() {
+    final audio = html.AudioElement('assets/audios/button_click.mp3');
+    audio.play();
+  }
+}
+
+// ------------------ 딸깍 애니메이션 버튼 ------------------
+class AnimatedButton extends StatefulWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final double fontSize;
+
+  const AnimatedButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    this.fontSize = 15,
+  });
+
+  @override
+  State<AnimatedButton> createState() => _AnimatedButtonState();
+}
+
+class _AnimatedButtonState extends State<AnimatedButton> {
+  bool _isPressed = false;
+
+  void _onTapDown(TapDownDetails details) {
+    setState(() => _isPressed = true);
+    SoundEffect.playButton();
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    setState(() => _isPressed = false);
+    widget.onPressed();
+  }
+
+  void _onTapCancel() => setState(() => _isPressed = false);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        width: 200,
+        height: 50,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: widget.backgroundColor,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: _isPressed
+              ? [] // 눌렀을 때 그림자 제거 → 눌린 느낌
+              : [
+                  BoxShadow(
+                    color: Colors.black26,
+                    offset: const Offset(0, 4),
+                    blurRadius: 4,
+                  )
+                ],
+        ),
+        transform: _isPressed
+            ? Matrix4.translationValues(0, 2, 0)
+            : Matrix4.identity(),
+        child: Text(
+          widget.text,
+          style: TextStyle(
+            color: widget.foregroundColor,
+            fontSize: widget.fontSize,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
