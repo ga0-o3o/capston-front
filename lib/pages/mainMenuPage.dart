@@ -5,6 +5,7 @@ import 'game_menu_page.dart';
 import 'levelTest_page.dart';
 import 'userInfo_page.dart';
 import 'word_menu_page.dart';
+import 'chating_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   final String userName;
@@ -23,7 +24,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     const WordMenuPage(),
     const GameMenuPage(),
     const LevelTestPage(),
-    const SizedBox(), // 채팅
+    const ChatingPage(), // 채팅
     const SizedBox(), // 토론
   ];
 
