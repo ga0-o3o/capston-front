@@ -56,7 +56,7 @@ class _SignupPageState extends State<SignupPage> {
 
         showDialog(
           context: context,
-          barrierDismissible: false, // 바깥 터치로 닫히지 않도록
+          barrierDismissible: false,
           builder: (_) => Dialog(
             backgroundColor: Colors.transparent,
             child: SizedBox(
@@ -65,14 +65,12 @@ class _SignupPageState extends State<SignupPage> {
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  // 배경 이미지
                   Image.asset(
                     'assets/images/dialog1.png',
                     width: 350,
                     height: 300,
                     fit: BoxFit.contain,
                   ),
-                  // 중앙 텍스트와 버튼
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -161,12 +159,14 @@ class _SignupPageState extends State<SignupPage> {
           child: Column(
             children: [
               // 상단 GIF
-              Center(
-                  child: const Image(
-                image: AssetImage('assets/images/Saving_Cat1.gif'),
-                width: 320,
-                height: 320,
-              )),
+              const Center(
+                child: Image(
+                  image: AssetImage('assets/images/Saving_Cat1.gif'),
+                  width: 320,
+                  height: 320,
+                  gaplessPlayback: true, // GIF 반복 재생
+                ),
+              ),
               // 회원가입 카드
               Center(
                 child: Container(
@@ -192,41 +192,34 @@ class _SignupPageState extends State<SignupPage> {
                           ),
                           const SizedBox(height: 20),
 
-                          // 아이디 입력
                           TextField(
                             controller: _idController,
                             decoration: const InputDecoration(labelText: "아이디"),
                           ),
-
                           const SizedBox(height: 12),
                           TextField(
                             controller: _pwController,
                             obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: "비밀번호",
-                            ),
+                            decoration:
+                                const InputDecoration(labelText: "비밀번호"),
                           ),
                           const SizedBox(height: 12),
                           TextField(
                             controller: _nameController,
                             decoration: const InputDecoration(labelText: "이름"),
                           ),
-
                           const SizedBox(height: 20),
+
+                          // ✅ 여기서 딸깍 애니메이션 버튼 사용
                           _isLoading
                               ? const Center(child: CircularProgressIndicator())
                               : Center(
-                                  child: ElevatedButton(
+                                  child: AnimatedButton(
+                                    text: "회원가입",
+                                    backgroundColor: const Color(0xFF4E6E99),
+                                    foregroundColor: Colors.white,
+                                    fontSize: 15,
                                     onPressed: _signup,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF4E6E99),
-                                      foregroundColor: Colors.white,
-                                      minimumSize: const Size(250, 50),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: const Text("회원가입"),
                                   ),
                                 ),
 
@@ -263,6 +256,82 @@ class _SignupPageState extends State<SignupPage> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ------------------ ✅ 딸깍 애니메이션 버튼 ------------------
+class AnimatedButton extends StatefulWidget {
+  final String text;
+  final VoidCallback onPressed;
+  final Color backgroundColor;
+  final Color foregroundColor;
+  final double fontSize;
+
+  const AnimatedButton({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    this.fontSize = 15,
+  });
+
+  @override
+  State<AnimatedButton> createState() => _AnimatedButtonState();
+}
+
+class _AnimatedButtonState extends State<AnimatedButton> {
+  bool _isPressed = false;
+
+  void _onTapDown(TapDownDetails details) {
+    setState(() => _isPressed = true);
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    setState(() => _isPressed = false);
+    widget.onPressed();
+  }
+
+  void _onTapCancel() => setState(() => _isPressed = false);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _onTapDown,
+      onTapUp: _onTapUp,
+      onTapCancel: _onTapCancel,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOut,
+        width: 230,
+        height: 45,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: widget.backgroundColor,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: _isPressed
+              ? []
+              : [
+                  BoxShadow(
+                    color: Colors.black26,
+                    offset: const Offset(0, 4),
+                    blurRadius: 4,
+                  ),
+                ],
+        ),
+        transform: _isPressed
+            ? Matrix4.translationValues(0, 2, 0)
+            : Matrix4.identity(),
+        child: Text(
+          widget.text,
+          style: TextStyle(
+            color: widget.foregroundColor,
+            fontSize: widget.fontSize,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),

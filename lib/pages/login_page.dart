@@ -321,6 +321,7 @@ class _LoginPageState extends State<LoginPage> {
                         'assets/images/covering_cat1.gif',
                         width: 200,
                         height: 200,
+                        gaplessPlayback: true, // GIF 반복 재생
                       ),
                     ),
                     const SizedBox(height: 20),
