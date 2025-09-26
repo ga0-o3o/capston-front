@@ -81,6 +81,7 @@ class GameMenuPage extends StatelessWidget {
       appBar: AppBar(
         title: const Text("게임 메뉴"),
         backgroundColor: const Color(0xFF4E6E99),
+        automaticallyImplyLeading: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

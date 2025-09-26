@@ -131,10 +131,9 @@ class _LevelTestPageState extends State<LevelTestPage> {
     int totalQuestions = _words.length;
     double scorePercent = (_correctCount / totalQuestions) * 100;
 
-    String resultMessage =
-        scorePercent >= 90
-            ? '${scorePercent.toStringAsFixed(1)}점으로 통과!'
-            : '${scorePercent.toStringAsFixed(1)}점으로 미통과';
+    String resultMessage = scorePercent >= 90
+        ? '${scorePercent.toStringAsFixed(1)}점으로 통과!'
+        : '${scorePercent.toStringAsFixed(1)}점으로 미통과';
 
     bool canNextLevel =
         scorePercent >= 90 && _currentLevelIndex < _levels.length - 1;
@@ -186,40 +185,39 @@ class _LevelTestPageState extends State<LevelTestPage> {
     // 결과 다이얼로그
     showDialog(
       context: context,
-      builder:
-          (_) => AlertDialog(
-            backgroundColor: const Color(0xFFE8E0FF),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: Text(
-              canNextLevel ? '레벨 통과!' : '레벨 테스트 종료',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            content: Text(
-              '이번 단계 맞춘 개수: $_correctCount / $totalQuestions\n'
-              '점수: ${scorePercent.toStringAsFixed(1)}%\n'
-              '$resultMessage',
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
-              textAlign: TextAlign.center,
-            ),
-            actions: [
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() => _levelSelected = false);
-                  },
-                  child: const Text('확인', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-            ],
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFFE8E0FF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          canNextLevel ? '레벨 통과!' : '레벨 테스트 종료',
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple,
           ),
+          textAlign: TextAlign.center,
+        ),
+        content: Text(
+          '이번 단계 맞춘 개수: $_correctCount / $totalQuestions\n'
+          '점수: ${scorePercent.toStringAsFixed(1)}%\n'
+          '$resultMessage',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          Center(
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() => _levelSelected = false);
+              },
+              child: const Text('확인', style: TextStyle(fontSize: 18)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -232,6 +230,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
         appBar: AppBar(
           title: const Text('레벨 선택'),
           backgroundColor: const Color(0xFF4E6E99), // AppBar 색상
+          automaticallyImplyLeading: false,
         ),
         body: GridView.count(
           crossAxisCount: 3,

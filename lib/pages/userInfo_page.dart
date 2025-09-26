@@ -477,6 +477,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
     String tempSelected = selectedCharacter; // 임시 선택 변수
 
     await showModalBottomSheet(
+      backgroundColor: const Color.fromARGB(255, 237, 237, 236),
       context: context,
       builder: (context) {
         return Column(
@@ -506,20 +507,25 @@ class _UserInfoPageState extends State<UserInfoPage> {
                     splashColor: Colors.blue.withOpacity(0.3),
                     highlightColor: Colors.transparent,
                     child: AnimatedScale(
-                      scale: tempSelected == charPath
-                          ? 1.1
-                          : 1.0, // 선택된 캐릭터만 살짝 커짐
+                      scale: tempSelected == charPath ? 1.1 : 1.0,
                       duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOut,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // 캐릭터 이미지
-                          Opacity(
-                            opacity: isUnlocked ? 1.0 : 0.4,
+                          // 캐릭터 배경 색상 적용
+                          Container(
+                            decoration: BoxDecoration(
+                              color: isUnlocked
+                                  ? const Color(0xFF3D4C63)
+                                  : Colors.grey.shade400,
+                              shape: BoxShape.circle,
+                            ),
                             child: CircleAvatar(
                               backgroundImage: AssetImage(charPath),
                               radius: 60,
+                              backgroundColor:
+                                  Colors.transparent, // 배경색은 위 Container가 담당
                             ),
                           ),
 
@@ -533,7 +539,6 @@ class _UserInfoPageState extends State<UserInfoPage> {
                                 borderRadius: BorderRadius.circular(60),
                               ),
                               child: Text(
-                                // index로 필요한 랭크 조회
                                 '레벨 테스트\n${rankUnlocks.entries.firstWhere((entry) => entry.value.contains(index), orElse: () => MapEntry('Unknown', [
                                           index
                                         ])).key}\n통과 필요',
@@ -572,7 +577,20 @@ class _UserInfoPageState extends State<UserInfoPage> {
                   await prefs.setString('user_character', selectedCharacter);
                   Navigator.pop(context);
                 },
-                child: const Text('변경'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3D4C63), // 배경 색상
+                  foregroundColor: Colors.white, // 글자 색상
+                  minimumSize: const Size(200, 50), // 버튼 크기
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10), // 내부 여백
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12), // 둥근 모서리
+                  ),
+                ),
+                child: const Text(
+                  '변경',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],
