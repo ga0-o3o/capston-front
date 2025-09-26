@@ -192,6 +192,11 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const LoadingPage()),
+      );
+
       final response = await http.post(
         Uri.parse("http://localhost:8080/api/v1/auth/login"),
         headers: {"Content-Type": "application/json"},
@@ -215,6 +220,8 @@ class _LoginPageState extends State<LoginPage> {
 
         if (!mounted) return;
 
+        Navigator.pop(context);
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => MainMenuPage(userName: nickname)),
@@ -222,10 +229,17 @@ class _LoginPageState extends State<LoginPage> {
 
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text("환영합니다, $nickname 님!")));
+      } else if (response.statusCode == 400) {
+        // 존재하지 않는 사용자
+        Navigator.pop(context);
+        setState(() => _errorMessage = "존재하지 않는 사용자입니다.");
       } else {
+        // 그 외 서버 오류
+        Navigator.pop(context);
         setState(() => _errorMessage = "로그인 실패: 서버 오류(${response.statusCode})");
       }
     } catch (e) {
+      Navigator.pop(context);
       setState(() => _errorMessage = "네트워크 오류: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);

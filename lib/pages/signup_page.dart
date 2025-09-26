@@ -159,14 +159,15 @@ class _SignupPageState extends State<SignupPage> {
           child: Column(
             children: [
               // 상단 GIF
-              const Center(
-                child: Image(
-                  image: AssetImage('assets/images/Saving_Cat1.gif'),
+              Center(
+                child: Image.asset(
+                  'assets/images/Saving_Cat1.gif',
                   width: 320,
                   height: 320,
-                  gaplessPlayback: true, // GIF 반복 재생
+                  gaplessPlayback: true, // ✅ 이 옵션이 중요
                 ),
               ),
+
               // 회원가입 카드
               Center(
                 child: Container(
