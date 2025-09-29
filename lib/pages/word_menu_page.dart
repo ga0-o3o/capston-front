@@ -14,6 +14,10 @@ import '../services/django_api.dart';
 import '../widgets/review_words_sheet.dart';
 import '../widgets/review_meanings_sheet.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
 class WordMenuPage extends StatefulWidget {
   final int? wordbookId;
 
@@ -23,14 +27,25 @@ class WordMenuPage extends StatefulWidget {
   State<WordMenuPage> createState() => _WordMenuPageState();
 }
 
-class _WordMenuPageState extends State<WordMenuPage> {
-  Map<String, int> _hsvValues = {'h': 120, 's': 255, 'v': 255};
+class WordItem {
+  final int personalWordbookWordId; // 고유 ID
+  String word; // 영단어
+  String wordKr; // 한글 뜻 (백엔드와 일치)
+  String meaning; // 뜻 (현재 코드에서는 wordKr과 동일하게 사용)
+  bool favorite;
 
-  final _items = <WordItem>[
-    WordItem(word: 'highlight', meaning: '강조하다'),
-    WordItem(word: 'extract', meaning: '추출하다'),
-    WordItem(word: 'category', meaning: '부문'),
-  ];
+  WordItem({
+    required this.personalWordbookWordId,
+    required this.word,
+    required this.wordKr,
+    required this.meaning,
+    this.favorite = false,
+  });
+}
+
+class _WordMenuPageState extends State<WordMenuPage> {
+  List<WordItem> _items = [];
+  Map<String, int> _hsvValues = {'h': 120, 's': 255, 'v': 255};
 
   final _imagePicker = ImagePicker();
   bool _uploading = false;
@@ -44,7 +59,9 @@ class _WordMenuPageState extends State<WordMenuPage> {
   @override
   void initState() {
     super.initState();
-    if (_items.isNotEmpty) _nextQuiz();
+    if (widget.wordbookId != null) {
+      _fetchWords();
+    }
   }
 
   @override
@@ -82,6 +99,221 @@ class _WordMenuPageState extends State<WordMenuPage> {
       out.add('문장 끝에 마침표/물음표를 붙이면 더 좋아요.');
     }
     return out;
+  }
+
+  Future<void> _fetchWords() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final url = Uri.parse(
+        'http://localhost:8080/api/v1/words/wordbook/${widget.wordbookId}');
+
+    try {
+      final res = await http.get(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        // 서버 응답 구조에 맞게 변환
+        final words = (data['words'] as List)
+            .map((w) => WordItem(
+                  personalWordbookWordId: w['personalWordbookWordId'], // 서버 ID
+                  word: w['wordEn'],
+                  wordKr: w['wordKr'],
+                  meaning: w['meaning'],
+                ))
+            .toList();
+
+        setState(() => _items = words);
+        if (_items.isNotEmpty) _nextQuiz();
+      } else if (res.statusCode == 400 || res.statusCode == 404) {
+        final msg = jsonDecode(res.body)['message'] ?? '단어장 조회 실패';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
+      } else {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('서버 오류')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
+    }
+  }
+
+  Future<int?> _addWordToServer({
+    required String wordEn,
+    required String wordKr,
+    required String meaning,
+    int? personalWordbookId,
+  }) async {
+    final url = Uri.parse('http://localhost:8080/api/v1/words');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+
+    final body = jsonEncode({
+      'wordEn': wordEn,
+      'wordKr': wordKr,
+      'meaning': meaning,
+      'personalWordbookId': personalWordbookId,
+    });
+
+    try {
+      final res = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return data['personalWordbookWordId']; // 서버에서 준 ID 사용
+      } else {
+        final msg = jsonDecode(res.body)['message'] ?? '오류';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
+        return null;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
+      return null;
+    }
+  }
+
+  Future<void> _showEditMenu(WordItem it) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('수정'),
+              onTap: () => Navigator.pop(context, 'edit'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == 'delete') {
+      await _confirmDelete(it);
+    } else if (choice == 'edit') {
+      await _openEditDialog(it);
+    }
+  }
+
+  Future<void> _openEditDialog(WordItem it) async {
+    final enCtrl = TextEditingController(text: it.word);
+    final meanCtrl = TextEditingController(text: it.meaning);
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('단어 수정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: enCtrl,
+              decoration: const InputDecoration(labelText: '영단어'),
+            ),
+            TextField(
+              controller: meanCtrl,
+              decoration: const InputDecoration(labelText: '뜻'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    // ✅ 서버에 수정 요청
+    final success = await _updateWordOnServer(
+      personalWordbookWordId: it.personalWordbookWordId,
+      wordEn: enCtrl.text.trim(),
+      wordKr: meanCtrl.text.trim(),
+      meaning: meanCtrl.text.trim(),
+    );
+
+    // ✅ 서버 요청이 성공했을 때만 로컬 상태 업데이트
+    if (success) {
+      final idx = _items.indexWhere(
+          (e) => e.personalWordbookWordId == it.personalWordbookWordId);
+      if (idx >= 0) {
+        setState(() {
+          _items[idx] = WordItem(
+            personalWordbookWordId: it.personalWordbookWordId,
+            word: enCtrl.text.trim(),
+            wordKr: meanCtrl.text.trim(),
+            meaning: meanCtrl.text.trim(),
+            favorite: it.favorite,
+          );
+        });
+      }
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('"${enCtrl.text.trim()}" 수정됨')));
+    }
+  }
+
+  Future<bool> _updateWordOnServer({
+    required int personalWordbookWordId,
+    required String wordEn,
+    required String wordKr,
+    required String meaning,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final url = Uri.parse('http://localhost:8080/api/v1/words');
+
+    final body = jsonEncode({
+      'personalWordbookWordId': personalWordbookWordId,
+      'wordEn': wordEn,
+      'wordKr': wordKr,
+      'meaning': meaning,
+    });
+
+    try {
+      final res = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      if (res.statusCode == 200) {
+        return true;
+      } else {
+        final msg = jsonDecode(res.body)['message'] ?? '수정 실패';
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('오류: $msg')));
+        return false;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
+      return false;
+    }
   }
 
   Future<void> _confirmQuiz() async {
@@ -157,7 +389,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
               children: [
                 _buildListView(_items),
                 _buildListView(_items.where((e) => e.favorite).toList()),
-                _buildQuizTab(),
+                _buildQuizTab(_items),
               ],
             ),
             if (_uploading)
@@ -245,13 +477,30 @@ class _WordMenuPageState extends State<WordMenuPage> {
           .showSnackBar(const SnackBar(content: Text('영단어와 뜻을 모두 입력하세요.')));
       return;
     }
-    final exists = _items.any((e) => e.word.toLowerCase() == w.toLowerCase());
-    if (exists) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('"$w"는 이미 단어장에 있습니다.')));
-      return;
-    }
-    setState(() => _items.insert(0, WordItem(word: w, meaning: m)));
+
+    // ✅ 서버에 단어 추가
+    final serverWordId = await _addWordToServer(
+      wordEn: w,
+      wordKr: m,
+      meaning: m,
+      personalWordbookId: widget.wordbookId,
+    );
+
+    if (serverWordId == null) return; // 서버 추가 실패 시 종료
+
+    // ✅ 로컬 리스트에 바로 추가
+    setState(() {
+      _items.insert(
+        0,
+        WordItem(
+          personalWordbookWordId: serverWordId,
+          word: w,
+          wordKr: m,
+          meaning: m,
+        ),
+      );
+    });
+
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('"$w" 추가됨')));
   }
@@ -314,6 +563,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
         return;
       }
 
+      // 1️⃣ 이미지에서 단어 추출
       final words = await DjangoApi.uploadAndExtract(
         bytes: bytes,
         filename: filename,
@@ -321,15 +571,18 @@ class _WordMenuPageState extends State<WordMenuPage> {
         s: _hsvValues['s']!,
         v: _hsvValues['v']!,
       );
+
       if (words.isEmpty) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('인식된 단어가 없습니다.')));
         return;
       }
 
+      // 2️⃣ 단어 확인/편집
       final edited = await showReviewWordsSheet(context, initialWords: words);
       if (edited == null || edited.isEmpty) return;
 
+      // 3️⃣ 의미 정의
       List<DefinitionItem> defs;
       try {
         defs = await DjangoApi.defineWords(edited);
@@ -343,20 +596,45 @@ class _WordMenuPageState extends State<WordMenuPage> {
       final confirmed = await showReviewMeaningsSheet(context, defs: defs);
       if (confirmed == null || confirmed.isEmpty) return;
 
-      setState(() {
-        final exist = _items.map((e) => e.word.toLowerCase()).toSet();
-        for (final m in confirmed) {
-          final w = (m['word'] ?? '').trim();
-          final mean = (m['meaning'] ?? '').trim();
-          if (w.isEmpty) continue;
-          if (exist.add(w.toLowerCase())) {
-            _items.insert(0, WordItem(word: w, meaning: mean));
+      // 4️⃣ 서버(DB) 저장 + 로컬 리스트 반영
+      final exist = _items.map((e) => e.word.toLowerCase()).toSet();
+      int addedCount = 0;
+
+      for (final m in confirmed) {
+        final w = (m['word'] ?? '').trim();
+        final mean = (m['meaning'] ?? '').trim();
+        if (w.isEmpty) continue;
+
+        // 이미 없는 단어만 처리
+        if (exist.add(w.toLowerCase())) {
+          final serverWordId = await _addWordToServer(
+            wordEn: w,
+            wordKr: mean,
+            meaning: mean,
+            personalWordbookId: widget.wordbookId,
+          );
+
+          if (serverWordId != null) {
+            setState(() {
+              _items.insert(
+                0,
+                WordItem(
+                  personalWordbookWordId: serverWordId,
+                  word: w,
+                  wordKr: mean,
+                  meaning: mean,
+                ),
+              );
+            });
+            addedCount++;
           }
         }
-      });
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('단어장에 ${confirmed.length}개 추가')));
+      if (addedCount > 0) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('단어장에 $addedCount개 추가됨')));
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -383,7 +661,42 @@ class _WordMenuPageState extends State<WordMenuPage> {
         ],
       ),
     );
-    if (ok == true) _removeByWord(it.word);
+
+    if (ok == true) {
+      final success = await _deleteWordFromServer(it.personalWordbookWordId);
+      if (success) _removeItemById(it.personalWordbookWordId);
+    }
+  }
+
+  void _removeItemById(int personalWordbookWordId) {
+    final idx = _items
+        .indexWhere((e) => e.personalWordbookWordId == personalWordbookWordId);
+    if (idx >= 0) setState(() => _items.removeAt(idx));
+  }
+
+  Future<bool> _deleteWordFromServer(int personalWordbookWordId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    final url =
+        Uri.parse('http://localhost:8080/api/v1/words/$personalWordbookWordId');
+
+    try {
+      final res = await http.delete(
+        url,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (res.statusCode == 200) return true;
+
+      final msg = jsonDecode(res.body)['message'] ?? '삭제 실패';
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('오류: $msg')));
+      return false;
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
+      return false;
+    }
   }
 
   void _removeByWord(String word) {
@@ -399,7 +712,13 @@ class _WordMenuPageState extends State<WordMenuPage> {
 
   /// 리스트(내 단어/즐겨찾기) — 카드 내부 우측 상단 X 버튼
   Widget _buildListView(List<WordItem> data) {
-    if (data.isEmpty) return const Center(child: Text('아직 단어가 없습니다.'));
+    if (data.isEmpty) {
+      return const Center(
+        child: Text('단어가 없습니다',
+            style: TextStyle(fontSize: 16, color: Colors.black54)),
+      );
+    }
+
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: data.length,
@@ -409,7 +728,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
 
         return Stack(
           children: [
-            // 카드 본문
             Card(
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14)),
@@ -427,16 +745,16 @@ class _WordMenuPageState extends State<WordMenuPage> {
                       color: Colors.amber[700]),
                   onPressed: () => setState(() => it.favorite = !it.favorite),
                 ),
+                onTap: () => _showEditMenu(it),
               ),
             ),
-            // 우측 상단 X 버튼(깔끔하게 아이콘만)
             Positioned(
               right: 6,
               top: 6,
               child: IconButton(
                 icon: const Icon(Icons.close, size: 18, color: Colors.black54),
-                padding: EdgeInsets.zero, // 여백 제거
-                constraints: const BoxConstraints(), // 최소 크기만 차지
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 onPressed: () => _confirmDelete(it),
               ),
             ),
@@ -446,9 +764,14 @@ class _WordMenuPageState extends State<WordMenuPage> {
     );
   }
 
-  Widget _buildQuizTab() {
-    if (_items.isEmpty)
-      return const Center(child: Text('퀴즈를 위해 최소 1개 이상의 단어가 필요합니다.'));
+  Widget _buildQuizTab(List<WordItem> words) {
+    if (words.isEmpty) {
+      return const Center(
+        child: Text('단어가 없습니다',
+            style: TextStyle(fontSize: 16, color: Colors.black54)),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [

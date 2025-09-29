@@ -686,8 +686,13 @@ class _WordFrontPageState extends State<WordFrontPage> {
               ListTile(
                 leading: Icon(Icons.menu_book),
                 title: Text('단어장으로 이동'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(context);
+
+                  // 선택한 단어장의 ID SharedPreferences에 저장
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt('selectedWordbookId', book['id']);
+
                   Navigator.push(
                     context,
                     MaterialPageRoute(
