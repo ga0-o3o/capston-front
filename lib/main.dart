@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk/kakao_flutter_sdk.dart';
 import 'pages/before_page.dart';
 import 'pages/mainMenuPage.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,11 +22,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '단어 공부 앱',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color(0xFFF6F0E9),
+        // ✅ 앱 전체 Text 위젯 기본 폰트 변경
+        textTheme: GoogleFonts.nunitoTextTheme(), // 원하는 폰트로 변경
       ),
       home: const BeforePage(),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ChatingPage extends StatefulWidget {
   const ChatingPage({Key? key}) : super(key: key);
@@ -54,16 +55,48 @@ class _ChatingPageState extends State<ChatingPage> {
       ),
       body: Stack(
         children: [
-          // 햄버거 아이콘
           Positioned(
             top: 40,
-            right: 16,
-            child: Builder(
-              builder: (context) => IconButton(
-                icon: const Icon(Icons.menu, color: Colors.white, size: 30),
-                onPressed: () {
-                  Scaffold.of(context).openEndDrawer();
-                },
+            left: 0,
+            right: 0,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // 왼쪽 다시하기 아이콘
+                  IconButton(
+                    icon: const Icon(Icons.refresh,
+                        color: Colors.white, size: 28),
+                    onPressed: () {
+                      // 다시하기 기능 구현하기
+                    },
+                  ),
+
+                  // 중앙 필기체 글씨
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        'HiLight',
+                        style: GoogleFonts.pacifico(
+                          fontSize: 30,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 오른쪽 햄버거 아이콘
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon:
+                          const Icon(Icons.menu, color: Colors.white, size: 30),
+                      onPressed: () {
+                        Scaffold.of(context).openEndDrawer();
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
