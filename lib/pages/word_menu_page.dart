@@ -47,6 +47,9 @@ class _WordMenuPageState extends State<WordMenuPage> {
   List<WordItem> _items = [];
   Map<String, int> _hsvValues = {'h': 120, 's': 255, 'v': 255};
 
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
+
   final _imagePicker = ImagePicker();
   bool _uploading = false;
 
@@ -59,13 +62,18 @@ class _WordMenuPageState extends State<WordMenuPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.wordbookId != null) {
-      _fetchWords();
-    }
+    if (widget.wordbookId != null) _fetchWords();
+
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim();
+      });
+    });
   }
 
   @override
   void dispose() {
+    _searchController.dispose();
     _meanCtrl.dispose();
     _compCtrl.dispose();
     _meanFocus.dispose();
@@ -188,6 +196,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
   Future<void> _showEditMenu(WordItem it) async {
     final choice = await showModalBottomSheet<String>(
       context: context,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -711,55 +720,98 @@ class _WordMenuPageState extends State<WordMenuPage> {
 
   /// 리스트(내 단어/즐겨찾기) — 카드 내부 우측 상단 X 버튼
   Widget _buildListView(List<WordItem> data) {
-    if (data.isEmpty) {
-      return const Center(
-        child: Text('단어가 없습니다',
-            style: TextStyle(fontSize: 16, color: Colors.black54)),
-      );
-    }
+    final filtered = _searchQuery.isEmpty
+        ? data
+        : data
+            .where((e) =>
+                e.word.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                e.meaning.toLowerCase().contains(_searchQuery.toLowerCase()))
+            .toList();
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: data.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, i) {
-        final it = data[i];
-
-        return Stack(
-          children: [
-            Card(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              elevation: 2,
-              child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                title: Text(it.word,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
-                subtitle: Text(it.meaning,
-                    style: const TextStyle(color: Colors.black54)),
-                trailing: IconButton(
-                  icon: Icon(it.favorite ? Icons.star : Icons.star_border,
-                      color: Colors.amber[700]),
-                  onPressed: () => setState(() => it.favorite = !it.favorite),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: '단어 검색',
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.search),
+                onPressed: () {
+                  setState(() {
+                    _searchQuery = _searchController.text.trim();
+                  });
+                },
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xFF4E6E99), // 선택 시 테두리 색상
+                  width: 2.0,
                 ),
-                onTap: () => _showEditMenu(it),
               ),
+              filled: true,
+              fillColor: Colors.white,
             ),
-            Positioned(
-              right: 6,
-              top: 6,
-              child: IconButton(
-                icon: const Icon(Icons.close, size: 18, color: Colors.black54),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => _confirmDelete(it),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? const Center(
+                  child: Text('검색 결과가 없습니다',
+                      style: TextStyle(fontSize: 16, color: Colors.black54)),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, i) {
+                    final it = filtered[i];
+                    return Stack(
+                      children: [
+                        Card(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          elevation: 2,
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            title: Text(it.word,
+                                style: const TextStyle(
+                                    fontSize: 18, fontWeight: FontWeight.w700)),
+                            subtitle: Text(it.meaning,
+                                style: const TextStyle(color: Colors.black54)),
+                            trailing: IconButton(
+                              icon: Icon(
+                                  it.favorite ? Icons.star : Icons.star_border,
+                                  color: Colors.amber[700]),
+                              onPressed: () =>
+                                  setState(() => it.favorite = !it.favorite),
+                            ),
+                            onTap: () => _showEditMenu(it),
+                          ),
+                        ),
+                        Positioned(
+                          right: 6,
+                          top: 6,
+                          child: IconButton(
+                            icon: const Icon(Icons.close,
+                                size: 18, color: Colors.black54),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => _confirmDelete(it),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
