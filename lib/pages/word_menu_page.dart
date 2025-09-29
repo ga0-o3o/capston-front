@@ -169,8 +169,9 @@ class _WordMenuPageState extends State<WordMenuPage> {
       );
 
       if (res.statusCode == 200) {
+        await _fetchWords();
         final data = jsonDecode(res.body);
-        return data['personalWordbookWordId']; // 서버에서 준 ID 사용
+        return data['personalWordbookWordId'];
       } else {
         final msg = jsonDecode(res.body)['message'] ?? '오류';
         ScaffoldMessenger.of(context)
@@ -478,7 +479,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
       return;
     }
 
-    // ✅ 서버에 단어 추가
     final serverWordId = await _addWordToServer(
       wordEn: w,
       wordKr: m,
@@ -488,7 +488,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
 
     if (serverWordId == null) return; // 서버 추가 실패 시 종료
 
-    // ✅ 로컬 리스트에 바로 추가
     setState(() {
       _items.insert(
         0,
