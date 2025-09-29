@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import 'word_front_page.dart';
 import 'game_menu_page.dart';
 import 'levelTest_page.dart';
 import 'userInfo_page.dart';
@@ -21,7 +23,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
 
   final List<Widget> _pages = [
     SizedBox(), // 홈
-    const WordMenuPage(),
+    const WordFrontPage(),
     const GameMenuPage(),
     const LevelTestPage(),
     const ChatingPage(), // 채팅
@@ -63,10 +65,15 @@ class _MainMenuPageState extends State<MainMenuPage> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 20),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Image.asset('assets/images/title.png',
-                            height: 60, fit: BoxFit.contain),
+                        Text(
+                          'HiLight',
+                          style: GoogleFonts.pacifico(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF4E6E99), // 글씨 색상 변경
+                          ),
+                        ),
                       ],
                     ),
                   ),

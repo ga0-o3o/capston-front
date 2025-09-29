@@ -602,6 +602,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         title: const Text('사용자 정보'),
         backgroundColor: const Color(0xFF4E6E99),

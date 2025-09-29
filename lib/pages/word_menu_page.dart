@@ -15,7 +15,10 @@ import '../widgets/review_words_sheet.dart';
 import '../widgets/review_meanings_sheet.dart';
 
 class WordMenuPage extends StatefulWidget {
-  const WordMenuPage({super.key});
+  final int? wordbookId;
+
+  const WordMenuPage({Key? key, this.wordbookId}) : super(key: key);
+
   @override
   State<WordMenuPage> createState() => _WordMenuPageState();
 }
