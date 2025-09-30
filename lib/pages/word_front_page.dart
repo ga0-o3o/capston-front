@@ -270,7 +270,7 @@ class _WordFrontPageState extends State<WordFrontPage> {
         final data = json.decode(res.body);
         setState(() {
           final id = data['personalWordbookId'] ?? (_wordBooks.length + 1);
-          _wordBooks.add({
+          _wordBooks.insert(0, {
             'title': data['title'],
             'id': id,
             'color':
