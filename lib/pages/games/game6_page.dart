@@ -419,43 +419,107 @@ class _Game6PageState extends State<Game6Page> {
     );
   }
 
+  Future<List<int>> fetchUserWordbookIds(String userId, String token) async {
+    print("fetchUserWordbookIds 호출: userId=$userId");
+    try {
+      final url =
+          Uri.parse("http://localhost:8080/api/v1/wordbooks/user/$userId");
+      final response =
+          await http.get(url, headers: {"Authorization": "Bearer $token"});
+
+      print("단어장 조회 응답 코드: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final wordbooks = data["wordbooks"] as List? ?? [];
+        print("조회된 단어장 수: ${wordbooks.length}");
+
+        final ids = wordbooks
+            .map<int?>((e) => int.tryParse(e["personalWordbookId"].toString()))
+            .whereType<int>()
+            .toList();
+        print("단어장 ID 리스트: $ids");
+        return ids;
+      } else {
+        print("❌ 단어장 조회 실패: ${response.statusCode}");
+        return [];
+      }
+    } catch (e) {
+      print("❌ 단어장 조회 예외: $e");
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchAllWords(
+      String userId, String token) async {
+    final wordbookIds = await fetchUserWordbookIds(userId, token);
+    print("총 단어장 ID 수: ${wordbookIds.length}");
+
+    List<Map<String, dynamic>> allWords = [];
+
+    for (var id in wordbookIds) {
+      try {
+        final url =
+            Uri.parse("http://localhost:8080/api/v1/words/wordbook/$id");
+        final response =
+            await http.get(url, headers: {"Authorization": "Bearer $token"});
+
+        print("단어장 $id 조회 응답 코드: ${response.statusCode}");
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          final wordList = data["words"] as List? ?? [];
+          print("단어장 $id에서 조회된 단어 수: ${wordList.length}");
+
+          allWords.addAll(wordList.map<Map<String, dynamic>>((w) => {
+                "wordEn": w["wordEn"],
+                "wordKr": w["wordKr"],
+              }));
+        } else {
+          print("❌ 단어 조회 실패: ${response.statusCode}, 단어장 ID: $id");
+        }
+      } catch (e) {
+        print("❌ 단어 조회 예외: 단어장 ID $id, $e");
+      }
+    }
+
+    print("총 단어 수: ${allWords.length}");
+    return allWords;
+  }
+
+  // 3️⃣ _loadUserIdAndWords() 수정
   Future<void> _loadUserIdAndWords() async {
     final prefs = await SharedPreferences.getInstance();
     final storedToken = prefs.getString('jwt_token');
     final storedUserId = prefs.getString('user_id');
 
     if (storedUserId == null || storedToken == null) {
-      print("User ID 또는 Token 없음");
       setState(() => isLoading = false);
       return;
     }
+
+    print("✅ 사용자 ID와 토큰 불러오기 완료: userId=$storedUserId, token=$storedToken");
 
     setState(() {
       userId = storedUserId;
       token = storedToken;
     });
 
-    await fetchWords(storedUserId, storedToken);
-  }
-
-  Future<void> fetchWords(String userId, String token) async {
-    final url = Uri.parse("http://localhost:8080/api/personal-words/$userId");
-    final response = await http.get(
-      url,
-      headers: {"Authorization": "Bearer $token"},
-    );
-
-    if (response.statusCode == 200) {
-      final list = List<Map<String, dynamic>>.from(jsonDecode(response.body));
-      setState(() {
-        words = list;
-        _nextQuestion();
-        isLoading = false;
-      });
-    } else {
-      print("단어 조회 실패: ${response.statusCode}");
-      setState(() => isLoading = false);
+    List<Map<String, dynamic>> allWords = [];
+    try {
+      print("2️⃣ 단어장 단어 전체 가져오기 시작");
+      allWords = await fetchAllWords(storedUserId, storedToken);
+      print("✅ 단어 가져오기 완료, 총 ${allWords.length}개 단어");
+    } catch (e) {
+      print("❌ 전체 단어 가져오기 예외: $e");
     }
+
+    setState(() {
+      words = allWords;
+      if (words.isNotEmpty) _nextQuestion();
+      isLoading = false;
+      print("3️⃣ 단어 목록 세팅 완료, 첫 문제 준비 완료");
+    });
   }
 
   void _startGameTimer() {
@@ -498,12 +562,15 @@ class _Game6PageState extends State<Game6Page> {
   void checkAnswer() {
     if (currentWord == null || gameOver) return;
 
-    final answer = showKorean
-        ? currentWord!["wordEn"].toString().toLowerCase()
-        : currentWord!["koreanMeaning"].toString().toLowerCase();
+    // 사용자가 입력해야 할 값
+    final expectedAnswer = showKorean
+        ? currentWord!["wordEn"]?.toString().toLowerCase() ?? ""
+        : currentWord!["wordKr"]?.toString().toLowerCase() ?? "";
 
-    if (controller.text.trim().toLowerCase() == answer) {
-      // 정답
+    final userInput = controller.text.trim().toLowerCase();
+
+    if (userInput == expectedAnswer) {
+      // 정답 처리
       SoundEffect.gameSuccess();
       if (game.flyingBlocks.isEmpty) {
         game.addBlockToTower();
@@ -512,7 +579,6 @@ class _Game6PageState extends State<Game6Page> {
       }
       _nextQuestion();
 
-      // 처음 정답 맞춘 경우에만 타이머 시작
       if (!timerStarted) {
         _startGameTimer();
         timerStarted = true;
@@ -567,6 +633,7 @@ class _Game6PageState extends State<Game6Page> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
         title: const Text("개인 단어 타워 (솔로 모드)"),
@@ -606,7 +673,7 @@ class _Game6PageState extends State<Game6Page> {
                       child: Text(
                         currentWord != null
                             ? (showKorean
-                                ? currentWord!["koreanMeaning"] ?? "단어 없음"
+                                ? currentWord!["wordKr"] ?? "단어 없음"
                                 : currentWord!["wordEn"] ?? "단어 없음")
                             : "단어 없음",
                         style: const TextStyle(fontSize: 24),
@@ -647,7 +714,7 @@ class _Game6PageState extends State<Game6Page> {
                         child: GameWidget(game: game),
                       ),
                     ),
-                    if (showStartMessage)
+                    if (showStartMessage) ...[
                       Container(
                         width: double.infinity,
                         height: double.infinity,
@@ -663,7 +730,8 @@ class _Game6PageState extends State<Game6Page> {
                           ),
                         ),
                       ),
-                    if (showSpeedUpMessage)
+                    ],
+                    if (showSpeedUpMessage) ...[
                       Container(
                         width: double.infinity,
                         height: double.infinity,
@@ -679,6 +747,7 @@ class _Game6PageState extends State<Game6Page> {
                           ),
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),

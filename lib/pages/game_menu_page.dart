@@ -49,11 +49,10 @@ class GameMenuPage extends StatelessWidget {
       title: "미로 탈출",
       soloPage: Game3Page(),
     ),
-    // 게임 4: 솔로 + 멀티
+    // 게임 4: 솔로
     GameInfo(
       title: "끝말 잇기",
       soloPage: Game4Page(),
-      multiPageBuilder: _dummyMultiPage,
     ),
     // 게임 5: 멀티만
     GameInfo(

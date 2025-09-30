@@ -368,7 +368,7 @@ class _Game2PageState extends State<Game2Page> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const LoadingPage(); // 👈 수정
+      return const LoadingPage();
     }
 
     return Scaffold(

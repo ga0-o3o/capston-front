@@ -794,6 +794,7 @@ class _Game3PageState extends State<Game3Page> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
         title: const Text("미로 탈출"),
