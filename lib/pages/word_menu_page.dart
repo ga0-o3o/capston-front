@@ -90,17 +90,61 @@ class _WordMenuPageState extends State<WordMenuPage> {
         const Duration(milliseconds: 30), () => _meanFocus.requestFocus());
   }
 
-  void _mergeWords(WordItem source, WordItem target) {
-    if (source.word.toLowerCase() != target.word.toLowerCase()) return;
+  Future<void> _mergeWords(WordItem source, WordItem target) async {
+    print(
+        '🔹 _mergeWords 시작: source="${source.word}", target="${target.word}"');
 
-    setState(() {
-      target.meaning = '${target.meaning}, ${source.meaning}';
-      _items.removeWhere(
-          (e) => e.personalWordbookWordId == source.personalWordbookWordId);
+    if (source.word.toLowerCase() != target.word.toLowerCase()) {
+      print('❌ 단어가 다르므로 병합하지 않음');
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
+    print('🔹 토큰 불러옴: $token');
+
+    final url = Uri.parse('http://localhost:8080/api/v1/words/merge');
+    final body = jsonEncode({
+      'personalWordbookId': widget.wordbookId,
+      'sourceWordId': source.personalWordbookWordId,
+      'targetWordId': target.personalWordbookWordId,
     });
+    print('🔹 요청 body: $body');
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('"${source.word}" 카드가 합쳐졌습니다.')));
+    try {
+      final res = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      print('🔹 서버 응답 statusCode: ${res.statusCode}');
+      print('🔹 서버 응답 body: ${res.body}');
+
+      if (res.statusCode == 200) {
+        setState(() {
+          target.meaning = '${target.meaning}, ${source.meaning}';
+          _items.removeWhere(
+              (e) => e.personalWordbookWordId == source.personalWordbookWordId);
+        });
+
+        print('✅ 로컬 상태 업데이트 완료: target.meaning="${target.meaning}"');
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('"${source.word}" 카드가 합쳐졌습니다.')));
+      } else {
+        final msg = jsonDecode(res.body)['message'] ?? '병합 실패';
+        print('❌ 병합 실패: $msg');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('오류: $msg')));
+      }
+    } catch (e) {
+      print('❌ 네트워크 오류: $e');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
+    }
   }
 
   bool _isMeaningCorrect() =>
@@ -878,7 +922,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
           ),
           onPressed: () => setState(() => it.favorite = !it.favorite),
         ),
-        onTap: () => _showEditMenu(it), // 여기 추가!
+        onTap: () => _showEditMenu(it),
       ),
     );
   }
