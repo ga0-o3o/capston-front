@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'word_menu_page.dart';
@@ -48,15 +49,19 @@ class _WordFrontPageState extends State<WordFrontPage> {
         final data = json.decode(res.body);
         final list = data['wordbooks'] as List<dynamic>;
         setState(() {
-          _wordBooks = list
-              .map((e) => {
-                    'title': e['title'],
-                    'id': e['personalWordbookId'],
-                    'color': Colors.primaries[
-                        e['personalWordbookId'] % Colors.primaries.length],
-                  })
-              .toList()
-            ..sort((a, b) => b['id'].compareTo(a['id'])); // id 기준 내림차순
+          final rand = Random();
+          _wordBooks = list.map((e) {
+            final id = e['personalWordbookId'] ?? 1;
+            // 랜덤으로 1~3 중 하나 선택
+            final imageIndex = rand.nextInt(3) + 1;
+            return {
+              'title': e['title'] ?? '제목 없음',
+              'id': id,
+              'color': Colors.primaries[id % Colors.primaries.length],
+              'image': 'assets/images/wordBook$imageIndex.png',
+            };
+          }).toList()
+            ..sort((a, b) => b['id'].compareTo(a['id']));
 
           _loading = false;
         });
@@ -264,11 +269,13 @@ class _WordFrontPageState extends State<WordFrontPage> {
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         setState(() {
+          final id = data['personalWordbookId'] ?? (_wordBooks.length + 1);
           _wordBooks.add({
             'title': data['title'],
-            'id': data['personalWordbookId'] ?? (_wordBooks.length + 1),
+            'id': id,
             'color':
                 Colors.primaries[_wordBooks.length % Colors.primaries.length],
+            'image': 'assets/images/wordBook${id % 3 + 1}.png',
           });
         });
       } else {
@@ -730,7 +737,7 @@ class _WordFrontPageState extends State<WordFrontPage> {
         centerTitle: true,
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const LoadingPage()
           : _wordBooks.isEmpty
               ? const Center(child: Text('단어장이 없습니다.'))
               : Padding(
@@ -743,38 +750,42 @@ class _WordFrontPageState extends State<WordFrontPage> {
                       crossAxisCount: 2,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 1, // 비율은 1로 두고 실제 크기는 아래에서 고정
+                      childAspectRatio: 21 / 10,
                     ),
                     itemBuilder: (context, index) {
                       final book = _wordBooks[index];
                       return GestureDetector(
                         onTap: () => _showWordbookOptions(book, index),
-                        child: Center(
-                          child: SizedBox(
-                            width: 200, // 가로 크기 고정
-                            height: 150, // 세로 크기 고정
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: book['color'],
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 6,
-                                    offset: Offset(2, 4),
-                                  ),
-                                ],
+                        child: Container(
+                          decoration: BoxDecoration(
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 6,
+                                offset: Offset(2, 4),
                               ),
-                              child: Center(
-                                child: Text(
-                                  book['title'],
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white),
-                                ),
-                              ),
+                            ],
+                            image: DecorationImage(
+                              image: AssetImage(book['image']), // 이미지로 표지 설정
+                              fit: BoxFit.fitWidth,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              book['title'],
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                  shadows: [
+                                    // 글자가 이미지 위에서도 잘 보이게
+                                    Shadow(
+                                      color: Colors.black45,
+                                      offset: Offset(1, 1),
+                                      blurRadius: 2,
+                                    )
+                                  ]),
                             ),
                           ),
                         ),
