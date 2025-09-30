@@ -90,6 +90,19 @@ class _WordMenuPageState extends State<WordMenuPage> {
         const Duration(milliseconds: 30), () => _meanFocus.requestFocus());
   }
 
+  void _mergeWords(WordItem source, WordItem target) {
+    if (source.word.toLowerCase() != target.word.toLowerCase()) return;
+
+    setState(() {
+      target.meaning = '${target.meaning}, ${source.meaning}';
+      _items.removeWhere(
+          (e) => e.personalWordbookWordId == source.personalWordbookWordId);
+    });
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('"${source.word}" 카드가 합쳐졌습니다.')));
+  }
+
   bool _isMeaningCorrect() =>
       _meanCtrl.text.trim().toLowerCase() == _cur.meaning.trim().toLowerCase();
 
@@ -750,7 +763,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: const BorderSide(
-                  color: Color(0xFF4E6E99), // 선택 시 테두리 색상
+                  color: Color(0xFF4E6E99),
                   width: 2.0,
                 ),
               ),
@@ -771,47 +784,102 @@ class _WordMenuPageState extends State<WordMenuPage> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, i) {
                     final it = filtered[i];
-                    return Stack(
-                      children: [
-                        Card(
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          elevation: 2,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            title: Text(it.word,
-                                style: const TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.w700)),
-                            subtitle: Text(it.meaning,
-                                style: const TextStyle(color: Colors.black54)),
-                            trailing: IconButton(
-                              icon: Icon(
-                                  it.favorite ? Icons.star : Icons.star_border,
-                                  color: Colors.amber[700]),
-                              onPressed: () =>
-                                  setState(() => it.favorite = !it.favorite),
+
+                    return LongPressDraggable<WordItem>(
+                      data: it,
+                      feedback: Material(
+                        color: Colors.transparent,
+                        child: Card(
+                          elevation: 4,
+                          child: SizedBox(
+                            width: 200,
+                            child: ListTile(
+                              title: Text(it.word),
+                              subtitle: Text(it.meaning),
                             ),
-                            onTap: () => _showEditMenu(it),
                           ),
                         ),
-                        Positioned(
-                          right: 6,
-                          top: 6,
-                          child: IconButton(
-                            icon: const Icon(Icons.close,
-                                size: 18, color: Colors.black54),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: () => _confirmDelete(it),
-                          ),
-                        ),
-                      ],
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.5,
+                        child: _buildCard(it), // 클릭 기능 유지
+                      ),
+                      // 여기서 DragTarget으로 감싸서 다른 카드 드래그 시 합치기
+                      child: DragTarget<WordItem>(
+                        onAccept: (dragged) => _mergeWords(dragged, it),
+                        builder: (context, candidateData, rejectedData) {
+                          // Stack으로 X 버튼과 카드 클릭 기능 유지
+                          return Stack(
+                            children: [
+                              _buildCard(it,
+                                  highlight:
+                                      candidateData.isNotEmpty), // onTap 그대로
+                              Positioned(
+                                right: 6,
+                                top: 6,
+                                child: IconButton(
+                                  icon: const Icon(Icons.close,
+                                      size: 18, color: Colors.black54),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () => _confirmDelete(it),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     );
-                  },
-                ),
+                  }),
         ),
       ],
+    );
+  }
+
+  Widget _buildDraggableCard(WordItem it) {
+    return LongPressDraggable<WordItem>(
+      data: it,
+      feedback: Material(
+        color: Colors.transparent,
+        child: Card(
+          elevation: 4,
+          child: SizedBox(
+            width: 200,
+            child: ListTile(
+              title: Text(it.word),
+              subtitle: Text(it.meaning),
+            ),
+          ),
+        ),
+      ),
+      childWhenDragging: Opacity(
+        opacity: 0.5,
+        child: _buildCard(it),
+      ),
+      child: DragTarget<WordItem>(
+        onAccept: (dragged) => _mergeWords(dragged, it),
+        builder: (context, candidateData, rejectedData) {
+          return _buildCard(it, highlight: candidateData.isNotEmpty);
+        },
+      ),
+    );
+  }
+
+  Widget _buildCard(WordItem it, {bool highlight = false}) {
+    return Card(
+      color: highlight ? Colors.blue[50] : Colors.white,
+      child: ListTile(
+        title: Text(it.word),
+        subtitle: Text(it.meaning),
+        trailing: IconButton(
+          icon: Icon(
+            it.favorite ? Icons.star : Icons.star_border,
+            color: Colors.amber[700],
+          ),
+          onPressed: () => setState(() => it.favorite = !it.favorite),
+        ),
+        onTap: () => _showEditMenu(it), // 여기 추가!
+      ),
     );
   }
 
