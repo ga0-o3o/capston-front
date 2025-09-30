@@ -793,15 +793,17 @@ class _WordFrontPageState extends State<WordFrontPage> {
                     },
                   ),
                 ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addWordbook,
-        backgroundColor: const Color(0xFF4E6E99),
-        child: const Icon(
-          Icons.add,
-          size: 32,
-          color: Colors.white,
-        ),
-      ),
+      floatingActionButton: _loading
+          ? null
+          : FloatingActionButton(
+              onPressed: _addWordbook,
+              backgroundColor: const Color(0xFF4E6E99),
+              child: const Icon(
+                Icons.add,
+                size: 32,
+                color: Colors.white,
+              ),
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
