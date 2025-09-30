@@ -91,25 +91,22 @@ class _WordMenuPageState extends State<WordMenuPage> {
   }
 
   Future<void> _mergeWords(WordItem source, WordItem target) async {
-    print(
-        '🔹 _mergeWords 시작: source="${source.word}", target="${target.word}"');
-
     if (source.word.toLowerCase() != target.word.toLowerCase()) {
-      print('❌ 단어가 다르므로 병합하지 않음');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('단어가 달라 병합할 수 없습니다.')));
       return;
     }
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
-    print('🔹 토큰 불러옴: $token');
 
     final url = Uri.parse('http://localhost:8080/api/v1/words/merge');
     final body = jsonEncode({
-      'personalWordbookId': widget.wordbookId,
-      'sourceWordId': source.personalWordbookWordId,
-      'targetWordId': target.personalWordbookWordId,
+      'personalWordbookWordIds': [
+        source.personalWordbookWordId,
+        target.personalWordbookWordId
+      ]
     });
-    print('🔹 요청 body: $body');
 
     try {
       final res = await http.post(
@@ -121,27 +118,31 @@ class _WordMenuPageState extends State<WordMenuPage> {
         body: body,
       );
 
-      print('🔹 서버 응답 statusCode: ${res.statusCode}');
-      print('🔹 서버 응답 body: ${res.body}');
-
       if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final mergedMeaning =
+            data['mergedMeaning'] ?? '${target.meaning}, ${source.meaning}';
+
         setState(() {
-          target.meaning = '${target.meaning}, ${source.meaning}';
+          target.meaning = mergedMeaning;
           _items.removeWhere(
               (e) => e.personalWordbookWordId == source.personalWordbookWordId);
         });
 
-        print('✅ 로컬 상태 업데이트 완료: target.meaning="${target.meaning}"');
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('"${source.word}" 카드가 합쳐졌습니다.')));
       } else {
-        final msg = jsonDecode(res.body)['message'] ?? '병합 실패';
-        print('❌ 병합 실패: $msg');
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('오류: $msg')));
+        try {
+          final data = jsonDecode(res.body);
+          final msg = data['message'] ?? '병합 실패';
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('오류: $msg')));
+        } catch (_) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('서버 오류')));
+        }
       }
     } catch (e) {
-      print('❌ 네트워크 오류: $e');
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
     }
@@ -187,6 +188,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
                   word: w['wordEn'],
                   wordKr: w['wordKr'],
                   meaning: w['meaning'],
+                  favorite: w['isFavorite'] ?? false,
                 ))
             .toList();
 
@@ -852,23 +854,16 @@ class _WordMenuPageState extends State<WordMenuPage> {
                       child: DragTarget<WordItem>(
                         onAccept: (dragged) => _mergeWords(dragged, it),
                         builder: (context, candidateData, rejectedData) {
-                          // Stack으로 X 버튼과 카드 클릭 기능 유지
                           return Stack(
                             children: [
                               _buildCard(it,
-                                  highlight:
-                                      candidateData.isNotEmpty), // onTap 그대로
+                                  highlight: candidateData.isNotEmpty),
                               Positioned(
-                                right: 6,
-                                top: 6,
-                                child: IconButton(
-                                  icon: const Icon(Icons.close,
-                                      size: 18, color: Colors.black54),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  onPressed: () => _confirmDelete(it),
-                                ),
-                              ),
+                                  right: 6,
+                                  top: 6,
+                                  child: IconButton(
+                                      icon: Icon(Icons.close),
+                                      onPressed: () => _confirmDelete(it))),
                             ],
                           );
                         },
@@ -920,7 +915,39 @@ class _WordMenuPageState extends State<WordMenuPage> {
             it.favorite ? Icons.star : Icons.star_border,
             color: Colors.amber[700],
           ),
-          onPressed: () => setState(() => it.favorite = !it.favorite),
+          onPressed: () async {
+            // 1️⃣ 로컬 상태 토글
+            setState(() => it.favorite = !it.favorite);
+
+            // 2️⃣ 서버 반영
+            final prefs = await SharedPreferences.getInstance();
+            final token = prefs.getString('jwt_token') ?? '';
+            final url = Uri.parse(
+                'http://localhost:8080/api/v1/words/favorite/${it.personalWordbookWordId}');
+
+            try {
+              final res = await http.put(
+                url,
+                headers: {
+                  'Authorization': 'Bearer $token',
+                  'Content-Type': 'application/json',
+                },
+              );
+
+              if (res.statusCode != 200) {
+                // 실패 시 원래 상태로 되돌리기
+                setState(() => it.favorite = !it.favorite);
+                final msg = (jsonDecode(res.body)['message'] ?? '즐겨찾기 변경 실패');
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text('오류: $msg')));
+              }
+            } catch (e) {
+              // 네트워크 오류 시 원래 상태로 되돌리기
+              setState(() => it.favorite = !it.favorite);
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
+            }
+          },
         ),
         onTap: () => _showEditMenu(it),
       ),
