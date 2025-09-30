@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../loading_page.dart';
+
 class Game2Page extends StatefulWidget {
   const Game2Page({Key? key}) : super(key: key);
 
@@ -33,7 +35,6 @@ class _Game2PageState extends State<Game2Page> {
   int lastScore = 0;
   int totalScore = 0;
 
-  /// grammarDetails: List<Map<String, String>> 형태로 오류 메시지와 틀린 단어 저장
   List<Map<String, dynamic>> submittedAnswers = [];
 
   @override
@@ -249,6 +250,85 @@ class _Game2PageState extends State<Game2Page> {
     super.dispose();
   }
 
+  // 1️⃣ 사용자의 단어장 ID 리스트 가져오기
+  Future<List<int>> fetchUserWordbookIds(String userId, String token) async {
+    try {
+      final url =
+          Uri.parse("http://localhost:8080/api/v1/wordbooks/user/$userId");
+      print("Fetching user wordbook IDs for userId=$userId from $url");
+      final response =
+          await http.get(url, headers: {"Authorization": "Bearer $token"});
+      print("Response status: ${response.statusCode}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final wordbooks = data["wordbooks"] as List? ?? [];
+        print("Fetched ${wordbooks.length} wordbooks");
+
+        // null 체크 추가
+        final ids = wordbooks
+            .map<int?>((e) {
+              final rawId = e["personalWordbookId"]; // ✅ 올바른 키
+              if (rawId == null) return null;
+              return int.tryParse(rawId.toString());
+            })
+            .whereType<int>()
+            .toList();
+
+        print("Wordbook IDs: $ids");
+        return ids;
+      } else {
+        print("단어장 조회 실패: ${response.statusCode} ${response.body}");
+        return [];
+      }
+    } catch (e) {
+      print("단어장 조회 예외 발생: $e");
+      return [];
+    }
+  }
+
+  // 2️⃣ 모든 단어장 단어 가져오기
+  Future<List<Map<String, dynamic>>> fetchAllWords(
+      String userId, String token) async {
+    final wordbookIds = await fetchUserWordbookIds(userId, token);
+    List<Map<String, dynamic>> allWords = [];
+
+    for (var id in wordbookIds) {
+      try {
+        final url =
+            Uri.parse("http://localhost:8080/api/v1/words/wordbook/$id");
+        print("Fetching words from wordbook ID: $id, url: $url");
+        final response =
+            await http.get(url, headers: {"Authorization": "Bearer $token"});
+        print("Response status for wordbook $id: ${response.statusCode}");
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+
+          // "words" 키 안의 리스트 꺼내기
+          final wordList = data["words"] as List? ?? [];
+
+          final wordsInBook = wordList
+              .map<Map<String, dynamic>>((w) => {
+                    "wordEn": w["wordEn"],
+                    "koreanMeaning": w["koreanMeaning"],
+                  })
+              .toList();
+
+          allWords.addAll(wordsInBook);
+        } else {
+          print(
+              "단어 조회 실패: ${response.statusCode}, 단어장 ID: $id, ${response.body}");
+        }
+      } catch (e) {
+        print("단어 조회 예외 발생: 단어장 ID $id, $e");
+      }
+    }
+
+    return allWords;
+  }
+
+  // 3️⃣ _loadUserIdAndWords() 수정
   Future<void> _loadUserIdAndWords() async {
     final prefs = await SharedPreferences.getInstance();
     final storedToken = prefs.getString('jwt_token');
@@ -264,27 +344,18 @@ class _Game2PageState extends State<Game2Page> {
       token = storedToken;
     });
 
-    await fetchWords(storedUserId, storedToken);
-  }
-
-  Future<void> fetchWords(String userId, String token) async {
-    final url = Uri.parse("http://localhost:8080/api/personal-words/$userId");
-    final response = await http.get(
-      url,
-      headers: {"Authorization": "Bearer $token"},
-    );
-
-    if (response.statusCode == 200) {
-      final list = List<Map<String, dynamic>>.from(jsonDecode(response.body));
-      setState(() {
-        words = list;
-        _nextQuestion();
-        isLoading = false;
-      });
-    } else {
-      print("단어 조회 실패: ${response.statusCode}");
-      setState(() => isLoading = false);
+    List<Map<String, dynamic>> allWords = [];
+    try {
+      allWords = await fetchAllWords(storedUserId, storedToken);
+    } catch (e) {
+      print("전체 단어 가져오기 예외: $e");
     }
+
+    setState(() {
+      words = allWords;
+      if (words.isNotEmpty) _nextQuestion();
+      isLoading = false;
+    });
   }
 
   void _nextQuestion() {
@@ -297,12 +368,11 @@ class _Game2PageState extends State<Game2Page> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const LoadingPage(); // 👈 수정
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
         title: const Text("제시어 영작 게임 (솔로 모드)"),
