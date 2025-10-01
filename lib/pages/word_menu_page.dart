@@ -29,6 +29,7 @@ class WordMenuPage extends StatefulWidget {
 
 class WordItem {
   final int personalWordbookWordId; // 고유 ID
+  final int personalWordbookId;
   String word; // 영단어
   String wordKr; // 한글 뜻 (백엔드와 일치)
   String meaning; // 뜻 (현재 코드에서는 wordKr과 동일하게 사용)
@@ -36,6 +37,7 @@ class WordItem {
 
   WordItem({
     required this.personalWordbookWordId,
+    required this.personalWordbookId,
     required this.word,
     required this.wordKr,
     required this.meaning,
@@ -145,6 +147,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
             0,
             WordItem(
               personalWordbookWordId: mergedId,
+              personalWordbookId: target.personalWordbookId,
               word: target.word,
               wordKr: mergedMeaning,
               meaning: mergedMeaning,
@@ -242,17 +245,26 @@ class _WordMenuPageState extends State<WordMenuPage> {
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         // 서버 응답 구조에 맞게 변환
-        final words = (data['words'] as List)
-            .map((w) => WordItem(
-                  personalWordbookWordId: w['personalWordbookWordId'], // 서버 ID
-                  word: w['wordEn'],
-                  wordKr: w['wordKr'],
-                  meaning: w['meaning'],
-                  favorite: w['favorite'] ?? false,
-                ))
-            .toList();
+        final words = (data['words'] as List).map((w) {
+          // null 체크 후 기본값 설정
+          final wordId = w['personalWordbookWordId'] ?? 0;
+          final wordbookId = w['personalWordbookId'] ?? 0;
+
+          return WordItem(
+            personalWordbookWordId: wordId,
+            personalWordbookId: wordbookId,
+            word: w['wordEn'] ?? '',
+            wordKr: w['wordKr'] ?? '',
+            meaning: w['meaning'] ?? '',
+            favorite: w['favorite'] ?? false,
+          );
+        }).toList();
 
         setState(() => _items = words);
+
+        _items.forEach((item) {
+          print('Word: ${item.word}, WordbookId: ${item.personalWordbookId}');
+        });
 
         if (_items.isNotEmpty) _nextQuiz();
       } else if (res.statusCode == 400 || res.statusCode == 404) {
@@ -264,6 +276,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
             .showSnackBar(const SnackBar(content: Text('서버 오류')));
       }
     } catch (e) {
+      print('❌ [FETCH WORDS] 네트워크 오류2 발생: $e');
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
     }
@@ -283,7 +296,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
       'wordEn': wordEn,
       'wordKr': wordKr,
       'meaning': meaning,
-      'personalWordbookId': personalWordbookId,
+      'personalWordbookWordId': _cur.personalWordbookWordId,
     });
 
     try {
@@ -392,6 +405,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
         setState(() {
           _items[idx] = WordItem(
             personalWordbookWordId: it.personalWordbookWordId,
+            personalWordbookId: it.personalWordbookId,
             word: it.word,
             wordKr: it.wordKr,
             meaning: it.meaning,
@@ -454,20 +468,63 @@ class _WordMenuPageState extends State<WordMenuPage> {
           .showSnackBar(const SnackBar(content: Text('뜻을 먼저 입력하세요.')));
       return;
     }
-    if (!_isMeaningCorrect()) {
+    if (_cur == null) return; // 퀴즈 진행 불가
+
+    // 뜻 검사
+    final isCorrect = _isMeaningCorrect();
+    if (!isCorrect) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오답 😅  정답: ${_cur.meaning}')),
+      );
+    } else {
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('오답 😅  정답: ${_cur.meaning}')));
-      return;
+          .showSnackBar(const SnackBar(content: Text('정답! 🎉')));
     }
 
+    // 서버에 퀴즈 기록 저장
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      final url = Uri.parse('http://localhost:8080/api/v1/words/quiz/record');
+
+      // 정답이면 1, 오답이면 0
+      final isWrongFlag = _isMeaningCorrect() ? 1 : 0;
+
+      final body = jsonEncode({
+        'personalWordbookId': _cur.personalWordbookId,
+        'personalWordbookWordId': _cur.personalWordbookWordId,
+        'isWrong': isWrongFlag,
+      });
+
+      print('퀴즈 기록 전송 body: $body');
+
+      final res = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      if (res.statusCode == 200) {
+        print('퀴즈 기록 저장 성공');
+      } else {
+        print('퀴즈 기록 저장 실패: ${res.statusCode}, ${res.body}');
+      }
+    } catch (e) {
+      print('퀴즈 기록 예외: $e');
+    }
+
+    // 영작 검사
     final comp = _compCtrl.text.trim();
     if (comp.isNotEmpty) {
       final issues = _validateComposition(comp, _cur.word);
       final grammarIssues = await checkGrammar(comp);
-
       final allIssues = [...issues, ...grammarIssues];
 
       if (allIssues.isNotEmpty) {
+        // 문법 오류 보여주고 닫은 후 다음 문제
         await showModalBottomSheet(
           context: context,
           shape: const RoundedRectangleBorder(
@@ -480,7 +537,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '작문을 조금만 고쳐볼까요?',
+                  '문법 오류가 있습니다.',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
@@ -499,12 +556,10 @@ class _WordMenuPageState extends State<WordMenuPage> {
             ),
           ),
         );
-        return;
       }
     }
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('정답! 🎉')));
+    // ✅ 문법 오류 체크 후 다음 문제 진행
     _nextQuiz();
   }
 
@@ -635,6 +690,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
         0,
         WordItem(
           personalWordbookWordId: serverWordId,
+          personalWordbookId: widget.wordbookId!,
           word: w,
           wordKr: m,
           meaning: m,
@@ -761,6 +817,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
                 0,
                 WordItem(
                   personalWordbookWordId: serverWordId,
+                  personalWordbookId: widget.wordbookId!,
                   word: w,
                   wordKr: mean,
                   meaning: mean,
@@ -1039,7 +1096,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
   }
 
   Widget _buildQuizTab(List<WordItem> words) {
-    if (words.isEmpty) {
+    if (words.isEmpty || _cur == null) {
       return const Center(
         child: Text('단어가 없습니다',
             style: TextStyle(fontSize: 16, color: Colors.black54)),
@@ -1051,7 +1108,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Expanded(
           child: Center(
-            child: Text(_cur.word,
+            child: Text(_cur!.word, // null 체크 후 !
                 textAlign: TextAlign.center,
                 style:
                     const TextStyle(fontSize: 56, fontWeight: FontWeight.w800)),
