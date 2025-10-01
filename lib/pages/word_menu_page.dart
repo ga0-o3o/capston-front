@@ -43,6 +43,13 @@ class WordItem {
   });
 }
 
+class Issue {
+  final String wrongText; // 틀린 부분
+  final String message; // 추천 수정 또는 설명
+
+  Issue(this.wrongText, this.message);
+}
+
 class _WordMenuPageState extends State<WordMenuPage> {
   List<WordItem> _items = [];
   Map<String, int> _hsvValues = {'h': 120, 's': 255, 'v': 255};
@@ -120,27 +127,39 @@ class _WordMenuPageState extends State<WordMenuPage> {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
+
+        // 서버에서 새로 생성된 단어 ID와 병합된 의미를 가져옴
+        final mergedId = data['mergedId'] ?? target.personalWordbookWordId;
         final mergedMeaning =
             data['mergedMeaning'] ?? '${target.meaning}, ${source.meaning}';
 
+        // 로컬 상태 갱신
         setState(() {
-          target.meaning = mergedMeaning;
-          _items.removeWhere(
-              (e) => e.personalWordbookWordId == source.personalWordbookWordId);
+          // 기존 source, target 삭제
+          _items.removeWhere((e) =>
+              e.personalWordbookWordId == source.personalWordbookWordId ||
+              e.personalWordbookWordId == target.personalWordbookWordId);
+
+          // 새 WordItem 생성 후 삽입
+          _items.insert(
+            0,
+            WordItem(
+              personalWordbookWordId: mergedId,
+              word: target.word,
+              wordKr: mergedMeaning,
+              meaning: mergedMeaning,
+              favorite: target.favorite,
+            ),
+          );
         });
+        await _fetchWords();
 
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('"${source.word}" 카드가 합쳐졌습니다.')));
       } else {
-        try {
-          final data = jsonDecode(res.body);
-          final msg = data['message'] ?? '병합 실패';
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('오류: $msg')));
-        } catch (_) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text('서버 오류')));
-        }
+        final msg = (jsonDecode(res.body)['message'] ?? '병합 실패');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('오류: $msg')));
       }
     } catch (e) {
       ScaffoldMessenger.of(context)
@@ -151,20 +170,60 @@ class _WordMenuPageState extends State<WordMenuPage> {
   bool _isMeaningCorrect() =>
       _meanCtrl.text.trim().toLowerCase() == _cur.meaning.trim().toLowerCase();
 
-  List<String> _validateComposition(String s, String target) {
+  List<Issue> _validateComposition(String s, String target) {
     final t = s.trim();
-    final out = <String>[];
+    final out = <Issue>[];
     if (t.isEmpty) return out;
     if (!t.toLowerCase().contains(target.toLowerCase())) {
-      out.add('문장에 "$target" 단어가 포함되어야 해요.');
+      out.add(Issue(target, '문장에 "$target" 단어가 포함되어야 해요.'));
     }
     if (t.split(RegExp(r'\s+')).length < 4) {
-      out.add('문장은 4단어 이상으로 작성해 주세요.');
+      out.add(Issue('', '문장은 4단어 이상으로 작성해 주세요.'));
     }
     if (!RegExp(r'[.!?]$').hasMatch(t)) {
-      out.add('문장 끝에 마침표/물음표를 붙이면 더 좋아요.');
+      out.add(Issue('', '문장 끝에 마침표/물음표를 붙이면 더 좋아요.'));
     }
     return out;
+  }
+
+  Future<List<Issue>> checkGrammar(String sentence) async {
+    final url = Uri.parse("https://api.sapling.ai/api/v1/edits");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer 3HFZSH7A9O05TM0Q0SZRA7CB657WEH7B",
+        },
+        body: jsonEncode({
+          "text": sentence,
+          "session_id": "quiz_session_1",
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final edits = data["edits"] as List;
+
+        return edits.map<Issue>((e) {
+          final wrongText = sentence.substring(
+            e["start"] as int,
+            (e["end"] as int).clamp(0, sentence.length),
+          );
+
+          final replacement = (e["replacements"] as List?)?.isNotEmpty == true
+              ? e["replacements"][0]
+              : "Error";
+
+          return Issue(wrongText, replacement); // ✅ Issue 객체 생성
+        }).toList();
+      } else {
+        return [Issue('', "문법 검사 실패: ${response.statusCode}")];
+      }
+    } catch (e) {
+      return [Issue('', "문법 검사 오류: $e")];
+    }
   }
 
   Future<void> _fetchWords() async {
@@ -178,6 +237,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
         url,
         headers: {'Authorization': 'Bearer $token'},
       );
+      print(res.body);
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -188,11 +248,12 @@ class _WordMenuPageState extends State<WordMenuPage> {
                   word: w['wordEn'],
                   wordKr: w['wordKr'],
                   meaning: w['meaning'],
-                  favorite: w['isFavorite'] ?? false,
+                  favorite: w['favorite'] ?? false,
                 ))
             .toList();
 
         setState(() => _items = words);
+
         if (_items.isNotEmpty) _nextQuiz();
       } else if (res.statusCode == 400 || res.statusCode == 404) {
         final msg = jsonDecode(res.body)['message'] ?? '단어장 조회 실패';
@@ -331,13 +392,14 @@ class _WordMenuPageState extends State<WordMenuPage> {
         setState(() {
           _items[idx] = WordItem(
             personalWordbookWordId: it.personalWordbookWordId,
-            word: enCtrl.text.trim(),
-            wordKr: meanCtrl.text.trim(),
-            meaning: meanCtrl.text.trim(),
-            favorite: it.favorite,
+            word: it.word,
+            wordKr: it.wordKr,
+            meaning: it.meaning,
+            favorite: !it.favorite,
           );
         });
       }
+
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('"${enCtrl.text.trim()}" 수정됨')));
     }
@@ -397,31 +459,42 @@ class _WordMenuPageState extends State<WordMenuPage> {
           .showSnackBar(SnackBar(content: Text('오답 😅  정답: ${_cur.meaning}')));
       return;
     }
+
     final comp = _compCtrl.text.trim();
     if (comp.isNotEmpty) {
       final issues = _validateComposition(comp, _cur.word);
-      if (issues.isNotEmpty) {
+      final grammarIssues = await checkGrammar(comp);
+
+      final allIssues = [...issues, ...grammarIssues];
+
+      if (allIssues.isNotEmpty) {
         await showModalBottomSheet(
           context: context,
           shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(14))),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+          ),
           builder: (_) => Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('작문을 조금만 고쳐볼까요?',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  '작문을 조금만 고쳐볼까요?',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 8),
-                ...issues.map((e) => Row(
-                    children: [const Text('• '), Expanded(child: Text(e))])),
+                ...allIssues
+                    .map((d) => Text("틀린 부분: '${d.wrongText}' → ${d.message}"))
+                    .toList(),
                 const SizedBox(height: 8),
                 Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('닫기'))),
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('닫기'),
+                  ),
+                ),
               ],
             ),
           ),
@@ -429,6 +502,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
         return;
       }
     }
+
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('정답! 🎉')));
     _nextQuiz();
@@ -858,12 +932,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
                             children: [
                               _buildCard(it,
                                   highlight: candidateData.isNotEmpty),
-                              Positioned(
-                                  right: 6,
-                                  top: 6,
-                                  child: IconButton(
-                                      icon: Icon(Icons.close),
-                                      onPressed: () => _confirmDelete(it))),
                             ],
                           );
                         },
@@ -910,44 +978,60 @@ class _WordMenuPageState extends State<WordMenuPage> {
       child: ListTile(
         title: Text(it.word),
         subtitle: Text(it.meaning),
-        trailing: IconButton(
-          icon: Icon(
-            it.favorite ? Icons.star : Icons.star_border,
-            color: Colors.amber[700],
-          ),
-          onPressed: () async {
-            // 1️⃣ 로컬 상태 토글
-            setState(() => it.favorite = !it.favorite);
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 즐겨찾기 버튼
+            IconButton(
+              icon: Icon(
+                it.favorite ? Icons.star : Icons.star_border,
+                color: Colors.amber[700],
+              ),
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                final token = prefs.getString('jwt_token') ?? '';
+                final url = Uri.parse(
+                    'http://localhost:8080/api/v1/words/favorite/${it.personalWordbookWordId}');
 
-            // 2️⃣ 서버 반영
-            final prefs = await SharedPreferences.getInstance();
-            final token = prefs.getString('jwt_token') ?? '';
-            final url = Uri.parse(
-                'http://localhost:8080/api/v1/words/favorite/${it.personalWordbookWordId}');
+                print('📡 [FAVORITE] 요청 URL: $url');
+                print('📡 [FAVORITE] JWT 토큰: $token');
 
-            try {
-              final res = await http.put(
-                url,
-                headers: {
-                  'Authorization': 'Bearer $token',
-                  'Content-Type': 'application/json',
-                },
-              );
+                try {
+                  final res = await http.put(
+                    url,
+                    headers: {
+                      'Authorization': 'Bearer $token',
+                    },
+                  );
 
-              if (res.statusCode != 200) {
-                // 실패 시 원래 상태로 되돌리기
-                setState(() => it.favorite = !it.favorite);
-                final msg = (jsonDecode(res.body)['message'] ?? '즐겨찾기 변경 실패');
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(SnackBar(content: Text('오류: $msg')));
-              }
-            } catch (e) {
-              // 네트워크 오류 시 원래 상태로 되돌리기
-              setState(() => it.favorite = !it.favorite);
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
-            }
-          },
+                  print('📡 [FAVORITE] 응답 코드: ${res.statusCode}');
+                  print('📡 [FAVORITE] 응답 본문: ${res.body}');
+
+                  if (res.statusCode == 200) {
+                    // 서버는 message만 내려주니까, 직접 상태를 반전시킴
+                    setState(() => it.favorite = !it.favorite);
+                    print('✅ [FAVORITE] 즐겨찾기 상태 변경: ${it.favorite}');
+                  } else {
+                    print('❌ [FAVORITE] 상태 변경 실패 (status: ${res.statusCode})');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('즐겨찾기 상태 변경 실패: ${res.statusCode}')),
+                    );
+                  }
+                } catch (e) {
+                  print('❌ [FAVORITE] 네트워크 예외 발생: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('서버와 연결할 수 없습니다: $e')),
+                  );
+                }
+              },
+            ),
+            // 휴지통 버튼
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Color(0xFF4E6E99)),
+              onPressed: () => _confirmDelete(it),
+            ),
+          ],
         ),
         onTap: () => _showEditMenu(it),
       ),
