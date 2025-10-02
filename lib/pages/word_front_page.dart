@@ -747,36 +747,34 @@ class _WordFrontPageState extends State<WordFrontPage> {
                       final book = _wordBooks[index];
                       return GestureDetector(
                         onTap: () => _showWordbookOptions(book, index),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 6,
-                                offset: Offset(2, 4),
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.only(top: 20.0), // 컨테이너 위쪽 살짝 띄움
+                          child: Container(
+                            decoration: BoxDecoration(
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 6,
+                                  offset: Offset(2, 4),
+                                ),
+                              ],
+                              image: DecorationImage(
+                                image: AssetImage(book['image']),
+                                fit: BoxFit.fitWidth,
+                                alignment: Alignment.topCenter, // 🔑 이미지 상단 맞춤
                               ),
-                            ],
-                            image: DecorationImage(
-                              image: AssetImage(book['image']), // 이미지로 표지 설정
-                              fit: BoxFit.fitWidth,
                             ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              book['title'],
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
+                            child: Center(
+                              child: Text(
+                                book['title'],
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black,
-                                  shadows: [
-                                    // 글자가 이미지 위에서도 잘 보이게
-                                    Shadow(
-                                      color: Colors.black45,
-                                      offset: Offset(1, 1),
-                                      blurRadius: 2,
-                                    )
-                                  ]),
+                                ),
+                              ),
                             ),
                           ),
                         ),

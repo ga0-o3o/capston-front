@@ -661,68 +661,107 @@ class _WordMenuPageState extends State<WordMenuPage> {
   }
 
   Future<void> _openAddDialog() async {
-    final en = TextEditingController();
-    final ko = TextEditingController();
-    final ok = await showDialog<bool>(
+    final enCtrl = TextEditingController();
+    List<String> meaningCandidates = [];
+
+    await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('단어 추가'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: en,
-                decoration: const InputDecoration(labelText: '영단어'),
-                textInputAction: TextInputAction.next),
-            TextField(
-                controller: ko,
-                decoration: const InputDecoration(labelText: '뜻')),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소')),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('추가')),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) {
+          return AlertDialog(
+            title: const Text("단어 추가"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 영어 단어 입력창 + 검색 버튼
+                TextField(
+                  controller: enCtrl,
+                  decoration: InputDecoration(
+                    labelText: "영단어 입력",
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: () async {
+                        final word = enCtrl.text.trim();
+                        if (word.isEmpty) return;
+
+                        try {
+                          // 🔑 SharedPreferences에서 JWT 토큰 불러오기
+                          final prefs = await SharedPreferences.getInstance();
+                          final token = prefs.getString("jwt_token") ?? "";
+
+                          final url = Uri.parse(
+                            "http://localhost:8080/api/v1/words/dictionary-search?wordEn=$word",
+                          );
+                          print("요청 URL: $url");
+                          print("JWT 토큰: $token");
+
+                          final res = await http.get(
+                            url,
+                            headers: {
+                              "Content-Type": "application/json",
+                              "Authorization": "Bearer $token", // 🔑 토큰 추가
+                            },
+                          );
+
+                          print("응답 코드: ${res.statusCode}");
+                          print("응답 바디: ${res.body}");
+
+                          if (res.statusCode == 200) {
+                            final data = jsonDecode(res.body);
+                            print("파싱된 데이터: $data");
+
+                            setState(() {
+                              meaningCandidates =
+                                  List<String>.from(data['meanings']);
+                            });
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text("검색 실패: ${res.body}")),
+                            );
+                          }
+                        } catch (e) {
+                          print("에러 발생: $e");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("예외 발생: $e")),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 검색된 한글 뜻들을 밑에 표시
+                if (meaningCandidates.isNotEmpty) ...[
+                  const Text(
+                    "검색된 뜻:",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: meaningCandidates.map((m) {
+                      return Chip(
+                        label: Text(m),
+                        backgroundColor: Colors.blue.shade100,
+                      );
+                    }).toList(),
+                  )
+                ]
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("닫기"),
+              ),
+            ],
+          );
+        },
       ),
     );
-
-    if (ok != true) return;
-    final w = en.text.trim();
-    final m = ko.text.trim();
-    if (w.isEmpty || m.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('영단어와 뜻을 모두 입력하세요.')));
-      return;
-    }
-
-    final serverWordId = await _addWordToServer(
-      wordEn: w,
-      wordKr: m,
-      meaning: m,
-      personalWordbookId: widget.wordbookId,
-    );
-
-    if (serverWordId == null) return; // 서버 추가 실패 시 종료
-
-    setState(() {
-      _items.insert(
-        0,
-        WordItem(
-          personalWordbookWordId: serverWordId,
-          personalWordbookId: widget.wordbookId!,
-          word: w,
-          wordKr: m,
-          meaning: m,
-        ),
-      );
-    });
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('"$w" 추가됨')));
   }
 
   Future<void> _openImageSourceSheet() async {
