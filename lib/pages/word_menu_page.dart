@@ -170,8 +170,15 @@ class _WordMenuPageState extends State<WordMenuPage> {
     }
   }
 
-  bool _isMeaningCorrect() =>
-      _meanCtrl.text.trim().toLowerCase() == _cur.meaning.trim().toLowerCase();
+  bool _isMeaningCorrect() {
+    final userMeaning = _meanCtrl.text.trim().toLowerCase();
+    // 정답 뜻을 쉼표(,) 기준으로 분리하여 각각 비교
+    final correctMeanings =
+        _cur.meaning.split(',').map((e) => e.trim().toLowerCase()).toList();
+
+    // 입력된 뜻이 정답 뜻 목록 중 하나라도 포함되는지 확인
+    return correctMeanings.contains(userMeaning);
+  }
 
   List<Issue> _validateComposition(String s, String target) {
     final t = s.trim();
@@ -468,9 +475,9 @@ class _WordMenuPageState extends State<WordMenuPage> {
           .showSnackBar(const SnackBar(content: Text('뜻을 먼저 입력하세요.')));
       return;
     }
-    if (_cur == null) return; // 퀴즈 진행 불가
+    if (_cur == null) return;
 
-    // 뜻 검사
+    // 뜻 검사 (중복 호출 제거)
     final isCorrect = _isMeaningCorrect();
     if (!isCorrect) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -484,16 +491,16 @@ class _WordMenuPageState extends State<WordMenuPage> {
     // 서버에 퀴즈 기록 저장
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token') ?? '';
+      final token = prefs.getString('jwt_token');
       final url = Uri.parse('http://localhost:8080/api/v1/words/quiz/record');
 
-      // 정답이면 1, 오답이면 0
-      final isWrongFlag = _isMeaningCorrect() ? 1 : 0;
+      // 여기서 `isCorrect` 변수를 재사용
+      final isWrong = !isCorrect;
 
       final body = jsonEncode({
         'personalWordbookId': _cur.personalWordbookId,
         'personalWordbookWordId': _cur.personalWordbookWordId,
-        'isWrong': isWrongFlag,
+        'isWrong': isWrong,
       });
 
       print('퀴즈 기록 전송 body: $body');
@@ -509,6 +516,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
 
       if (res.statusCode == 200) {
         print('퀴즈 기록 저장 성공');
+        print(res.body);
       } else {
         print('퀴즈 기록 저장 실패: ${res.statusCode}, ${res.body}');
       }

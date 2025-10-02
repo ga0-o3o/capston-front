@@ -7,7 +7,10 @@ import 'signup_page.dart';
 import 'mainMenuPage.dart';
 import 'levelTest_Page.dart';
 import 'loading_page.dart';
-import 'dart:html' as html;
+import 'dart:io' show Platform; // 앱용
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:audioplayers/audioplayers.dart';
+import 'dart:html' as html; // 웹용
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,8 +22,14 @@ class LoginPage extends StatefulWidget {
 // -------------------- 버튼 소리 --------------------
 class SoundEffect {
   static void playButton() {
-    final audio = html.AudioElement('assets/audios/button_click.mp3');
-    audio.play();
+    if (kIsWeb) {
+      // 웹용
+      html.AudioElement('assets/audios/button_click.mp3')..play();
+    } else {
+      // 앱용
+      final player = AudioPlayer();
+      player.play(AssetSource('audios/button_click.mp3'));
+    }
   }
 }
 

@@ -68,9 +68,10 @@ class BeforePage extends StatelessWidget {
 }
 
 class SoundEffect {
-  static void playButton() {
-    final audio = html.AudioElement('assets/audios/button_click.mp3');
-    audio.play();
+  static final AudioPlayer _player = AudioPlayer();
+
+  static Future<void> playButton() async {
+    await _player.play(AssetSource('audios/button_click.mp3'));
   }
 }
 

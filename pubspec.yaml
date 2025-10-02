@@ -25,7 +25,8 @@ dependencies:
   image_picker: ^0.8.7+5
   file_picker: ^8.3.7
   web_socket_channel: ^2.3.0
-  audioplayers: 6.5.1
+  audioplayers: ^6.5.1
+  just_audio: ^0.10.5
 
   google_fonts: ^6.2.1
 
