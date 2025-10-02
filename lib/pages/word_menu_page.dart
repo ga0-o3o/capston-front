@@ -250,6 +250,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
       print(res.body);
 
       if (res.statusCode == 200) {
+        print("성공");
         final data = jsonDecode(res.body);
         // 서버 응답 구조에 맞게 변환
         final words = (data['words'] as List).map((w) {
@@ -380,68 +381,178 @@ class _WordMenuPageState extends State<WordMenuPage> {
         ),
       ),
     );
-
-    if (choice == 'delete') {
-      await _confirmDelete(it);
-    } else if (choice == 'edit') {
-      await _openEditDialog(it);
-    }
   }
 
   Future<void> _openEditDialog(WordItem it) async {
-    final enCtrl = TextEditingController(text: it.word);
-    final meanCtrl = TextEditingController(text: it.meaning);
+    final newWordCtrl = TextEditingController(text: it.word);
+    List<String> meaningCandidates = [];
+    List<String> selectedMeanings = [];
 
-    final ok = await showDialog<bool>(
+    // 1단계: 단어 검색 & 뜻 후보 가져오기
+    await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('단어 수정'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: enCtrl,
-              decoration: const InputDecoration(labelText: '영단어'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('단어 수정'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 새 단어 입력창
+              TextField(
+                controller: newWordCtrl,
+                decoration: InputDecoration(
+                  labelText: '새 단어 입력',
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () async {
+                      final newWord = newWordCtrl.text.trim();
+                      if (newWord.isEmpty) return;
+
+                      try {
+                        final prefs = await SharedPreferences.getInstance();
+                        final token = prefs.getString('jwt_token') ?? '';
+                        final loginId = prefs.getString('login_id') ?? '';
+
+                        final url = Uri.parse(
+                            'http://localhost:8080/api/v1/words/search-for-update');
+                        final body = jsonEncode({
+                          'loginId': loginId,
+                          'personalWordbookId': it.personalWordbookId,
+                          'wordId': it.personalWordbookWordId,
+                          'newWord': newWord,
+                        });
+
+                        final res = await http.post(
+                          url,
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer $token',
+                          },
+                          body: body,
+                        );
+
+                        if (res.statusCode == 200) {
+                          final data = jsonDecode(res.body);
+                          setState(() {
+                            meaningCandidates =
+                                List<String>.from(data['meanings']);
+                          });
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('검색 실패: ${res.body}')),
+                          );
+                        }
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('검색 오류: $e')),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // 뜻 후보 표시
+              if (meaningCandidates.isNotEmpty) ...[
+                const Text(
+                  "검색된 뜻 선택:",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: meaningCandidates.map((m) {
+                    final isSelected = selectedMeanings.contains(m);
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            selectedMeanings.remove(m);
+                          } else {
+                            selectedMeanings.add(m);
+                          }
+                        });
+                      },
+                      child: Chip(
+                        label: Text(m),
+                        backgroundColor: isSelected
+                            ? Colors.green.shade200
+                            : Colors.blue.shade100,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('취소'),
             ),
-            TextField(
-              controller: meanCtrl,
-              decoration: const InputDecoration(labelText: '뜻'),
+            FilledButton(
+              onPressed: () async {
+                if (newWordCtrl.text.trim().isEmpty || selectedMeanings.isEmpty)
+                  return;
+
+                // 2단계: 선택된 뜻으로 최종 업데이트
+                try {
+                  final prefs = await SharedPreferences.getInstance();
+                  final token = prefs.getString('jwt_token') ?? '';
+                  final loginId = prefs.getString('login_id') ?? '';
+
+                  final url = Uri.parse(
+                      'http://localhost:8080/api/v1/words/confirm-update');
+
+                  // 여러 뜻 선택 가능 → 서버가 하나만 받을 경우 첫 번째만 사용
+                  final newWordKr =
+                      selectedMeanings.join(", "); // 혹은 선택 정책에 맞게 변경
+
+                  final body = jsonEncode({
+                    'loginId': loginId,
+                    'personalWordbookId': it.personalWordbookId,
+                    'personalWordbookWordId': it.personalWordbookWordId,
+                    'newWordEn': newWordCtrl.text.trim(),
+                    'newWordKr': newWordKr,
+                  });
+
+                  final res = await http.put(
+                    url,
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': 'Bearer $token',
+                    },
+                    body: body,
+                  );
+
+                  if (res.statusCode == 200) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('단어 수정 완료')),
+                    );
+                    await _fetchWords(); // 단어 목록 갱신
+                    Navigator.pop(ctx);
+                  } else {
+                    final msg = jsonDecode(res.body)['message'] ?? '수정 실패';
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(msg)));
+                  }
+                } catch (e) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('서버 오류: $e')));
+                }
+              },
+              child: const Text('저장'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('저장'),
-          ),
-        ],
       ),
     );
-
-    if (ok != true) return;
-
-    // ✅ 서버에 수정 요청
-    final success = await _updateWordOnServer(
-      personalWordbookWordId: it.personalWordbookWordId,
-      wordEn: enCtrl.text.trim(),
-      wordKr: meanCtrl.text.trim(),
-      meaning: meanCtrl.text.trim(),
-    );
-
-    // ✅ 서버 요청 성공 시 단어 목록 전체 갱신
-    if (success) {
-      await _fetchWords();
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('"${enCtrl.text.trim()}" 수정됨')));
-    }
   }
 
-  Future<bool> _updateWordOnServer({
+/*   Future<bool> _updateWordOnServer({
     required int personalWordbookWordId,
     required String wordEn,
     required String wordKr,
@@ -481,7 +592,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
           .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
       return false;
     }
-  }
+  } */
 
   Future<void> _confirmQuiz() async {
     final mean = _meanCtrl.text.trim();
@@ -661,8 +772,9 @@ class _WordMenuPageState extends State<WordMenuPage> {
   }
 
   Future<void> _openAddDialog() async {
-    final enCtrl = TextEditingController();
-    List<String> meaningCandidates = [];
+    final _meanCtrl = TextEditingController();
+    List<Map<String, dynamic>> meaningCandidates = []; // 서버에서 받은 뜻과 ID
+    List<Map<String, dynamic>> selectedMeanings = []; // 선택한 뜻 저장
 
     await showDialog(
       context: context,
@@ -676,44 +788,39 @@ class _WordMenuPageState extends State<WordMenuPage> {
               children: [
                 // 영어 단어 입력창 + 검색 버튼
                 TextField(
-                  controller: enCtrl,
+                  controller: _meanCtrl,
                   decoration: InputDecoration(
                     labelText: "영단어 입력",
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.search),
                       onPressed: () async {
-                        final word = enCtrl.text.trim();
+                        final word = _meanCtrl.text.trim();
                         if (word.isEmpty) return;
 
                         try {
-                          // 🔑 SharedPreferences에서 JWT 토큰 불러오기
                           final prefs = await SharedPreferences.getInstance();
                           final token = prefs.getString("jwt_token") ?? "";
 
                           final url = Uri.parse(
                             "http://localhost:8080/api/v1/words/dictionary-search?wordEn=$word",
                           );
-                          print("요청 URL: $url");
-                          print("JWT 토큰: $token");
 
                           final res = await http.get(
                             url,
                             headers: {
                               "Content-Type": "application/json",
-                              "Authorization": "Bearer $token", // 🔑 토큰 추가
+                              "Authorization": "Bearer $token",
                             },
                           );
 
-                          print("응답 코드: ${res.statusCode}");
-                          print("응답 바디: ${res.body}");
-
                           if (res.statusCode == 200) {
                             final data = jsonDecode(res.body);
-                            print("파싱된 데이터: $data");
-
                             setState(() {
+                              // 서버에서 {id, meaning} 구조로 받는다고 가정
                               meaningCandidates =
-                                  List<String>.from(data['meanings']);
+                                  List<Map<String, dynamic>>.from(
+                                      data['meanings']);
+                              selectedMeanings = [];
                             });
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -721,7 +828,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
                             );
                           }
                         } catch (e) {
-                          print("에러 발생: $e");
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text("예외 발생: $e")),
                           );
@@ -743,19 +849,78 @@ class _WordMenuPageState extends State<WordMenuPage> {
                     spacing: 6,
                     runSpacing: 6,
                     children: meaningCandidates.map((m) {
-                      return Chip(
-                        label: Text(m),
-                        backgroundColor: Colors.blue.shade100,
+                      final isSelected = selectedMeanings.contains(m);
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (isSelected) {
+                              selectedMeanings.remove(m);
+                            } else {
+                              selectedMeanings.add(m);
+                            }
+                          });
+                        },
+                        child: Chip(
+                          label: Text(m['meaning']),
+                          backgroundColor: isSelected
+                              ? Colors.green.shade300
+                              : Colors.blue.shade100,
+                        ),
                       );
                     }).toList(),
-                  )
-                ]
+                  ),
+                ],
               ],
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text("닫기"),
+              ),
+              FilledButton(
+                onPressed: selectedMeanings.isEmpty
+                    ? null
+                    : () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        final token = prefs.getString("jwt_token") ?? "";
+
+                        final url = Uri.parse(
+                            "http://localhost:8080/api/v1/words/save-selected");
+
+                        try {
+                          final res = await http.post(
+                            url,
+                            headers: {
+                              "Content-Type": "application/json",
+                              "Authorization": "Bearer $token",
+                            },
+                            body: jsonEncode({
+                              "personalWordbookId": widget.wordbookId,
+                              "wordIds":
+                                  selectedMeanings.map((e) => e['id']).toList(),
+                            }),
+                          );
+
+                          if (res.statusCode == 200) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("선택된 단어가 저장되었습니다.")),
+                            );
+                            Navigator.pop(ctx);
+                          } else {
+                            final data = jsonDecode(res.body);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      "저장 실패: ${data['message'] ?? res.body}")),
+                            );
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("서버 오류 발생: $e")),
+                          );
+                        }
+                      },
+                child: const Text("저장"),
               ),
             ],
           );
