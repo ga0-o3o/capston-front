@@ -9,28 +9,12 @@ import 'levelTest_Page.dart';
 import 'loading_page.dart';
 import 'dart:io' show Platform; // 앱용
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:audioplayers/audioplayers.dart';
-import 'dart:html' as html; // 웹용
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
-}
-
-// -------------------- 버튼 소리 --------------------
-class SoundEffect {
-  static void playButton() {
-    if (kIsWeb) {
-      // 웹용
-      html.AudioElement('assets/audios/button_click.mp3')..play();
-    } else {
-      // 앱용
-      final player = AudioPlayer();
-      player.play(AssetSource('audios/button_click.mp3'));
-    }
-  }
 }
 
 // -------------------- 애니메이션 버튼 --------------------
@@ -61,7 +45,6 @@ class _AnimatedButtonState extends State<AnimatedButton> {
 
   void _onTapDown(TapDownDetails details) {
     setState(() => _isPressed = true);
-    SoundEffect.playButton(); // 딸칵 소리
   }
 
   void _onTapUp(TapUpDetails details) {
@@ -477,8 +460,9 @@ class _LoginPageState extends State<LoginPage> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 150),
+        SizedBox(
+          width: 250, // 원하는 가로 길이
+          height: 50, // 원하는 세로 길이
           child: AnimatedButton(
             text: '카카오톡 로그인',
             icon: SizedBox(

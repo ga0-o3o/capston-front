@@ -5,10 +5,8 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:html' as html;
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
-import 'package:audioplayers/audioplayers.dart';
 
 // ------------------ 날아오는 블록 ------------------
 class FlyingBlock {
@@ -57,44 +55,6 @@ class FlyingBlock {
   }
 }
 
-class WebBgm {
-  html.AudioElement? _audio;
-
-  void play() {
-    _audio ??= html.AudioElement('assets/audios/game6_bgm.mp3')
-      ..loop = true
-      ..autoplay = true;
-    _audio!.play();
-  }
-
-  void stop() {
-    _audio?.pause();
-    _audio?.currentTime = 0;
-  }
-}
-
-class SoundEffect {
-  static void playSuccess() {
-    final audio = html.AudioElement('assets/audios/levelTest_success.mp3');
-    audio.play();
-  }
-
-  static void playFailure() {
-    final audio = html.AudioElement('assets/audios/levelTest_failure.mp3');
-    audio.play();
-  }
-
-  static void gameSuccess() {
-    final audio = html.AudioElement('assets/audios/game_success.mp3');
-    audio.play();
-  }
-
-  static void gameFailure() {
-    final audio = html.AudioElement('assets/audios/game_failure.mp3');
-    audio.play();
-  }
-}
-
 // ------------------ 게임 로직 ------------------
 class Game6 extends FlameGame {
   List<FlyingBlock> flyingBlocks = [];
@@ -116,8 +76,6 @@ class Game6 extends FlameGame {
   bool gameOutCalled = false; // 중복 호출 방지
 
   ui.Image? bgImage;
-
-  final WebBgm bgm = WebBgm();
 
   @override
   Future<void> onLoad() async {
@@ -153,9 +111,6 @@ class Game6 extends FlameGame {
     double gameAreaHeight = 405;
     towerX = (size.x > 0 ? size.x : 360) / 2 - FlyingBlock.width / 2;
     towerY = gameAreaHeight - FlyingBlock.height;
-
-    // ✅ 게임 시작 시 배경음 재생
-    bgm.play();
   }
 
   void addBlockToTower() {
@@ -379,7 +334,6 @@ class _Game6PageState extends State<Game6Page> {
 
   void _pauseGame() {
     gameTimer?.cancel(); // 타이머 멈춤
-    game.bgm.stop();
     pauseStart = DateTime.now();
 
     showDialog(
@@ -395,7 +349,6 @@ class _Game6PageState extends State<Game6Page> {
                 double pausedSeconds =
                     DateTime.now().difference(pauseStart!).inSeconds.toDouble();
                 game.elapsedTime += pausedSeconds; // 경과 시간 보정
-                game.bgm.play();
               }
               pauseStart = null;
               Navigator.pop(context);
@@ -571,7 +524,6 @@ class _Game6PageState extends State<Game6Page> {
 
     if (userInput == expectedAnswer) {
       // 정답 처리
-      SoundEffect.gameSuccess();
       if (game.flyingBlocks.isEmpty) {
         game.addBlockToTower();
       } else {
@@ -585,7 +537,6 @@ class _Game6PageState extends State<Game6Page> {
       }
     } else {
       // 오답 → 목숨 감소
-      SoundEffect.gameFailure();
       lives--;
       if (lives <= 0) {
         gameOver = true;
@@ -598,15 +549,6 @@ class _Game6PageState extends State<Game6Page> {
   }
 
   void _showGameOverDialog({bool success = false}) {
-    game.bgm.stop();
-
-    // 게임 종료 시 사운드 재생
-    if (success) {
-      SoundEffect.playSuccess(); // levelTest_success.mp3
-    } else {
-      SoundEffect.playFailure(); // levelTest_failure.mp3
-    }
-
     showDialog(
       context: context,
       barrierDismissible: false,

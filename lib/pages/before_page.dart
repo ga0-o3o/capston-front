@@ -1,9 +1,7 @@
-import 'package:english_study/pages/signup_page.dart';
 import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'users_page.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'dart:html' as html;
+import 'signup_page.dart';
 
 class BeforePage extends StatelessWidget {
   const BeforePage({super.key});
@@ -67,14 +65,6 @@ class BeforePage extends StatelessWidget {
   }
 }
 
-class SoundEffect {
-  static final AudioPlayer _player = AudioPlayer();
-
-  static Future<void> playButton() async {
-    await _player.play(AssetSource('audios/button_click.mp3'));
-  }
-}
-
 // ------------------ 딸깍 애니메이션 버튼 ------------------
 class AnimatedButton extends StatefulWidget {
   final String text;
@@ -101,7 +91,6 @@ class _AnimatedButtonState extends State<AnimatedButton> {
 
   void _onTapDown(TapDownDetails details) {
     setState(() => _isPressed = true);
-    SoundEffect.playButton();
   }
 
   void _onTapUp(TapUpDetails details) {
@@ -127,7 +116,7 @@ class _AnimatedButtonState extends State<AnimatedButton> {
           color: widget.backgroundColor,
           borderRadius: BorderRadius.circular(10),
           boxShadow: _isPressed
-              ? [] // 눌렀을 때 그림자 제거 → 눌린 느낌
+              ? []
               : [
                   BoxShadow(
                     color: Colors.black26,
