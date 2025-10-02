@@ -741,7 +741,7 @@ class _WordFrontPageState extends State<WordFrontPage> {
                       crossAxisCount: 2,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      childAspectRatio: 21 / 10,
+                      childAspectRatio: 3 / 2,
                     ),
                     itemBuilder: (context, index) {
                       final book = _wordBooks[index];
@@ -752,25 +752,19 @@ class _WordFrontPageState extends State<WordFrontPage> {
                               const EdgeInsets.only(top: 20.0), // 컨테이너 위쪽 살짝 띄움
                           child: Container(
                             decoration: BoxDecoration(
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Colors.black26,
-                                  blurRadius: 6,
-                                  offset: Offset(2, 4),
-                                ),
-                              ],
                               image: DecorationImage(
                                 image: AssetImage(book['image']),
-                                fit: BoxFit.fitWidth,
-                                alignment: Alignment.topCenter, // 🔑 이미지 상단 맞춤
+                                fit: BoxFit.contain,
+                                alignment: Alignment.topCenter,
                               ),
                             ),
-                            child: Center(
+                            child: Align(
+                              alignment: const Alignment(0, -0.2),
                               child: Text(
                                 book['title'],
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
-                                  fontSize: 20,
+                                  fontSize: 25,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.black,
                                 ),
