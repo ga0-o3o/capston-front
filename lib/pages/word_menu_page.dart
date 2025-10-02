@@ -404,22 +404,9 @@ class _WordMenuPageState extends State<WordMenuPage> {
       meaning: meanCtrl.text.trim(),
     );
 
-    // ✅ 서버 요청이 성공했을 때만 로컬 상태 업데이트
+    // ✅ 서버 요청 성공 시 단어 목록 전체 갱신
     if (success) {
-      final idx = _items.indexWhere(
-          (e) => e.personalWordbookWordId == it.personalWordbookWordId);
-      if (idx >= 0) {
-        setState(() {
-          _items[idx] = WordItem(
-            personalWordbookWordId: it.personalWordbookWordId,
-            personalWordbookId: it.personalWordbookId,
-            word: it.word,
-            wordKr: it.wordKr,
-            meaning: it.meaning,
-            favorite: !it.favorite,
-          );
-        });
-      }
+      await _fetchWords();
 
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('"${enCtrl.text.trim()}" 수정됨')));
