@@ -5,10 +5,7 @@ import 'games/game1_page.dart' as game1;
 import 'games/game2_page.dart';
 import 'games/game3_page.dart';
 import 'games/game4_page.dart';
-import 'games/game4_multi_page.dart';
-import 'games/game5_multi_page.dart';
 import 'games/game6_page.dart';
-
 import 'games/dummy_game_page.dart';
 import 'games/matching_page.dart';
 
@@ -76,12 +73,7 @@ class GameMenuPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F0E9),
-      appBar: AppBar(
-        title: const Text("게임 메뉴"),
-        backgroundColor: const Color(0xFF4E6E99),
-        automaticallyImplyLeading: false,
-      ),
+      backgroundColor: const Color(0xFF3D4C63),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: GridView.builder(

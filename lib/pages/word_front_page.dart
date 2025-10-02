@@ -727,15 +727,6 @@ class _WordFrontPageState extends State<WordFrontPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
-      appBar: AppBar(
-        title: const Text(
-          '단어장 목록',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        automaticallyImplyLeading: false,
-        backgroundColor: const Color(0xFF4E6E99),
-        centerTitle: true,
-      ),
       body: _loading
           ? const LoadingPage()
           : _wordBooks.isEmpty

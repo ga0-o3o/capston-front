@@ -206,12 +206,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
     // 레벨 선택 화면
     if (!_levelSelected) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF6F0E9), // 배경 색상
-        appBar: AppBar(
-          title: const Text('레벨 선택'),
-          backgroundColor: const Color(0xFF4E6E99), // AppBar 색상
-          automaticallyImplyLeading: false,
-        ),
+        backgroundColor: const Color(0xFFF6F0E9),
         body: GridView.count(
           crossAxisCount: 3,
           padding: const EdgeInsets.all(16),

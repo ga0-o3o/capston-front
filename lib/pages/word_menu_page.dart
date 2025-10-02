@@ -295,18 +295,27 @@ class _WordMenuPageState extends State<WordMenuPage> {
     required String meaning,
     int? personalWordbookId,
   }) async {
+    print('1. _addWordToServer 호출됨');
+
     final url = Uri.parse('http://localhost:8080/api/v1/words');
+    print('2. URL 준비 완료: $url');
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
+    print('3. JWT 토큰 가져옴: $token');
 
-    final body = jsonEncode({
+    // personalWordbookId가 null이면 1로 기본값 설정
+    final bodyMap = {
       'wordEn': wordEn,
       'wordKr': wordKr,
       'meaning': meaning,
-      'personalWordbookWordId': _cur.personalWordbookWordId,
-    });
+      'personalWordbookId': personalWordbookId ?? 1,
+    };
+    final body = jsonEncode(bodyMap);
+    print('4. 요청 바디 준비 완료: $body');
 
     try {
+      print('5. POST 요청 전송...');
       final res = await http.post(
         url,
         headers: {
@@ -316,19 +325,38 @@ class _WordMenuPageState extends State<WordMenuPage> {
         body: body,
       );
 
+      print('6. 서버 응답 받음, 상태 코드: ${res.statusCode}');
+      print('7. 서버 응답 바디: ${res.body}');
+
+      final responseData = jsonDecode(res.body);
+
       if (res.statusCode == 200) {
-        await _fetchWords();
-        final data = jsonDecode(res.body);
-        return data['personalWordbookWordId'];
+        // 서버가 반환한 ID가 없을 경우 null 처리
+        final newId = responseData['personalWordbookWordId'] as int?;
+        print('8. 새로 생성된 ID 반환: $newId');
+
+        await _fetchWords(); // 서버 반영 후 전체 리스트 갱신
+        print('9. 단어 리스트 갱신 완료');
+
+        return newId;
       } else {
-        final msg = jsonDecode(res.body)['message'] ?? '오류';
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(msg)));
+        // 서버 에러 메시지 처리
+        final msg = responseData['message'] ?? '서버 오류';
+        print('10. 서버 오류 발생: $msg');
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(msg)));
+        }
         return null;
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
+      print('11. 네트워크 오류 발생: $e');
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('네트워크 오류: $e')));
+      }
       return null;
     }
   }
