@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'word_front_page.dart';
+import 'wordFront/word_front_page.dart';
 import 'game_menu_page.dart';
 import 'levelTest_page.dart';
 import 'userInfo_page.dart';
