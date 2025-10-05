@@ -104,36 +104,47 @@ class _LoginFormState extends State<LoginForm> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _idController,
-            focusNode: _idFocus,
-            decoration: _inputDecoration('아이디', Icons.person),
-            textInputAction: TextInputAction.next,
-            onSubmitted: (_) => FocusScope.of(context).requestFocus(_pwFocus),
+          // 아이디 입력
+          SizedBox(
+            width: 450,
+            child: TextField(
+              controller: _idController,
+              focusNode: _idFocus,
+              decoration: _inputDecoration('아이디', Icons.person),
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => FocusScope.of(context).requestFocus(_pwFocus),
+            ),
           ),
           const SizedBox(height: 12),
-          TextField(
-            controller: _pwController,
-            focusNode: _pwFocus,
-            obscureText: _obscurePassword,
-            decoration: _inputDecoration('비밀번호', Icons.lock).copyWith(
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  color: const Color(0xFF4E6E99),
+
+          // 비밀번호 입력
+          SizedBox(
+            width: 450,
+            child: TextField(
+              controller: _pwController,
+              focusNode: _pwFocus,
+              obscureText: _obscurePassword,
+              decoration: _inputDecoration('비밀번호', Icons.lock).copyWith(
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: const Color(0xFF4E6E99),
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
-                onPressed: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
               ),
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _login(),
             ),
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _login(),
           ),
           if (_errorMessage != null) ...[
             const SizedBox(height: 12),
             Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
           ],
           const SizedBox(height: 20),
+
+          // 로그인 버튼
           AnimatedButton(
             text: '로그인',
             backgroundColor: const Color(0xFF4E6E99),

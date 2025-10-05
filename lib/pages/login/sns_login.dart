@@ -4,7 +4,7 @@ import 'animated_button.dart';
 import 'login_service.dart';
 import '../mainMenuPage.dart';
 import '../loading_page.dart';
-import '../signup_page.dart' hide AnimatedButton;
+import '../signUp/signup_page.dart';
 
 class SNSLogin extends StatefulWidget {
   const SNSLogin({super.key});
