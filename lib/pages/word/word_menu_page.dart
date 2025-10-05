@@ -31,9 +31,12 @@ class _WordMenuPageState extends State<WordMenuPage>
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
-        title: const Text('Word Menu'),
+        backgroundColor: const Color(0xFF3D4C63),
+        title: const Text('단어장'),
         bottom: TabBar(
           controller: _tabController,
+          labelColor: Colors.white, // 선택된 탭 글자 색
+          unselectedLabelColor: Colors.white70, // 선택되지 않은 탭 글자 색
           tabs: const [
             Tab(text: '내 단어'),
             Tab(text: '즐겨찾기'),
