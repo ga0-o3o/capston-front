@@ -388,7 +388,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
     List<String> meaningCandidates = [];
     List<String> selectedMeanings = [];
 
-    // 1단계: 단어 검색 & 뜻 후보 가져오기
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -398,7 +397,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 새 단어 입력창
               TextField(
                 controller: newWordCtrl,
                 decoration: InputDecoration(
@@ -410,33 +408,16 @@ class _WordMenuPageState extends State<WordMenuPage> {
                       if (newWord.isEmpty) return;
 
                       try {
-                        final prefs = await SharedPreferences.getInstance();
-                        final token = prefs.getString('jwt_token') ?? '';
-                        final loginId = prefs.getString('login_id') ?? '';
-
                         final url = Uri.parse(
-                            'http://localhost:8080/api/v1/words/search-for-update');
-                        final body = jsonEncode({
-                          'loginId': loginId,
-                          'personalWordbookId': it.personalWordbookId,
-                          'wordId': it.personalWordbookWordId,
-                          'newWord': newWord,
-                        });
-
-                        final res = await http.post(
-                          url,
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer $token',
-                          },
-                          body: body,
-                        );
+                            'http://localhost:8080/api/v1/words/dictionary-search?wordEn=$newWord');
+                        final res = await http.get(url);
 
                         if (res.statusCode == 200) {
                           final data = jsonDecode(res.body);
                           setState(() {
                             meaningCandidates =
-                                List<String>.from(data['meanings']);
+                                List<String>.from(data['meanings'] ?? []);
+                            selectedMeanings = [];
                           });
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -453,8 +434,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
                 ),
               ),
               const SizedBox(height: 12),
-
-              // 뜻 후보 표시
               if (meaningCandidates.isNotEmpty) ...[
                 const Text(
                   "검색된 뜻 선택:",
@@ -498,7 +477,6 @@ class _WordMenuPageState extends State<WordMenuPage> {
                 if (newWordCtrl.text.trim().isEmpty || selectedMeanings.isEmpty)
                   return;
 
-                // 2단계: 선택된 뜻으로 최종 업데이트
                 try {
                   final prefs = await SharedPreferences.getInstance();
                   final token = prefs.getString('jwt_token') ?? '';
@@ -507,16 +485,12 @@ class _WordMenuPageState extends State<WordMenuPage> {
                   final url = Uri.parse(
                       'http://localhost:8080/api/v1/words/confirm-update');
 
-                  // 여러 뜻 선택 가능 → 서버가 하나만 받을 경우 첫 번째만 사용
-                  final newWordKr =
-                      selectedMeanings.join(", "); // 혹은 선택 정책에 맞게 변경
-
                   final body = jsonEncode({
                     'loginId': loginId,
                     'personalWordbookId': it.personalWordbookId,
                     'personalWordbookWordId': it.personalWordbookWordId,
                     'newWordEn': newWordCtrl.text.trim(),
-                    'newWordKr': newWordKr,
+                    'newWordKr': selectedMeanings.first, // 첫 번째 뜻만 전송
                   });
 
                   final res = await http.put(
@@ -532,7 +506,7 @@ class _WordMenuPageState extends State<WordMenuPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('단어 수정 완료')),
                     );
-                    await _fetchWords(); // 단어 목록 갱신
+                    await _fetchWords();
                     Navigator.pop(ctx);
                   } else {
                     final msg = jsonDecode(res.body)['message'] ?? '수정 실패';
@@ -805,24 +779,33 @@ class _WordMenuPageState extends State<WordMenuPage> {
                             "http://localhost:8080/api/v1/words/dictionary-search?wordEn=$word",
                           );
 
-                          final res = await http.get(
-                            url,
-                            headers: {
-                              "Content-Type": "application/json",
-                              "Authorization": "Bearer $token",
-                            },
-                          );
+                          final res = await http.get(url, headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": "Bearer $token",
+                          });
+
+                          print("📡 응답 상태: ${res.statusCode}");
+                          print("📡 응답 바디: ${res.body}");
 
                           if (res.statusCode == 200) {
                             final data = jsonDecode(res.body);
-                            setState(() {
-                              // 서버에서 {id, meaning} 구조로 받는다고 가정
-                              meaningCandidates =
-                                  List<Map<String, dynamic>>.from(
-                                      data['meanings']);
-                              selectedMeanings = [];
-                            });
+                            print("📂 JSON 데이터: $data");
+
+                            if (data['meanings'] != null) {
+                              setState(() {
+                                meaningCandidates =
+                                    List<Map<String, dynamic>>.from(
+                                        data['meanings']);
+                                selectedMeanings = [];
+                              });
+                            } else {
+                              print("❌ meanings 키 없음");
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("검색 결과 없음")),
+                              );
+                            }
                           } else {
+                            print("❌ 검색 실패 상태 코드: ${res.statusCode}");
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text("검색 실패: ${res.body}")),
                             );
