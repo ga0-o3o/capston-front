@@ -4,7 +4,7 @@ import 'wordbook_service.dart';
 import 'wordbook_dialogs.dart';
 import 'wordbook_options.dart';
 import '../loading_page.dart';
-import '../word_menu_page.dart';
+import '../word/word_menu_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WordFrontPage extends StatefulWidget {
