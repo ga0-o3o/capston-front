@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'word_item.dart';
 import 'word_create.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'word_api.dart';
 
 class WordMyTab extends StatefulWidget {
   final int wordbookId;
@@ -63,55 +61,18 @@ class _WordMyTabState extends State<WordMyTab> {
 
   Future<void> _fetchWords() async {
     setState(() => _loading = true);
-
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token');
-      final savedWordbookId = prefs.getInt('selectedWordbookId');
-
-      if (token == null || token.isEmpty) {
-        throw Exception('로그인이 필요합니다.');
-      }
-
-      final url = Uri.parse(
-          'http://localhost:8080/api/v1/wordbooks/$savedWordbookId/words');
-
-      final response = await http.get(
-        url,
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes)) as List;
-
-        final loadedWords = data.map((e) {
-          final wordEn = e['wordEn'] ?? '';
-          final wordKrList = List<String>.from(e['wordKr'] ?? []);
-          return WordItem(
-            personalWordbookWordId: e['personalWordbookWordId'] ?? 0,
-            word: wordEn,
-            wordKr: wordKrList,
-            favorite: e['favorite'] ?? false,
-          );
-        }).toList();
-
-        setState(() => _words = loadedWords);
-        print('✅ Total words loaded: ${_words.length}');
-      } else if (response.statusCode == 403) {
-        throw Exception('접근 권한이 없습니다. 다시 로그인 해주세요.');
-      } else {
-        throw Exception('단어 조회 실패 (${response.statusCode})');
-      }
-    } catch (e, st) {
+      final words = await WordApi.fetchWords();
+      setState(() => _words = words);
+      print('✅ Total words loaded: ${_words.length}');
+    } catch (e) {
       print('❌ 단어 조회 에러: $e');
-      print(st);
     } finally {
       setState(() => _loading = false);
     }
   }
+
+  Future<void> _deleteWords() async {}
 
   Future<void> _showAddOptions(BuildContext context) async {
     final result = await showModalBottomSheet<String>(
@@ -255,54 +216,17 @@ class _WordMyTabState extends State<WordMyTab> {
                                           : Colors.grey,
                                     ),
                                     onPressed: () async {
-                                      final prefs =
-                                          await SharedPreferences.getInstance();
-                                      final token =
-                                          prefs.getString('jwt_token') ?? '';
-                                      final savedWordbookId =
-                                          prefs.getInt('selectedWordbookId');
-                                      final wordId =
-                                          word.personalWordbookWordId;
-
-                                      final url = Uri.parse(
-                                          'http://localhost:8080/api/words/$savedWordbookId/words/$wordId/toggle-favorite');
-
-                                      print('📡 [FAVORITE] 요청 URL: $url');
-                                      print('📡 [FAVORITE] JWT 토큰: $token');
-
-                                      try {
-                                        final res = await http.put(
-                                          url,
-                                          headers: {
-                                            'Authorization': 'Bearer $token',
-                                          },
-                                        );
-
-                                        print(
-                                            '📡 [FAVORITE] 응답 코드: ${res.statusCode}');
-                                        print(
-                                            '📡 [FAVORITE] 응답 본문: ${res.body}');
-
-                                        if (res.statusCode == 200) {
-                                          setState(() =>
-                                              word.favorite = !word.favorite);
-                                          print(
-                                              '✅ 즐겨찾기 상태 변경됨: ${word.favorite}');
-                                        } else {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                                content: Text(
-                                                    '즐겨찾기 상태 변경 실패: ${res.statusCode}')),
-                                          );
-                                        }
-                                      } catch (e) {
-                                        print('❌ [FAVORITE] 오류: $e');
+                                      final success =
+                                          await WordApi.toggleFavorite(
+                                              word.personalWordbookWordId);
+                                      if (success) {
+                                        setState(() =>
+                                            word.favorite = !word.favorite);
+                                      } else {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
-                                          SnackBar(
-                                              content:
-                                                  Text('서버와 연결할 수 없습니다: $e')),
+                                          const SnackBar(
+                                              content: Text('즐겨찾기 상태 변경 실패')),
                                         );
                                       }
                                     },

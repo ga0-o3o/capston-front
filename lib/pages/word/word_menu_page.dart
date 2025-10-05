@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'word_item.dart';
-import 'word_create.dart';
 import 'word_api.dart';
 import 'word_my_tab.dart';
 import 'word_favorite_tab.dart';
 import 'word_quiz_tab.dart';
-import 'word_delete.dart';
 
 class WordMenuPage extends StatefulWidget {
   final int wordbookId;
@@ -47,7 +44,6 @@ class _WordMenuPageState extends State<WordMenuPage>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // WordMyTab이 단어 리스트 로딩과 갱신 담당
           WordMyTab(
             wordbookId: widget.wordbookId,
             onDelete: (item) async {
