@@ -1,8 +1,9 @@
+// login_form.dart
 import 'package:flutter/material.dart';
-import 'animated_button.dart';
 import 'login_service.dart';
 import '../mainMenuPage.dart';
 import '../loading_page.dart';
+import 'animated_button.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
@@ -18,6 +19,23 @@ class _LoginFormState extends State<LoginForm> {
   final _pwFocus = FocusNode();
   bool _obscurePassword = true;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLoginStatus();
+  }
+
+  Future<void> _checkLoginStatus() async {
+    final loggedIn = await LoginService.isLoggedIn();
+    if (loggedIn && mounted) {
+      final nickname = await LoginService.getNickname();
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MainMenuPage(userName: nickname)),
+      );
+    }
+  }
 
   InputDecoration _inputDecoration(String label, IconData icon) {
     return InputDecoration(
@@ -54,78 +72,77 @@ class _LoginFormState extends State<LoginForm> {
 
     try {
       final data = await LoginService.loginWithId(id, pw);
+
+      // 서버에서 받은 데이터 저장
+      await LoginService.saveToken(data!['token']);
+      await LoginService.saveUserInfo(
+        id: data['loginId'],
+        name: data['name'],
+        nickname: data['nickname'],
+        rank: data['userRank'] ?? 'Beginner',
+      );
+
+      if (!mounted) return;
       Navigator.pop(context);
 
-      if (data != null) {
-        await LoginService.saveToken(data['token']);
-        await LoginService.saveUserInfo(
-          id: data['loginId'],
-          name: data['name'],
-          nickname: data['nickname'],
-          rank: data['userRank'] ?? 'Beginner',
-        );
-
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MainMenuPage(userName: data['nickname']),
-          ),
-        );
-      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => MainMenuPage(userName: data['nickname']),
+        ),
+      );
     } catch (e) {
       Navigator.pop(context);
-      setState(() => _errorMessage = "로그인 실패: $e");
+      setState(() => _errorMessage = e.toString());
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        TextField(
-          controller: _idController,
-          focusNode: _idFocus,
-          decoration: _inputDecoration('아이디', Icons.person),
-          textInputAction: TextInputAction.next,
-          onSubmitted: (_) {
-            FocusScope.of(context).requestFocus(_pwFocus);
-          },
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _pwController,
-          focusNode: _pwFocus,
-          obscureText: _obscurePassword,
-          decoration: _inputDecoration('비밀번호', Icons.lock).copyWith(
-            suffixIcon: IconButton(
-              icon: Icon(
-                _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                color: const Color(0xFF4E6E99),
-              ),
-              onPressed: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
-              },
-            ),
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _idController,
+            focusNode: _idFocus,
+            decoration: _inputDecoration('아이디', Icons.person),
+            textInputAction: TextInputAction.next,
+            onSubmitted: (_) => FocusScope.of(context).requestFocus(_pwFocus),
           ),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _login(),
-        ),
-        if (_errorMessage != null) ...[
           const SizedBox(height: 12),
-          Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+          TextField(
+            controller: _pwController,
+            focusNode: _pwFocus,
+            obscureText: _obscurePassword,
+            decoration: _inputDecoration('비밀번호', Icons.lock).copyWith(
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: const Color(0xFF4E6E99),
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _login(),
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+          ],
+          const SizedBox(height: 20),
+          AnimatedButton(
+            text: '로그인',
+            backgroundColor: const Color(0xFF4E6E99),
+            foregroundColor: Colors.white,
+            fontSize: 18,
+            onPressed: _login,
+          ),
         ],
-        const SizedBox(height: 20),
-        AnimatedButton(
-          text: '로그인',
-          backgroundColor: const Color(0xFF4E6E99),
-          foregroundColor: Colors.white,
-          fontSize: 18,
-          onPressed: _login,
-        ),
-      ],
+      ),
     );
   }
 }
