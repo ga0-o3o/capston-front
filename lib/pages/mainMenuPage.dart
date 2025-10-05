@@ -177,33 +177,28 @@ class _MainMenuPageState extends State<MainMenuPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  AnimatedContainer(
+                  AnimatedScale(
+                    scale: isSelected ? 1.2 : 1.0, // 선택 시 아이콘 살짝 커짐
                     duration: const Duration(milliseconds: 250),
-                    padding: EdgeInsets.all(isSelected ? 8 : 0),
-                    decoration: BoxDecoration(
-                      color:
-                          isSelected ? Color(0xFF3D4C63) : Colors.transparent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: AnimatedScale(
-                      scale: isSelected ? 1.3 : 1.0,
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
-                      child: Icon(
-                        icons[index],
-                        color: isSelected ? Colors.white : Color(0xFF3D4C63),
-                        size: 24,
-                      ),
+                    curve: Curves.easeInOut,
+                    child: Icon(
+                      icons[index],
+                      color: isSelected
+                          ? Color(0xFF3D4C63)
+                          : Colors.grey[600], // 색상 변경
+                      size: 28,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     labels[index],
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight:
                           isSelected ? FontWeight.bold : FontWeight.normal,
-                      color: isSelected ? Colors.black : Colors.grey[800],
+                      color: isSelected
+                          ? Color(0xFF3D4C63)
+                          : Colors.grey[800], // 텍스트 색상 변경
                     ),
                   ),
                 ],

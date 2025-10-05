@@ -25,12 +25,14 @@ class _WordFrontPageState extends State<WordFrontPage> {
   }
 
   Future<void> _loadWordbooks({bool showLoading = true}) async {
-    if (showLoading) setState(() => _loading = true);
+    if (showLoading && mounted) setState(() => _loading = true);
 
     final list = await WordbookService.fetchWordbooks(context);
 
+    if (!mounted) return; // 화면이 이미 dispose 됐으면 중단
+
     setState(() {
-      _wordBooks = list;
+      _wordBooks = list.reversed.toList();
       if (showLoading) _loading = false;
     });
   }
