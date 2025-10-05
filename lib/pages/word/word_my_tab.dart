@@ -23,12 +23,42 @@ class WordMyTab extends StatefulWidget {
 
 class _WordMyTabState extends State<WordMyTab> {
   List<WordItem> _words = [];
+  List<WordItem> _filteredWords = [];
   bool _loading = false;
+  final TextEditingController _searchCtrl = TextEditingController();
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _fetchWords();
+    _searchCtrl.addListener(() {
+      final query = _searchCtrl.text.toLowerCase();
+      setState(() {
+        _filteredWords = _words
+            .where((word) =>
+                word.word.toLowerCase().contains(query) ||
+                word.wordKr.any((kr) => kr.toLowerCase().contains(query)))
+            .toList();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchCtrl.text.toLowerCase();
+    setState(() {
+      _filteredWords = _words
+          .where((word) =>
+              word.word.toLowerCase().contains(query) ||
+              word.wordKr.any((kr) => kr.toLowerCase().contains(query)))
+          .toList();
+    });
   }
 
   Future<void> _fetchWords() async {
@@ -125,119 +155,167 @@ class _WordMyTabState extends State<WordMyTab> {
 
   @override
   Widget build(BuildContext context) {
+    final displayWords = _searchCtrl.text.isEmpty ? _words : _filteredWords;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _words.isEmpty
-              ? const Center(
-                  child: Text(
-                    '단어가 존재하지 않습니다.',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: _words.length,
-                  padding: const EdgeInsets.all(12),
-                  itemBuilder: (context, index) {
-                    final word = _words[index];
-                    return Card(
-                      elevation: 4,
-                      shadowColor: Colors.black26,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      color: Colors.white,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
+      body: Column(
+        children: [
+          // 검색창
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              controller: _searchCtrl,
+              onTap: () {
+                setState(() => _isSearching = true);
+              },
+              decoration: InputDecoration(
+                hintText: '단어 검색',
+                filled: true,
+                fillColor:
+                    _isSearching ? const Color(0xFF3D4C63) : Colors.white,
+                hintStyle: TextStyle(
+                  color: _isSearching ? Colors.white70 : Colors.grey,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: _isSearching ? Colors.white : Colors.grey,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              style: TextStyle(
+                color: _isSearching ? Colors.white : Colors.black,
+              ),
+            ),
+          ),
+
+          // 단어 목록
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : displayWords.isEmpty
+                    ? const Center(
+                        child: Text(
+                          '단어가 존재하지 않습니다.',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: displayWords.length,
+                        padding: const EdgeInsets.all(12),
+                        itemBuilder: (context, index) {
+                          final word = displayWords[index];
+                          return Card(
+                            elevation: 4,
+                            shadowColor: Colors.black26,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            color: Colors.white,
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    word.word,
-                                    style: const TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF3A3A3A),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          word.word,
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF3A3A3A),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          word.wordKr.join(', '),
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            color: Color(0xFF5A5A5A),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    word.wordKr.join(', '),
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      color: Color(0xFF5A5A5A),
+                                  IconButton(
+                                    icon: Icon(
+                                      word.favorite
+                                          ? Icons.star
+                                          : Icons.star_border_outlined,
+                                      color: word.favorite
+                                          ? Colors.amber
+                                          : Colors.grey,
                                     ),
+                                    onPressed: () async {
+                                      final prefs =
+                                          await SharedPreferences.getInstance();
+                                      final token =
+                                          prefs.getString('jwt_token') ?? '';
+                                      final savedWordbookId =
+                                          prefs.getInt('selectedWordbookId');
+                                      final wordId =
+                                          word.personalWordbookWordId;
+
+                                      final url = Uri.parse(
+                                          'http://localhost:8080/api/words/$savedWordbookId/words/$wordId/toggle-favorite');
+
+                                      print('📡 [FAVORITE] 요청 URL: $url');
+                                      print('📡 [FAVORITE] JWT 토큰: $token');
+
+                                      try {
+                                        final res = await http.put(
+                                          url,
+                                          headers: {
+                                            'Authorization': 'Bearer $token',
+                                          },
+                                        );
+
+                                        print(
+                                            '📡 [FAVORITE] 응답 코드: ${res.statusCode}');
+                                        print(
+                                            '📡 [FAVORITE] 응답 본문: ${res.body}');
+
+                                        if (res.statusCode == 200) {
+                                          setState(() =>
+                                              word.favorite = !word.favorite);
+                                          print(
+                                              '✅ 즐겨찾기 상태 변경됨: ${word.favorite}');
+                                        } else {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    '즐겨찾기 상태 변경 실패: ${res.statusCode}')),
+                                          );
+                                        }
+                                      } catch (e) {
+                                        print('❌ [FAVORITE] 오류: $e');
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content:
+                                                  Text('서버와 연결할 수 없습니다: $e')),
+                                        );
+                                      }
+                                    },
                                   ),
                                 ],
                               ),
                             ),
-                            IconButton(
-                              icon: Icon(
-                                word.favorite
-                                    ? Icons.star
-                                    : Icons.star_border_outlined,
-                                color:
-                                    word.favorite ? Colors.amber : Colors.grey,
-                              ),
-                              onPressed: () async {
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                final token =
-                                    prefs.getString('jwt_token') ?? '';
-                                final savedWordbookId =
-                                    prefs.getInt('selectedWordbookId');
-                                final wordId = word.personalWordbookWordId;
-
-                                final url = Uri.parse(
-                                    'http://localhost:8080/api/words/$savedWordbookId/words/$wordId/toggle-favorite');
-
-                                print('📡 [FAVORITE] 요청 URL: $url');
-                                print('📡 [FAVORITE] JWT 토큰: $token');
-
-                                try {
-                                  final res = await http.put(
-                                    url,
-                                    headers: {
-                                      'Authorization': 'Bearer $token',
-                                    },
-                                  );
-
-                                  print(
-                                      '📡 [FAVORITE] 응답 코드: ${res.statusCode}');
-                                  print('📡 [FAVORITE] 응답 본문: ${res.body}');
-
-                                  if (res.statusCode == 200) {
-                                    setState(
-                                        () => word.favorite = !word.favorite);
-                                    print('✅ 즐겨찾기 상태 변경됨: ${word.favorite}');
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text(
-                                              '즐겨찾기 상태 변경 실패: ${res.statusCode}')),
-                                    );
-                                  }
-                                } catch (e) {
-                                  print('❌ [FAVORITE] 오류: $e');
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text('서버와 연결할 수 없습니다: $e')),
-                                  );
-                                }
-                              },
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddOptions(context),
         backgroundColor: const Color(0xFF4E6E99),
