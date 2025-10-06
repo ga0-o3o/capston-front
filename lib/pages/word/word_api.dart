@@ -35,7 +35,7 @@ class WordApi {
           final wordKrList = List<String>.from(e['wordKr'] ?? []);
           final wordIds = List<int>.from(e['wordIds'] ?? []);
           final isFavoriteRaw = e['favorite'];
-          final isFavorite = isFavoriteRaw == 1; // 1 -> true, 0 -> false
+          final isFavorite = isFavoriteRaw == true;
 
           return WordItem(
             personalWordbookWordId: wordIds.isNotEmpty ? wordIds.first : 0,
@@ -83,6 +83,73 @@ class WordApi {
       }
     } catch (e) {
       print('❌ 즐겨찾기 오류: $e');
+      return false;
+    }
+  }
+
+  // 단어 수정 1. 뜻 조회
+  static Future<List<String>> fetchWordMeanings(String wordEn) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      if (token.isEmpty) throw Exception('로그인이 필요합니다.');
+
+      final url = Uri.parse('http://localhost:8080/api/words/$wordEn/meanings');
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return List<String>.from(data['wordKr'] ?? []);
+      } else {
+        print('❌ 단어 뜻 조회 실패: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ 단어 뜻 조회 오류: $e');
+      return [];
+    }
+  }
+
+  // 단어 수정 2. 그룹핑
+  static Future<bool> updateWordGroup(
+      int wordbookId, int wordId, List<String> newMeanings) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      if (token.isEmpty) throw Exception('로그인이 필요합니다.');
+
+      final url =
+          Uri.parse('http://localhost:8080/api/words/$wordbookId/words/group');
+
+      final body = jsonEncode({
+        'wordIds': [wordId],
+        'wordKrList': newMeanings, // 선택한 뜻 보내기
+      });
+
+      final response = await http.put(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ 단어 그룹핑 수정 성공: ${response.body}');
+        return true;
+      } else {
+        print('❌ 단어 그룹핑 수정 실패: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ 단어 그룹핑 수정 오류: $e');
       return false;
     }
   }

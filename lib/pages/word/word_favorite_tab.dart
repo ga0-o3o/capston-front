@@ -68,15 +68,55 @@ class _WordFavoriteTabState extends State<WordFavoriteTab> {
         itemCount: _words.length,
         itemBuilder: (context, index) {
           final word = _words[index];
-          return ListTile(
-            title: Text(word.word),
-            subtitle: Text(word.wordKr.join(', ')),
-            trailing: IconButton(
-              icon: Icon(
-                word.favorite ? Icons.star : Icons.star_border,
-                color: Colors.amber[700],
+          return Card(
+            elevation: 4,
+            shadowColor: Colors.black26,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            color: Colors.white,
+            margin:
+                const EdgeInsets.only(top: 20, bottom: 8, left: 16, right: 16),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            word.word,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF3A3A3A),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            word.wordKr.join(', '),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF5A5A5A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        word.favorite ? Icons.star : Icons.star_border,
+                        color: Colors.amber[700],
+                      ),
+                      onPressed: () => _toggleFavorite(word),
+                    ),
+                  ],
+                ),
               ),
-              onPressed: () => _toggleFavorite(word),
             ),
           );
         },

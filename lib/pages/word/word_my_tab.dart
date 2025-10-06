@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'word_item.dart';
 import 'word_create.dart';
+import 'word_edit.dart';
 import 'word_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'word_image.dart';
@@ -151,7 +152,26 @@ class _WordMyTabState extends State<WordMyTab> {
           const SnackBar(content: Text('단어가 삭제되었습니다.')),
         );
       }
-    } else if (choice == 'edit') {}
+    } else if (choice == 'edit') {
+      await showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            width: 400,
+            height: 500,
+            child: WordEditPage(
+              wordbookId: widget.wordbookId,
+              wordItem: it,
+            ),
+          ),
+        ),
+      );
+
+      // 수정 후 리스트 갱신
+      await _fetchWords();
+    }
   }
 
   Future<void> _showAddOptions(BuildContext context) async {
