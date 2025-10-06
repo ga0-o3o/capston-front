@@ -177,12 +177,15 @@ class _WordMyTabState extends State<WordMyTab> {
     if (result == 'manual') {
       await showDialog(
         context: context,
+        barrierColor: Colors.transparent, // 배경 어둡게 깔리는 기본 색 제거, 완전 투명
         builder: (_) => Dialog(
+          backgroundColor: Colors.transparent, // Dialog 자체 배경 완전 투명
+          elevation: 0, // 그림자 제거
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: SizedBox(
             width: 400,
-            height: 500,
+            height: 600,
             child: WordCreatePage(wordbookId: widget.wordbookId),
           ),
         ),

@@ -153,131 +153,182 @@ class _WordCreatePageState extends State<WordCreatePage> {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF6F0E9),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // --- 영단어 입력창 ---
-              TextField(
-                controller: _wordController,
-                decoration: InputDecoration(
-                  labelText: '영단어 입력',
-                  suffixIcon: IconButton(
-                    icon: const Icon(Icons.search),
-                    onPressed: () async {
-                      _addWordToList();
-                      await _fetchMeanings();
-                    },
-                  ),
-                ),
-                onSubmitted: (_) async {
-                  _addWordToList();
-                  await _fetchMeanings();
-                },
-              ),
-              const SizedBox(height: 12),
-              // --- 단어 Chip ---
-              if (_wordsToAdd.isNotEmpty)
-                Wrap(
-                  spacing: 8,
-                  children: _wordsToAdd
-                      .map((w) => Chip(
-                            label: Text(w),
-                            onDeleted: () {
-                              setState(() {
-                                _wordsToAdd.remove(w);
-                                _wordsWithMeanings.remove(w);
-                                _selectedMeanings.remove(w);
-                              });
+        backgroundColor: Colors.transparent,
+        body: Container(
+          decoration: const BoxDecoration(
+            image: DecorationImage(
+              image: AssetImage("images/background.png"),
+              fit: BoxFit.cover,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                // --- 영단어 입력창 ---
+                Padding(
+                  padding: const EdgeInsets.only(top: 55), // 위쪽 여백
+                  child: Align(
+                    alignment: const Alignment(-0.4, 0),
+                    child: SizedBox(
+                      width: 280, // 가로 크기 조절
+                      child: TextField(
+                        controller: _wordController,
+                        decoration: InputDecoration(
+                          labelText: '영단어 입력',
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.black),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.search),
+                            onPressed: () async {
+                              _addWordToList();
+                              await _fetchMeanings();
                             },
-                          ))
-                      .toList(),
-                ),
-              const SizedBox(height: 12),
-              // --- 뜻 선택 리스트 ---
-              Expanded(
-                child: _wordsWithMeanings.isEmpty
-                    ? const Center(child: Text('뜻이 없습니다.'))
-                    : SingleChildScrollView(
-                        child: Column(
-                          children: _wordsWithMeanings.entries.map((entry) {
-                            final word = entry.key;
-                            final meanings = entry.value;
-                            return Card(
-                              margin: const EdgeInsets.symmetric(vertical: 6),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(word,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 4),
-                                    Wrap(
-                                      spacing: 6,
-                                      children: meanings.map((m) {
-                                        final selected =
-                                            _selectedMeanings[word]!
-                                                .contains(m);
-                                        return ChoiceChip(
-                                          label: Text(m),
-                                          selected: selected,
-                                          onSelected: (val) {
-                                            setState(() {
-                                              if (val) {
-                                                _selectedMeanings[word]!.add(m);
-                                              } else {
-                                                _selectedMeanings[word]!
-                                                    .remove(m);
-                                              }
-                                            });
-                                          },
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                          ),
                         ),
+                        onSubmitted: (_) async {
+                          _addWordToList();
+                          await _fetchMeanings();
+                        },
                       ),
-              ),
-              // --- 단어장 저장 버튼 ---
-              if (_selectedMeanings.values.any((v) => v.isNotEmpty))
-                ElevatedButton(
-                  onPressed: _loading ? null : _saveToWordbook,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFCC8C8), // 배경색
-                    foregroundColor: Colors.black, // 글자색
-                    minimumSize: const Size(100, 40), // 버튼 최소 크기
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(0), // 모서리 각지게
-                      side: const BorderSide(
-                          color: Colors.black, width: 2), // 테두리
                     ),
                   ),
-                  child: const Text('단어장에 저장'),
                 ),
-              const SizedBox(height: 12),
-              // --- 나가기 버튼 ---
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4E6E99), // 배경색
-                  foregroundColor: Colors.white, // 글자색
-                  minimumSize: const Size(100, 40), // 버튼 최소 크기
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(0), // 모서리 각지게
-                    side:
-                        const BorderSide(color: Colors.black, width: 2), // 테두리
+
+                const SizedBox(height: 12),
+                if (_wordsToAdd.isNotEmpty)
+                  Align(
+                    alignment: const Alignment(-0.1, 0),
+                    child: Wrap(
+                      spacing: 8,
+                      children: _wordsToAdd
+                          .map((w) => Chip(
+                                label: Text(w),
+                                backgroundColor: const Color(0xFFF6F0E9),
+                                onDeleted: () {
+                                  setState(() {
+                                    _wordsToAdd.remove(w);
+                                    _wordsWithMeanings.remove(w);
+                                    _selectedMeanings.remove(w);
+                                  });
+                                },
+                              ))
+                          .toList(),
+                    ),
+                  ),
+
+                const SizedBox(height: 12),
+                // --- 뜻 선택 리스트 ---
+                Expanded(
+                  child: _wordsWithMeanings.isEmpty
+                      ? Align(
+                          alignment: const Alignment(-0.1, 0), // 왼쪽 살짝 치우침
+                          child: const Text('뜻이 없습니다.'),
+                        )
+                      : SingleChildScrollView(
+                          child: Column(
+                            children: _wordsWithMeanings.entries.map((entry) {
+                              final word = entry.key;
+                              final meanings = entry.value;
+                              return Align(
+                                alignment: const Alignment(-0.4, 0),
+                                child: SizedBox(
+                                  width: 300, // 🔹 카드 전체 가로 폭 축소 (원하는 만큼 조절)
+                                  child: Card(
+                                    color: const Color.fromRGBO(0, 0, 0, 0),
+                                    margin:
+                                        const EdgeInsets.symmetric(vertical: 6),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(word,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 4),
+                                          Wrap(
+                                            spacing: 6,
+                                            children: meanings.map((m) {
+                                              final selected =
+                                                  _selectedMeanings[word]!
+                                                      .contains(m);
+                                              return ChoiceChip(
+                                                label: Text(m),
+                                                selected: selected,
+                                                selectedColor:
+                                                    const Color.fromARGB(
+                                                        255, 162, 180, 234),
+                                                backgroundColor:
+                                                    const Color(0xFFF6F0E9),
+                                                onSelected: (val) {
+                                                  setState(() {
+                                                    if (val) {
+                                                      _selectedMeanings[word]!
+                                                          .add(m);
+                                                    } else {
+                                                      _selectedMeanings[word]!
+                                                          .remove(m);
+                                                    }
+                                                  });
+                                                },
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                ),
+                if (_selectedMeanings.values.any((v) => v.isNotEmpty))
+                  Align(
+                    alignment: const Alignment(-0.1, 0), // 왼쪽으로 치우침
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _saveToWordbook,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFCC8C8),
+                        foregroundColor: Colors.black,
+                        minimumSize: const Size(100, 40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(0),
+                          side: const BorderSide(color: Colors.black, width: 2),
+                        ),
+                      ),
+                      child: const Text('단어장에 저장'),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: const Alignment(-0.1, 0), // 왼쪽으로 치우침
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 60), // 아래 여백
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4E6E99),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(100, 40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(0),
+                          side: const BorderSide(color: Colors.black, width: 2),
+                        ),
+                      ),
+                      child: const Text('나가기'),
+                    ),
                   ),
                 ),
-                child: const Text('나가기'),
-              )
-            ],
+              ],
+            ),
           ),
         ),
       ),
