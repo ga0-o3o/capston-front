@@ -4,12 +4,14 @@ class WordItem {
   String word;
   List<String> wordKr;
   bool favorite;
+  String? groupId;
 
   WordItem({
     required this.personalWordbookWordId,
     required this.word,
     required this.wordKr,
     this.favorite = false,
+    this.groupId,
   });
 
   // JSON -> WordItem
@@ -19,6 +21,7 @@ class WordItem {
       word: json['word'] ?? '',
       wordKr: List<String>.from(json['wordKr'] ?? []),
       favorite: json['favorite'] ?? false,
+      groupId: json['groupId'],
     );
   }
 

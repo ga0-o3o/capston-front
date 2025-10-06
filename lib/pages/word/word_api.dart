@@ -154,6 +154,42 @@ class WordApi {
     }
   }
 
+  // 단어 병합
+  static Future<bool> mergeWords(int wordbookId, List<int> wordIds) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+
+      if (token.isEmpty) {
+        throw Exception('로그인이 필요합니다.');
+      }
+
+      final url =
+          Uri.parse('http://localhost:8080/api/words/$wordbookId/words/merge');
+      print('📡 [PUT] 단어 병합 요청: $url');
+
+      final response = await http.put(
+        url,
+        headers: {
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'wordIds': wordIds}),
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ 단어 병합 완료: ${response.body}');
+        return true;
+      } else {
+        print('❌ 단어 병합 실패: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ 단어 병합 오류: $e');
+      return false;
+    }
+  }
+
   // 단어 삭제
   static Future<bool> deleteWord(int wordbookId, int wordId) async {
     try {

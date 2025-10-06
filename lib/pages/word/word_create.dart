@@ -249,6 +249,16 @@ class _WordCreatePageState extends State<WordCreatePage> {
               if (_selectedMeanings.values.any((v) => v.isNotEmpty))
                 ElevatedButton(
                   onPressed: _loading ? null : _saveToWordbook,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFCC8C8), // 배경색
+                    foregroundColor: Colors.black, // 글자색
+                    minimumSize: const Size(100, 40), // 버튼 최소 크기
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(0), // 모서리 각지게
+                      side: const BorderSide(
+                          color: Colors.black, width: 2), // 테두리
+                    ),
+                  ),
                   child: const Text('단어장에 저장'),
                 ),
               const SizedBox(height: 12),

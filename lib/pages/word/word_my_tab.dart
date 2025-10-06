@@ -51,45 +51,24 @@ class _WordMyTabState extends State<WordMyTab> {
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    final query = _searchCtrl.text.toLowerCase();
-    setState(() {
-      _filteredWords = _words
-          .where((word) =>
-              word.word.toLowerCase().contains(query) ||
-              word.wordKr.any((kr) => kr.toLowerCase().contains(query)))
-          .toList();
-    });
-  }
-
   Future<void> _fetchWords() async {
     setState(() => _loading = true);
     try {
       final words = await WordApi.fetchWords(widget.wordbookId);
       setState(() => _words = words);
-      print('✅ Total words loaded: ${_words.length}');
-      // 각 단어 정보 출력
-      for (var w in _words) {
-        print('word: ${w.word}');
-        print('wordKr: ${w.wordKr.join(", ")}');
-        print('wordbookId: ${widget.wordbookId}');
-        print('personalWordbookWordId: ${w.personalWordbookWordId}');
-        print('favorite: ${w.favorite}');
-      }
     } catch (e) {
       print('❌ 단어 조회 에러: $e');
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _deleteWords(int wordbookId, int wordId) async {
     try {
       final success = await WordApi.deleteWord(wordbookId, wordId);
-      if (success)
+      if (success) {
         _words.removeWhere((w) => w.personalWordbookWordId == wordId);
+      }
     } catch (e) {
       print('단어 삭제 에러: $e');
     }
@@ -121,7 +100,6 @@ class _WordMyTabState extends State<WordMyTab> {
     );
 
     if (choice == 'delete') {
-      // 삭제 처리
       final confirm = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
@@ -169,7 +147,6 @@ class _WordMyTabState extends State<WordMyTab> {
         ),
       );
 
-      // 수정 후 리스트 갱신
       await _fetchWords();
     }
   }
@@ -240,14 +217,11 @@ class _WordMyTabState extends State<WordMyTab> {
       backgroundColor: const Color(0xFFF6F0E9),
       body: Column(
         children: [
-          // 검색창
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: TextField(
               controller: _searchCtrl,
-              onTap: () {
-                setState(() => _isSearching = true);
-              },
+              onTap: () => setState(() => _isSearching = true),
               decoration: InputDecoration(
                 hintText: '단어 검색',
                 filled: true,
@@ -270,8 +244,6 @@ class _WordMyTabState extends State<WordMyTab> {
               ),
             ),
           ),
-
-          // 단어 목록
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -287,68 +259,141 @@ class _WordMyTabState extends State<WordMyTab> {
                         padding: const EdgeInsets.all(12),
                         itemBuilder: (context, index) {
                           final word = displayWords[index];
-                          return Card(
-                            elevation: 4,
-                            shadowColor: Colors.black26,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            color: Colors.white,
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () => _showMenu(word), // 카드 클릭 시 메뉴 표시
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
+                          return DragTarget<WordItem>(
+                            onWillAccept: (draggedWord) => draggedWord != word,
+                            onAccept: (draggedWord) async {
+                              // 병합 조건: 같은 단어(wordEn)끼리만
+                              if (word.word != draggedWord.word) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('같은 단어끼리만 병합할 수 있습니다.')),
+                                );
+                                return; // 병합 중단
+                              }
+
+                              // 드래그한 대상이 이미 그룹에 속해 있다면 그룹 전체 가져오기
+                              List<int> wordIdsToMerge = [];
+
+                              // 현재 카드 그룹
+                              if (word.groupId != null) {
+                                wordIdsToMerge.addAll(
+                                  _words
+                                      .where((w) => w.groupId == word.groupId)
+                                      .map((w) => w.personalWordbookWordId),
+                                );
+                              } else {
+                                wordIdsToMerge.add(word.personalWordbookWordId);
+                              }
+
+                              // 드래그한 카드 포함
+                              if (draggedWord.groupId != null) {
+                                wordIdsToMerge.addAll(
+                                  _words
+                                      .where((w) =>
+                                          w.groupId == draggedWord.groupId)
+                                      .map((w) => w.personalWordbookWordId),
+                                );
+                              } else {
+                                wordIdsToMerge
+                                    .add(draggedWord.personalWordbookWordId);
+                              }
+
+                              // 중복 제거
+                              wordIdsToMerge = wordIdsToMerge.toSet().toList();
+
+                              // 서버 병합 호출
+                              final success = await WordApi.mergeWords(
+                                  widget.wordbookId, wordIdsToMerge);
+
+                              if (success) {
+                                await _fetchWords();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('단어 그룹 병합 완료!')),
+                                );
+                              }
+                            },
+                            builder: (context, candidateData, rejectedData) {
+                              return LongPressDraggable<WordItem>(
+                                data: word,
+                                feedback: Material(
+                                  color: Colors.transparent,
+                                  child: Card(
+                                    elevation: 6,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+                                      width: MediaQuery.of(context).size.width -
+                                          24,
+                                      child: Text(
+                                        word.word,
+                                        style: const TextStyle(fontSize: 20),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                child: Card(
+                                  color: candidateData.isNotEmpty
+                                      ? Colors.blue[50]
+                                      : Colors.white,
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () => _showMenu(word),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            word.word,
-                                            style: const TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF3A3A3A),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  word.word,
+                                                  style: const TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF3A3A3A),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  word.wordKr.join(', '),
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    color: Color(0xFF5A5A5A),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            word.wordKr.join(', '),
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              color: Color(0xFF5A5A5A),
+                                          IconButton(
+                                            icon: Icon(
+                                              word.favorite
+                                                  ? Icons.star
+                                                  : Icons.star_border,
+                                              color: Colors.amber[700],
                                             ),
+                                            onPressed: () async {
+                                              final success =
+                                                  await WordApi.toggleFavorite(
+                                                      widget.wordbookId,
+                                                      word.personalWordbookWordId);
+                                              if (success) {
+                                                setState(() => word.favorite =
+                                                    !word.favorite);
+                                              }
+                                            },
                                           ),
                                         ],
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: Icon(
-                                        word.favorite
-                                            ? Icons.star
-                                            : Icons.star_border,
-                                        color: Colors.amber[700],
-                                      ),
-                                      onPressed: () async {
-                                        final success =
-                                            await WordApi.toggleFavorite(
-                                                widget.wordbookId,
-                                                word.personalWordbookWordId);
-                                        if (success) {
-                                          setState(() =>
-                                              word.favorite = !word.favorite);
-                                        }
-                                      },
-                                    )
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           );
                         },
                       ),
