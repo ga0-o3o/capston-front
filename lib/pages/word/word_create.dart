@@ -151,13 +151,9 @@ class _WordCreatePageState extends State<WordCreatePage> {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async => false, // 뒤로가기 방지
+      onWillPop: () async => false,
       child: Scaffold(
         backgroundColor: const Color(0xFFF6F0E9),
-        appBar: AppBar(
-          title: const Text('단어 등록'),
-          automaticallyImplyLeading: false, // AppBar 뒤로가기 버튼 제거
-        ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(

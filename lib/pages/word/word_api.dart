@@ -4,19 +4,20 @@ import 'word_item.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WordApi {
-  /// 단어 조회
-  static Future<List<WordItem>> fetchWords() async {
+  // 개인 단어장 단어 조회
+  static Future<List<WordItem>> fetchWords(int wordbookId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
-      final savedWordbookId = prefs.getInt('selectedWordbookId');
 
-      if (token.isEmpty || savedWordbookId == null) {
+      if (token.isEmpty) {
         throw Exception('로그인이 필요합니다.');
       }
 
-      final url = Uri.parse(
-          'http://localhost:8080/api/v1/wordbooks/$savedWordbookId/words');
+      final url =
+          Uri.parse('http://localhost:8080/api/v1/wordbooks/$wordbookId/words');
+
+      print('📡 [GET] 단어 조회 요청: $url');
 
       final response = await http.get(
         url,
@@ -32,70 +33,92 @@ class WordApi {
         return data.map((e) {
           final wordEn = e['wordEn'] ?? '';
           final wordKrList = List<String>.from(e['wordKr'] ?? []);
+          final wordIds = List<int>.from(e['wordIds'] ?? []);
+          final isFavoriteRaw = e['favorite'];
+          final isFavorite = isFavoriteRaw == 1; // 1 -> true, 0 -> false
+
           return WordItem(
-            personalWordbookWordId: e['personalWordbookWordId'] ?? 0,
+            personalWordbookWordId: wordIds.isNotEmpty ? wordIds.first : 0,
             word: wordEn,
             wordKr: wordKrList,
-            favorite: e['favorite'] ?? false,
+            favorite: isFavorite,
           );
         }).toList();
       } else {
-        print('단어 조회 실패: ${response.statusCode}');
+        print('❌ 단어 조회 실패: ${response.statusCode}');
         return [];
       }
     } catch (e) {
-      print('단어 조회 오류: $e');
+      print('❌ 단어 조회 오류: $e');
       return [];
     }
   }
 
-  /// 단어 즐겨찾기 토글
-  static Future<bool> toggleFavorite(int personalWordbookWordId) async {
+  // 단어 즐겨찾기 토글
+  static Future<bool> toggleFavorite(int personalWordbookId, int wordId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
-      final savedWordbookId = prefs.getInt('selectedWordbookId');
 
-      if (token.isEmpty || savedWordbookId == null) {
-        throw Exception('로그인이 필요합니다.');
-      }
+      if (token.isEmpty) throw Exception('로그인이 필요합니다.');
 
       final url = Uri.parse(
-          'http://localhost:8080/api/words/$savedWordbookId/words/$personalWordbookWordId/toggle-favorite');
+        'http://localhost:8080/api/words/$personalWordbookId/words/$wordId/toggle-favorite',
+      );
 
       final response = await http.put(
         url,
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        headers: {'Authorization': 'Bearer $token'},
       );
 
+      print('📡 [FAVORITE] 응답 코드: ${response.statusCode}');
+      print('📡 [FAVORITE] 응답 바디: ${response.body}');
+
       if (response.statusCode == 200) {
-        return true; // 성공
+        print('✅ 즐겨찾기 상태 변경 성공');
+        return true;
       } else {
-        print('즐겨찾기 실패: ${response.statusCode}');
+        print('❌ 즐겨찾기 실패: ${response.statusCode}');
         return false;
       }
     } catch (e) {
-      print('즐겨찾기 오류: $e');
+      print('❌ 즐겨찾기 오류: $e');
       return false;
     }
   }
 
-  /// 단어 삭제
-  static Future<void> deleteWord(int wordbookId, int wordId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('jwt_token') ?? '';
+  // 단어 삭제
+  static Future<bool> deleteWord(int wordbookId, int wordId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
 
-    final url = Uri.parse(
-        'http://localhost:8080/api/words/personal-wordbook/$wordbookId/words/$wordId');
-    final response = await http.delete(
-      url,
-      headers: {'Authorization': 'Bearer $token'},
-    );
+      if (token.isEmpty) {
+        throw Exception('로그인이 필요합니다.');
+      }
 
-    if (response.statusCode != 200) {
-      throw Exception('단어 삭제 실패');
+      final url = Uri.parse(
+        'http://localhost:8080/api/words/personal-wordbooks/$wordbookId/words/$wordId',
+      );
+
+      final response = await http.delete(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print('✅ 단어 삭제 성공: ${jsonDecode(response.body)['message']}');
+        return true;
+      } else {
+        print('❌ 단어 삭제 실패: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ 단어 삭제 오류: $e');
+      return false;
     }
   }
 }

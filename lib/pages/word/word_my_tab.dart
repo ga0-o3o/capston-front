@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'word_item.dart';
 import 'word_create.dart';
 import 'word_api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'word_image.dart';
 
 class WordMyTab extends StatefulWidget {
   final int wordbookId;
@@ -62,21 +64,100 @@ class _WordMyTabState extends State<WordMyTab> {
   Future<void> _fetchWords() async {
     setState(() => _loading = true);
     try {
-      final words = await WordApi.fetchWords();
+      final words = await WordApi.fetchWords(widget.wordbookId);
       setState(() => _words = words);
       print('✅ Total words loaded: ${_words.length}');
+      // 각 단어 정보 출력
+      for (var w in _words) {
+        print('word: ${w.word}');
+        print('wordKr: ${w.wordKr.join(", ")}');
+        print('wordbookId: ${widget.wordbookId}');
+        print('personalWordbookWordId: ${w.personalWordbookWordId}');
+        print('favorite: ${w.favorite}');
+      }
     } catch (e) {
       print('❌ 단어 조회 에러: $e');
     } finally {
-      setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
-  Future<void> _deleteWords() async {}
+  Future<void> _deleteWords(int wordbookId, int wordId) async {
+    try {
+      final success = await WordApi.deleteWord(wordbookId, wordId);
+      if (success)
+        _words.removeWhere((w) => w.personalWordbookWordId == wordId);
+    } catch (e) {
+      print('단어 삭제 에러: $e');
+    }
+  }
+
+  Future<void> _showMenu(WordItem it) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('수정'),
+              onTap: () => Navigator.pop(context, 'edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete),
+              title: const Text('삭제'),
+              onTap: () => Navigator.pop(context, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == 'delete') {
+      // 삭제 처리
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('단어 삭제'),
+          content: const Text('정말로 삭제하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('삭제'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        await _deleteWords(widget.wordbookId, it.personalWordbookWordId);
+        setState(() {
+          _words.removeWhere(
+              (w) => w.personalWordbookWordId == it.personalWordbookWordId);
+          _filteredWords.removeWhere(
+              (w) => w.personalWordbookWordId == it.personalWordbookWordId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('단어가 삭제되었습니다.')),
+        );
+      }
+    } else if (choice == 'edit') {}
+  }
 
   Future<void> _showAddOptions(BuildContext context) async {
     final result = await showModalBottomSheet<String>(
       context: context,
+      backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       builder: (_) => SafeArea(
         child: Wrap(
@@ -96,7 +177,7 @@ class _WordMyTabState extends State<WordMyTab> {
       ),
     );
 
-    if (result != null && (result == 'manual' || result == 'image')) {
+    if (result == 'manual') {
       await showDialog(
         context: context,
         builder: (_) => Dialog(
@@ -109,9 +190,26 @@ class _WordMyTabState extends State<WordMyTab> {
           ),
         ),
       );
-      widget.onAdd();
-      _fetchWords(); // 단어 추가 후 목록 갱신
+    } else if (result == 'image') {
+      await showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            width: 400,
+            height: 500,
+            child: WordImageUploader(
+              wordbookId: widget.wordbookId,
+              hsvValues: {'h': 0, 's': 0, 'v': 0},
+            ),
+          ),
+        ),
+      );
     }
+
+    widget.onAdd();
+    _fetchWords();
   }
 
   @override
@@ -177,61 +275,58 @@ class _WordMyTabState extends State<WordMyTab> {
                             ),
                             color: Colors.white,
                             margin: const EdgeInsets.symmetric(vertical: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          word.word,
-                                          style: const TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF3A3A3A),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => _showMenu(word), // 카드 클릭 시 메뉴 표시
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            word.word,
+                                            style: const TextStyle(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF3A3A3A),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          word.wordKr.join(', '),
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            color: Color(0xFF5A5A5A),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            word.wordKr.join(', '),
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              color: Color(0xFF5A5A5A),
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(
-                                      word.favorite
-                                          ? Icons.star
-                                          : Icons.star_border_outlined,
-                                      color: word.favorite
-                                          ? Colors.amber
-                                          : Colors.grey,
-                                    ),
-                                    onPressed: () async {
-                                      final success =
-                                          await WordApi.toggleFavorite(
-                                              word.personalWordbookWordId);
-                                      if (success) {
-                                        setState(() =>
-                                            word.favorite = !word.favorite);
-                                      } else {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                              content: Text('즐겨찾기 상태 변경 실패')),
-                                        );
-                                      }
-                                    },
-                                  ),
-                                ],
+                                    IconButton(
+                                      icon: Icon(
+                                        word.favorite
+                                            ? Icons.star
+                                            : Icons.star_border,
+                                        color: Colors.amber[700],
+                                      ),
+                                      onPressed: () async {
+                                        final success =
+                                            await WordApi.toggleFavorite(
+                                                widget.wordbookId,
+                                                word.personalWordbookWordId);
+                                        if (success) {
+                                          setState(() =>
+                                              word.favorite = !word.favorite);
+                                        }
+                                      },
+                                    )
+                                  ],
+                                ),
                               ),
                             ),
                           );

@@ -32,8 +32,8 @@ class _WordMenuPageState extends State<WordMenuPage>
         title: const Text('단어장'),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white, // 선택된 탭 글자 색
-          unselectedLabelColor: Colors.white70, // 선택되지 않은 탭 글자 색
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(text: '내 단어'),
             Tab(text: '즐겨찾기'),
@@ -51,6 +51,9 @@ class _WordMenuPageState extends State<WordMenuPage>
                   widget.wordbookId, item.personalWordbookWordId);
             },
             onAdd: () {},
+          ),
+          WordFavoriteTab(
+            wordbookId: widget.wordbookId,
           ),
         ],
       ),
