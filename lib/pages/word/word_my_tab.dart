@@ -5,6 +5,7 @@ import 'word_edit.dart';
 import 'word_api.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'word_image.dart';
+import 'word_dialogs.dart';
 
 class WordMyTab extends StatefulWidget {
   final int wordbookId;
@@ -100,35 +101,21 @@ class _WordMyTabState extends State<WordMyTab> {
     );
 
     if (choice == 'delete') {
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('단어 삭제'),
-          content: const Text('정말로 삭제하시겠습니까?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('취소'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('삭제'),
-            ),
-          ],
-        ),
-      );
-
+      final confirm = await showDeleteWordDialog(context, it.word);
       if (confirm == true) {
-        await _deleteWords(widget.wordbookId, it.personalWordbookWordId);
-        setState(() {
-          _words.removeWhere(
-              (w) => w.personalWordbookWordId == it.personalWordbookWordId);
-          _filteredWords.removeWhere(
-              (w) => w.personalWordbookWordId == it.personalWordbookWordId);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('단어가 삭제되었습니다.')),
-        );
+        final success = await WordApi.deleteWord(
+            widget.wordbookId, it.personalWordbookWordId);
+        if (success) {
+          setState(() {
+            _words.removeWhere(
+                (w) => w.personalWordbookWordId == it.personalWordbookWordId);
+            _filteredWords.removeWhere(
+                (w) => w.personalWordbookWordId == it.personalWordbookWordId);
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('단어가 삭제되었습니다.')),
+          );
+        }
       }
     } else if (choice == 'edit') {
       await showDialog(
