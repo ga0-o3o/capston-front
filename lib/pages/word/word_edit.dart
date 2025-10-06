@@ -124,13 +124,11 @@ class _WordEditPageState extends State<WordEditPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed: _loading
-                                ? null
-                                : () => Navigator.of(context).pop(false),
+                          child: ElevatedButton(
+                            onPressed: _loading ? null : _saveWord,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFCC8C8), // 배경색
-                              foregroundColor: Colors.white, // 글자색
+                              foregroundColor: Colors.black, // 글자색
                               minimumSize: const Size(100, 40), // 버튼 최소 크기
                               shape: RoundedRectangleBorder(
                                 borderRadius:
@@ -139,10 +137,7 @@ class _WordEditPageState extends State<WordEditPage> {
                                     color: Colors.black, width: 2), // 테두리
                               ),
                             ),
-                            child: const Text(
-                              '나가기',
-                              style: TextStyle(color: Color(0xFF4E6E99)),
-                            ),
+                            child: const Text('나가기'),
                           ),
                         ),
                         const SizedBox(width: 16),
