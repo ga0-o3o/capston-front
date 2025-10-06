@@ -29,11 +29,18 @@ class _WordMenuPageState extends State<WordMenuPage>
       backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF3D4C63),
-        title: const Text('단어장'),
+        title: const Text(
+          '단어장',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(text: '내 단어'),
             Tab(text: '즐겨찾기'),
