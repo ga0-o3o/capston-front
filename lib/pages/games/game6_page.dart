@@ -2,14 +2,13 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart';
 
 import '../word/word_item.dart';
 import 'game_api.dart';
+import 'game_dialogs.dart';
 
 // ------------------ 날아오는 블록 ------------------
 class FlyingBlock {
@@ -336,42 +335,16 @@ class _Game6PageState extends State<Game6Page> {
   DateTime? pauseStart;
 
   void _pauseGame() {
-    gameTimer?.cancel(); // 타이머 멈춤
-    pauseStart = DateTime.now();
+    gameTimer?.cancel(); // 타이머 일시정지
 
-    showDialog(
+    showPauseDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("일시정지"),
-        content: const Text("게임을 계속하시겠습니까?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (pauseStart != null) {
-                double pausedSeconds =
-                    DateTime.now().difference(pauseStart!).inSeconds.toDouble();
-                game.elapsedTime += pausedSeconds; // 경과 시간 보정
-              }
-              pauseStart = null;
-              Navigator.pop(context);
-
-              // 정답을 맞춰서 타이머가 시작된 경우에만 재개
-              if (timerStarted) {
-                _startGameTimer();
-              }
-            },
-            child: const Text("계속하기"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context); // 메뉴로 나가기
-            },
-            child: const Text("종료"),
-          ),
-        ],
-      ),
+      onResume: () {
+        _startGameTimer(); // 타이머 그대로 재개
+      },
+      onExit: () {
+        Navigator.pop(context); // 게임 화면 종료
+      },
     );
   }
 
@@ -395,19 +368,33 @@ class _Game6PageState extends State<Game6Page> {
       List<WordItem> wordItems = await GameApi.fetchAllWords(storedUserId);
       print("총 ${wordItems.length}개의 단어 조회 완료");
 
-      // 게임에서 사용할 Map 형태로 변환
-      List<Map<String, dynamic>> allWords = wordItems.map((w) {
+      // ✅ wordEn 기준으로 그룹화
+      Map<String, Set<String>> grouped = {};
+      for (var w in wordItems) {
+        final en = w.word.trim();
+        final krList = w.wordKr
+            .expand((k) => k.split(',')) // "배, U 보트" → ["배", "U 보트"]
+            .map((k) => k.trim())
+            .where((k) => k.isNotEmpty);
+
+        if (!grouped.containsKey(en)) grouped[en] = {};
+        grouped[en]!.addAll(krList);
+      }
+
+      // ✅ 합쳐진 데이터로 변환
+      List<Map<String, dynamic>> allWords = grouped.entries.map((entry) {
         return {
-          "wordEn": w.word,
-          "wordKr": w.wordKr.isNotEmpty ? w.wordKr.first : "",
+          "wordEn": entry.key,
+          "wordKr": entry.value.join(', '), // 예: "배, U 보트"
         };
       }).toList();
 
       setState(() {
         words = allWords;
-        if (words.isNotEmpty) _nextQuestion();
         isLoading = false;
       });
+
+      if (words.isNotEmpty) _nextQuestion(); // ⚡ setState 바깥에서 호출
     } catch (e) {
       print("❌ 단어 조회 실패: $e");
       setState(() => isLoading = false);
@@ -454,37 +441,57 @@ class _Game6PageState extends State<Game6Page> {
   void checkAnswer() {
     if (currentWord == null || gameOver) return;
 
-    // 사용자가 입력해야 할 값
-    final expectedAnswer = showKorean
-        ? currentWord!["wordEn"]?.toString().toLowerCase() ?? ""
-        : currentWord!["wordKr"]?.toString().toLowerCase() ?? "";
-
     final userInput = controller.text.trim().toLowerCase();
 
-    if (userInput == expectedAnswer) {
-      // 정답 처리
-      if (game.flyingBlocks.isEmpty) {
-        game.addBlockToTower();
+    if (showKorean) {
+      // 한국어 → 영어 맞추기
+      final correctAnswer = currentWord!["wordEn"].toString().toLowerCase();
+      if (userInput == correctAnswer) {
+        _handleCorrect();
       } else {
-        game.pendingBlocks++;
-      }
-      _nextQuestion();
-
-      if (!timerStarted) {
-        _startGameTimer();
-        timerStarted = true;
+        _handleWrong();
       }
     } else {
-      // 오답 → 목숨 감소
-      lives--;
-      if (lives <= 0) {
-        gameOver = true;
-        _showGameOverDialog();
+      // 영어 → 한국어 맞추기
+      final allAnswers = currentWord!["wordKr"]
+          .toString()
+          .split(',')
+          .map((e) => e.trim().toLowerCase())
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      if (allAnswers.contains(userInput)) {
+        _handleCorrect();
+      } else {
+        _handleWrong();
       }
     }
 
     controller.clear();
     setState(() {});
+  }
+
+// ✅ 정답 / 오답 공통 처리 함수
+  void _handleCorrect() {
+    if (game.flyingBlocks.isEmpty) {
+      game.addBlockToTower();
+    } else {
+      game.pendingBlocks++;
+    }
+    _nextQuestion();
+
+    if (!timerStarted) {
+      _startGameTimer();
+      timerStarted = true;
+    }
+  }
+
+  void _handleWrong() {
+    lives--;
+    if (lives <= 0) {
+      gameOver = true;
+      _showGameOverDialog();
+    }
   }
 
   void _showGameOverDialog({bool success = false}) {

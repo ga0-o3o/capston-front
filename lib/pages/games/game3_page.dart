@@ -1,15 +1,14 @@
 import 'dart:async' as async;
 import 'dart:math';
-import 'dart:convert';
 import 'package:flame/game.dart';
 import '../game_menu_page.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'game_api.dart';
+import 'game_dialogs.dart';
 import '../word/word_item.dart';
 
 // -------------------- Maze Game --------------------
@@ -700,43 +699,16 @@ class _Game3PageState extends State<Game3Page> {
   DateTime? pauseStart;
 
   void _pauseGame() {
-    timer?.cancel(); // 타이머 멈춤
-    pauseStart = DateTime.now();
+    timer?.cancel(); // 타이머 일시정지
 
-    showDialog(
+    showPauseDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("일시정지"),
-        content: const Text("게임을 계속하시겠습니까?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (pauseStart != null) {
-                int pausedSeconds =
-                    DateTime.now().difference(pauseStart!).inSeconds;
-                setState(() {
-                  totalTime -= pausedSeconds; // 남은 시간 보정
-                  game.timeLeft = totalTime;
-                });
-              }
-              pauseStart = null;
-              Navigator.pop(context);
-
-              // 타이머 재개
-              startTimer();
-            },
-            child: const Text("계속하기"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context); // 메뉴로 나가기
-            },
-            child: const Text("종료"),
-          ),
-        ],
-      ),
+      onResume: () {
+        startTimer(); // 타이머 그대로 재개
+      },
+      onExit: () {
+        Navigator.pop(context); // 게임 화면 종료
+      },
     );
   }
 

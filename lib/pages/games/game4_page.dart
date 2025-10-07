@@ -5,6 +5,8 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'game_dialogs.dart';
+
 // ------------------- 단어 존재 확인 -------------------
 Future<bool> checkWordExists(String word) async {
   final url = Uri.parse('https://api.datamuse.com/words?sp=$word&max=1');
@@ -238,42 +240,16 @@ class _Game4PageState extends State<Game4Page> {
   }
 
   void _pauseGame() {
-    // 타이머 멈춤
-    _timer?.cancel();
-    pauseStart = DateTime.now();
+    _timer?.cancel(); // 타이머 일시정지
 
-    showDialog(
+    showPauseDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("일시정지"),
-        content: const Text("게임을 계속하시겠습니까?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (pauseStart != null) {
-                int pausedSeconds =
-                    DateTime.now().difference(pauseStart!).inSeconds;
-                remainingTime -= pausedSeconds; // 남은 시간 보정
-              }
-              pauseStart = null;
-              Navigator.pop(context);
-
-              if (_timerStarted && !game.gameOver) {
-                startTimer();
-              }
-            },
-            child: const Text("계속하기"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context); // 메뉴로 나가기
-            },
-            child: const Text("종료"),
-          ),
-        ],
-      ),
+      onResume: () {
+        startTimer(); // 타이머 그대로 재개
+      },
+      onExit: () {
+        Navigator.pop(context); // 게임 화면 종료
+      },
     );
   }
 

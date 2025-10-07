@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../loading_page.dart';
 import 'game_api.dart';
+import 'game_dialogs.dart';
 import '../word/word_item.dart';
 
 class Game2Page extends StatefulWidget {
@@ -217,31 +218,16 @@ class _Game2PageState extends State<Game2Page> {
   }
 
   void _pauseGame() {
-    gameTimer?.cancel();
+    gameTimer?.cancel(); // 타이머 일시정지
 
-    showDialog(
+    showPauseDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("일시정지"),
-        content: const Text("게임을 계속하시겠습니까?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _startTimer();
-            },
-            child: const Text("계속하기"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text("종료"),
-          ),
-        ],
-      ),
+      onResume: () {
+        _startTimer(); // 타이머 그대로 재개
+      },
+      onExit: () {
+        Navigator.pop(context); // 게임 화면 종료
+      },
     );
   }
 
