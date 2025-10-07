@@ -17,11 +17,24 @@ class WordFrontPage extends StatefulWidget {
 class _WordFrontPageState extends State<WordFrontPage> {
   List<Map<String, dynamic>> _wordBooks = [];
   bool _loading = true;
+  final _searchCtrl = TextEditingController();
+  List<Map<String, dynamic>> _filteredBooks = [];
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _loadWordbooks();
+    _searchCtrl.addListener(_onSearchChanged);
+  }
+
+  void _onSearchChanged() {
+    final query = _searchCtrl.text.toLowerCase();
+    setState(() {
+      _filteredBooks = _wordBooks
+          .where((b) => (b['title'] as String).toLowerCase().contains(query))
+          .toList();
+    });
   }
 
   Future<void> _loadWordbooks({bool showLoading = true}) async {
@@ -29,10 +42,11 @@ class _WordFrontPageState extends State<WordFrontPage> {
 
     final list = await WordbookService.fetchWordbooks(context);
 
-    if (!mounted) return; // 화면이 이미 dispose 됐으면 중단
+    if (!mounted) return;
 
     setState(() {
       _wordBooks = list.reversed.toList();
+      _filteredBooks = List.from(_wordBooks);
       if (showLoading) _loading = false;
     });
   }
@@ -94,6 +108,12 @@ class _WordFrontPageState extends State<WordFrontPage> {
   }
 
   @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
@@ -103,22 +123,58 @@ class _WordFrontPageState extends State<WordFrontPage> {
               ? const Center(child: Text('단어장이 없습니다.'))
               : Padding(
                   padding: const EdgeInsets.all(12.0),
-                  child: GridView.builder(
-                    padding: EdgeInsets.zero,
-                    itemCount: _wordBooks.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 3 / 2,
-                    ),
-                    itemBuilder: (context, index) {
-                      return WordbookCard(
-                        book: _wordBooks[index],
-                        onTap: () => _showOptions(index),
-                      );
-                    },
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      // 검색창
+                      TextField(
+                        controller: _searchCtrl,
+                        onTap: () => setState(() => _isSearching = true),
+                        onEditingComplete: () =>
+                            setState(() => _isSearching = false),
+                        decoration: InputDecoration(
+                          hintText: '단어장 검색',
+                          filled: true,
+                          fillColor: _isSearching
+                              ? const Color(0xFF3D4C63)
+                              : Colors.white,
+                          hintStyle: TextStyle(
+                            color: _isSearching ? Colors.white70 : Colors.grey,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: _isSearching ? Colors.white : Colors.grey,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        style: TextStyle(
+                          color: _isSearching ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      // GridView
+                      Expanded(
+                        child: GridView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: _filteredBooks.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 3 / 2,
+                          ),
+                          itemBuilder: (context, index) {
+                            return WordbookCard(
+                              book: _filteredBooks[index],
+                              onTap: () => _showOptions(index),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
       floatingActionButton: _loading
