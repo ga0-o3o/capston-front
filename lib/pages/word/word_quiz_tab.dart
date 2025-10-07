@@ -45,7 +45,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
         wordMap[w.word] = {};
       }
       for (var kr in w.wordKr) {
-        wordMap[w.word]![kr] = w; // 뜻 → 실제 WordItem
+        wordMap[w.word]![kr] = w;
       }
     }
 
@@ -105,18 +105,15 @@ class _WordQuizTabState extends State<WordQuizTab> {
       ),
     );
 
-    // 서버 기록용: 정답이면 입력한 뜻과 매핑된 WordItem, 오답이면 카드 내 첫 번째 WordItem 사용
-    WordItem recordItem;
-    if (isCorrect) {
-      recordItem = _cur!.meaningToOriginal[mean]!;
-    } else {
-      recordItem = _cur!.meaningToOriginal.values.first;
-    }
+    // 서버 기록
+    WordItem recordItem = isCorrect
+        ? _cur!.meaningToOriginal[mean]!
+        : _cur!.meaningToOriginal.values.first;
 
     await WordApi.recordQuiz(
       personalWordbookId: recordItem.personalWordbookId,
       wordId: recordItem.personalWordbookWordId,
-      isWrong: !isCorrect,
+      isWrong: isCorrect ? true : false,
     );
 
     // 영작 체크
@@ -127,7 +124,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('작문에 반드시 단어 "${_cur!.word}"를 포함해야 합니다.')),
         );
-        return; // 조건 안맞으면 넘어가지 않음
+        return;
       }
 
       // 4단어 이상 체크
@@ -135,7 +132,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('작문은 최소 4단어 이상이어야 합니다.')),
         );
-        return; // 조건 안맞으면 넘어가지 않음
+        return;
       }
 
       // 문법 체크
@@ -144,7 +141,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
       final allIssues = [...issues, ...grammarIssues];
 
       if (allIssues.isNotEmpty) {
-        // 문법 오류 모달 보여주기
+        // 문법 오류 모달
         await showModalBottomSheet(
           context: context,
           shape: const RoundedRectangleBorder(
@@ -163,17 +160,18 @@ class _WordQuizTabState extends State<WordQuizTab> {
                       fontWeight: FontWeight.w700, color: Colors.black),
                 ),
                 const SizedBox(height: 8),
-                ...allIssues
-                    .map((d) => Text(
-                          "틀린 부분: '${d.wrongText}' → ${d.message}",
-                          style: const TextStyle(color: Colors.black),
-                        ))
-                    .toList(),
+                ...allIssues.map((d) => Text(
+                      "틀린 부분: '${d.wrongText}' → ${d.message}",
+                      style: const TextStyle(color: Colors.black),
+                    )),
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _nextQuiz(); // ← 닫기 눌렀을 때 다음 문제
+                    },
                     child: const Text(
                       '닫기',
                       style: TextStyle(
@@ -187,10 +185,12 @@ class _WordQuizTabState extends State<WordQuizTab> {
             ),
           ),
         );
-        _nextQuiz();
-        return;
+        return; // 모달 뜨면 여기서 return
       }
     }
+
+    // 영작 없거나 문법 오류 없으면 바로 다음 문제
+    _nextQuiz();
   }
 
   @override
