@@ -9,6 +9,9 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'game_api.dart';
+import '../word/word_item.dart';
+
 // -------------------- Maze Game --------------------
 class MazeGame extends FlameGame {
   late Maze maze;
@@ -349,6 +352,8 @@ class _Game3PageState extends State<Game3Page> {
   String? userId;
   String? token;
 
+  bool isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -388,7 +393,7 @@ class _Game3PageState extends State<Game3Page> {
       });
     };
 
-    _loadUserIdAndWords();
+    _loadUserWords();
   }
 
   void _checkGameOver() {
@@ -422,35 +427,42 @@ class _Game3PageState extends State<Game3Page> {
     });
   }
 
-  Future<void> _loadUserIdAndWords() async {
+  Future<void> _loadUserWords() async {
     final prefs = await SharedPreferences.getInstance();
     final storedToken = prefs.getString('jwt_token');
     final storedUserId = prefs.getString('user_id');
 
     if (storedUserId == null || storedToken == null) {
-      setState(() {});
+      setState(() => isLoading = false);
       return;
     }
 
-    userId = storedUserId;
-    token = storedToken;
+    setState(() {
+      userId = storedUserId;
+      token = storedToken;
+    });
 
-    await fetchWords(storedUserId, storedToken);
-  }
+    try {
+      print("단어 조회 시작...");
+      List<WordItem> wordItems = await GameApi.fetchAllWords(storedUserId);
+      print("총 ${wordItems.length}개의 단어 조회 완료");
 
-  Future<void> fetchWords(String userId, String token) async {
-    final url = Uri.parse("http://localhost:8080/api/personal-words/$userId");
-    final response = await http.get(
-      url,
-      headers: {"Authorization": "Bearer $token"},
-    );
+      // 게임에서 사용할 Map 형태로 변환
+      List<Map<String, dynamic>> allWords = wordItems.map((w) {
+        return {
+          "wordEn": w.word,
+          "wordKr": w.wordKr.isNotEmpty ? w.wordKr.first : "",
+        };
+      }).toList();
 
-    if (response.statusCode == 200) {
-      final list = List<Map<String, dynamic>>.from(jsonDecode(response.body));
       setState(() {
-        words = list;
-        _nextQuestion();
+        words = allWords;
+        if (words.isNotEmpty) _nextQuestion();
+        isLoading = false;
       });
+    } catch (e) {
+      print("❌ 단어 조회 실패: $e");
+      setState(() => isLoading = false);
     }
   }
 
@@ -803,9 +815,7 @@ class _Game3PageState extends State<Game3Page> {
                           ? (currentWord == null
                               ? const Text("단어 없음")
                               : Text(
-                                  showEnglish
-                                      ? currentWord!["wordEn"] ?? "단어 없음"
-                                      : currentWord!["koreanMeaning"] ?? "뜻 없음",
+                                  currentWord!["wordEn"] ?? "단어 없음",
                                   style: const TextStyle(
                                     fontSize: 24,
                                     color: Colors.black,
