@@ -37,8 +37,11 @@ class WordApi {
           final isFavoriteRaw = e['favorite'];
           final isFavorite = isFavoriteRaw == true;
 
+          final personalWordbookId = e['personalWordbookId'] ?? wordbookId;
+
           return WordItem(
             personalWordbookWordId: wordIds.isNotEmpty ? wordIds.first : 0,
+            personalWordbookId: personalWordbookId,
             word: wordEn,
             wordKr: wordKrList,
             favorite: isFavorite,
@@ -129,7 +132,6 @@ class WordApi {
 
       final body = jsonEncode({
         'wordIds': [wordId],
-        'wordKrList': newMeanings, // 선택한 뜻 보내기
       });
 
       final response = await http.put(
@@ -179,7 +181,7 @@ class WordApi {
 
       if (response.statusCode == 200) {
         print('✅ 단어 병합 완료: ${response.body}');
-        return true;
+        return true; // 성공 여부만 반환
       } else {
         print('❌ 단어 병합 실패: ${response.statusCode}');
         return false;
@@ -222,6 +224,84 @@ class WordApi {
     } catch (e) {
       print('❌ 단어 삭제 오류: $e');
       return false;
+    }
+  }
+
+  // 퀴즈 기록
+  static Future<bool> recordQuiz({
+    required int personalWordbookId,
+    required int wordId,
+    required bool isWrong,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+      if (token.isEmpty) throw Exception('로그인이 필요합니다.');
+
+      // URL Path 변수로 전달
+      final url = Uri.parse(
+        'http://localhost:8080/api/v1/quiz/$personalWordbookId/words/$wordId/record/$isWrong',
+      );
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print('퀴즈 기록 저장 성공: ${response.body}');
+        return true;
+      } else {
+        print('퀴즈 기록 저장 실패: ${response.statusCode}, ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('퀴즈 기록 저장 오류: $e');
+      return false;
+    }
+  }
+
+  // 영작 문법 검사
+  static Future<List<Issue>> checkGrammar(String sentence) async {
+    final url = Uri.parse("https://api.sapling.ai/api/v1/edits");
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer 3HFZSH7A9O05TM0Q0SZRA7CB657WEH7B",
+        },
+        body: jsonEncode({
+          "text": sentence,
+          "session_id": "quiz_session_1",
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final edits = data["edits"] as List;
+
+        return edits.map<Issue>((e) {
+          final wrongText = sentence.substring(
+            e["start"] as int,
+            (e["end"] as int).clamp(0, sentence.length),
+          );
+
+          final replacement = (e["replacements"] as List?)?.isNotEmpty == true
+              ? e["replacements"][0]
+              : "Error";
+
+          return Issue(wrongText, replacement);
+        }).toList();
+      } else {
+        return [Issue('', "문법 검사 실패: ${response.statusCode}")];
+      }
+    } catch (e) {
+      return [Issue('', "문법 검사 오류: $e")];
     }
   }
 }

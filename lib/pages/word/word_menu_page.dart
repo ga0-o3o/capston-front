@@ -3,6 +3,7 @@ import 'word_api.dart';
 import 'word_my_tab.dart';
 import 'word_favorite_tab.dart';
 import 'word_quiz_tab.dart';
+import 'word_item.dart';
 
 class WordMenuPage extends StatefulWidget {
   final int wordbookId;
@@ -16,11 +17,21 @@ class WordMenuPage extends StatefulWidget {
 class _WordMenuPageState extends State<WordMenuPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  List<WordItem> _words = [];
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadWords();
+  }
+
+  // 단어 불러오기
+  Future<void> _loadWords() async {
+    final fetched = await WordApi.fetchWords(widget.wordbookId);
+    setState(() {
+      _words = fetched;
+    });
   }
 
   @override
@@ -56,11 +67,17 @@ class _WordMenuPageState extends State<WordMenuPage>
             onDelete: (item) async {
               await WordApi.deleteWord(
                   widget.wordbookId, item.personalWordbookWordId);
+              await _loadWords(); // 삭제 후 갱신
             },
-            onAdd: () {},
+            onAdd: () async {
+              await _loadWords(); // 추가 후 갱신
+            },
           ),
           WordFavoriteTab(
             wordbookId: widget.wordbookId,
+          ),
+          WordQuizTab(
+            words: _words,
           ),
         ],
       ),

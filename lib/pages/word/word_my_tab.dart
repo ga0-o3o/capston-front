@@ -118,7 +118,7 @@ class _WordMyTabState extends State<WordMyTab> {
         }
       }
     } else if (choice == 'edit') {
-      await showDialog(
+      final result = await showDialog<bool>(
         context: context,
         builder: (_) => Dialog(
           shape:
@@ -134,7 +134,9 @@ class _WordMyTabState extends State<WordMyTab> {
         ),
       );
 
-      await _fetchWords();
+      if (result == true) {
+        await _fetchWords();
+      }
     }
   }
 
@@ -252,35 +254,43 @@ class _WordMyTabState extends State<WordMyTab> {
                           return DragTarget<WordItem>(
                             onWillAccept: (draggedWord) => draggedWord != word,
                             onAccept: (draggedWord) async {
-                              // 병합 조건: 같은 단어(wordEn)끼리만
                               if (word.word != draggedWord.word) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                       content: Text('같은 단어끼리만 병합할 수 있습니다.')),
                                 );
-                                return; // 병합 중단
+                                return;
                               }
 
-                              // 드래그한 대상이 이미 그룹에 속해 있다면 그룹 전체 가져오기
-                              List<int> wordIdsToMerge = [];
+                              // 1️⃣ 병합할 단어 ID 수집 (최신 상태 기준)
+                              Set<int> wordIdsToMerge = {};
 
                               // 현재 카드 그룹
-                              if (word.groupId != null) {
+                              final currentGroupId = _words
+                                  .firstWhere((w) =>
+                                      w.personalWordbookWordId ==
+                                      word.personalWordbookWordId)
+                                  .groupId;
+                              if (currentGroupId != null) {
                                 wordIdsToMerge.addAll(
                                   _words
-                                      .where((w) => w.groupId == word.groupId)
+                                      .where((w) => w.groupId == currentGroupId)
                                       .map((w) => w.personalWordbookWordId),
                                 );
                               } else {
                                 wordIdsToMerge.add(word.personalWordbookWordId);
                               }
 
-                              // 드래그한 카드 포함
-                              if (draggedWord.groupId != null) {
+                              // 드래그 카드 그룹
+                              final draggedGroupId = _words
+                                  .firstWhere((w) =>
+                                      w.personalWordbookWordId ==
+                                      draggedWord.personalWordbookWordId)
+                                  .groupId;
+                              if (draggedGroupId != null) {
                                 wordIdsToMerge.addAll(
                                   _words
-                                      .where((w) =>
-                                          w.groupId == draggedWord.groupId)
+                                      .where((w) => w.groupId == draggedGroupId)
                                       .map((w) => w.personalWordbookWordId),
                                 );
                               } else {
@@ -288,15 +298,14 @@ class _WordMyTabState extends State<WordMyTab> {
                                     .add(draggedWord.personalWordbookWordId);
                               }
 
-                              // 중복 제거
-                              wordIdsToMerge = wordIdsToMerge.toSet().toList();
-
-                              // 서버 병합 호출
+                              // 2️⃣ 서버 병합 호출
                               final success = await WordApi.mergeWords(
-                                  widget.wordbookId, wordIdsToMerge);
+                                  widget.wordbookId, wordIdsToMerge.toList());
 
                               if (success) {
+                                // 3️⃣ 병합 후 서버에서 최신 리스트 받아오기
                                 await _fetchWords();
+
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('단어 그룹 병합 완료!')),
                                 );
@@ -355,6 +364,7 @@ class _WordMyTabState extends State<WordMyTab> {
                                                     fontSize: 16,
                                                     color: Color(0xFF5A5A5A),
                                                   ),
+                                                  maxLines: null,
                                                 ),
                                               ],
                                             ),

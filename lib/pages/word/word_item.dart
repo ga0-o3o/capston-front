@@ -1,6 +1,7 @@
 // lib/pages/word/word_item.dart
 class WordItem {
   int personalWordbookWordId;
+  int personalWordbookId;
   String word;
   List<String> wordKr;
   bool favorite;
@@ -8,6 +9,7 @@ class WordItem {
 
   WordItem({
     required this.personalWordbookWordId,
+    required this.personalWordbookId,
     required this.word,
     required this.wordKr,
     this.favorite = false,
@@ -18,6 +20,7 @@ class WordItem {
   factory WordItem.fromJson(Map<String, dynamic> json) {
     return WordItem(
       personalWordbookWordId: json['personalWordbookWordId'] ?? 0,
+      personalWordbookId: json['personalWordbookId'] ?? 0,
       word: json['word'] ?? '',
       wordKr: List<String>.from(json['wordKr'] ?? []),
       favorite: json['favorite'] ?? false,
@@ -29,9 +32,11 @@ class WordItem {
   Map<String, dynamic> toJson() {
     return {
       'personalWordbookWordId': personalWordbookWordId,
+      'personalWordbookId': personalWordbookId,
       'word': word,
       'wordKr': wordKr,
       'favorite': favorite,
+      'groupId': groupId,
     };
   }
 }
