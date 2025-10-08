@@ -193,27 +193,18 @@ class _Game2PageState extends State<Game2Page> {
     gameTimer?.cancel();
     setState(() => gameOver = true);
 
-    // 총 점수 계산
-    int totalScore =
+    int totalSubmitted = submittedAnswers.length;
+    int totalScoreCalc =
         submittedAnswers.fold(0, (sum, item) => sum + (item["score"] as int));
 
-    showDialog(
+    showGameOverDialog_game2(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text("게임 종료"),
-        content: Text(
-            "게임이 종료되었습니다!\n남은 목숨: $lives\n총 제출한 답: ${submittedAnswers.length}개\n총 점수: $totalScore"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // dialog 닫기
-              Navigator.pop(context); // 게임 화면 종료
-            },
-            child: const Text("확인"),
-          ),
-        ],
-      ),
+      totalScore: totalScoreCalc,
+      remainingLives: lives,
+      totalSubmitted: totalSubmitted,
+      onConfirm: () {
+        Navigator.pop(context); // 게임 화면 종료
+      },
     );
   }
 

@@ -227,3 +227,68 @@ Future<void> showGameOverDialog_game4({
     ),
   );
 }
+
+Future<void> showGameOverDialog_game2({
+  required BuildContext context,
+  required int totalScore,
+  required int remainingLives,
+  required int totalSubmitted,
+  required VoidCallback onConfirm,
+}) async {
+  await showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 350,
+        height: 350,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/dialog2.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "게임 종료",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                "총 점수: $totalScore\n남은 목숨: $remainingLives\n총 제출한 답: $totalSubmitted개",
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 35),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context); // 다이얼로그 닫기
+                  onConfirm(); // 이전 화면으로 돌아가기
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFCC8C8),
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(120, 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(0),
+                    side: const BorderSide(color: Colors.black, width: 2),
+                  ),
+                ),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
