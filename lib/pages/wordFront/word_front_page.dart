@@ -61,12 +61,14 @@ class _WordFrontPageState extends State<WordFrontPage> {
         // 새 단어장만 맨 앞에 insert
         _wordBooks.insert(0, {
           'title': data['title'] ?? '제목 없음',
-          'id': data['personalWordbookId'] ?? 0,
+          'id': data['personalWordbookId'] ?? data['id'],
           'color':
               Colors.primaries[_wordBooks.length % Colors.primaries.length],
           'image':
-              'assets/images/wordBook${(data['personalWordbookId'] ?? 0) % 3 + 1}.png',
+              'assets/images/wordBook${(data['personalWordbookId'] ?? data['id'] ?? 0) % 3 + 1}.png',
         });
+
+        _filteredBooks = List.from(_wordBooks);
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,7 +87,12 @@ class _WordFrontPageState extends State<WordFrontPage> {
         if (newTitle == null || newTitle.isEmpty) return;
         final success =
             await WordbookService.editWordbook(book['id'], newTitle, context);
-        if (success) setState(() => _wordBooks[index]['title'] = newTitle);
+        if (success) {
+          setState(() {
+            _wordBooks[index]['title'] = newTitle;
+            _filteredBooks = List.from(_wordBooks); // 검색 리스트도 갱신
+          });
+        }
       },
       onMove: () async {
         final prefs = await SharedPreferences.getInstance();
@@ -102,7 +109,12 @@ class _WordFrontPageState extends State<WordFrontPage> {
 
         final success =
             await WordbookService.deleteWordbook(book['id'], context);
-        if (success) setState(() => _wordBooks.removeAt(index));
+        if (success) {
+          setState(() {
+            _wordBooks.removeAt(index);
+            _filteredBooks = List.from(_wordBooks); // 검색 리스트도 갱신
+          });
+        }
       },
     );
   }

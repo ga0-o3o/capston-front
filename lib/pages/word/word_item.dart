@@ -5,7 +5,7 @@ class WordItem {
   String word;
   List<String> wordKr;
   bool favorite;
-  String? groupId;
+  List<int> groupWordIds;
 
   WordItem({
     required this.personalWordbookWordId,
@@ -13,8 +13,28 @@ class WordItem {
     required this.word,
     required this.wordKr,
     this.favorite = false,
-    this.groupId,
-  });
+    List<int>? groupWordIds,
+  }) : groupWordIds = groupWordIds ?? [personalWordbookWordId];
+
+  // ✅ copyWith 추가
+  WordItem copyWith({
+    int? personalWordbookWordId,
+    int? personalWordbookId,
+    String? word,
+    List<String>? wordKr,
+    bool? favorite,
+    List<int>? groupWordIds,
+  }) {
+    return WordItem(
+      personalWordbookWordId:
+          personalWordbookWordId ?? this.personalWordbookWordId,
+      personalWordbookId: personalWordbookId ?? this.personalWordbookId,
+      word: word ?? this.word,
+      wordKr: wordKr ?? this.wordKr,
+      favorite: favorite ?? this.favorite,
+      groupWordIds: groupWordIds ?? this.groupWordIds,
+    );
+  }
 
   // JSON -> WordItem
   factory WordItem.fromJson(Map<String, dynamic> json) {
@@ -24,7 +44,6 @@ class WordItem {
       word: json['word'] ?? '',
       wordKr: List<String>.from(json['wordKr'] ?? []),
       favorite: json['favorite'] ?? false,
-      groupId: json['groupId'],
     );
   }
 
@@ -36,7 +55,6 @@ class WordItem {
       'word': word,
       'wordKr': wordKr,
       'favorite': favorite,
-      'groupId': groupId,
     };
   }
 }
