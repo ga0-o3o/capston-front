@@ -196,13 +196,16 @@ class _Game4PageState extends State<Game4Page> {
           setState(() {
             game.gameOver = true;
           });
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("시간 종료! 게임 오버!")));
-          // 1초 딜레이 후 메뉴로 이동
-          Future.delayed(const Duration(seconds: 1), () {
-            if (mounted) Navigator.pop(context);
-          });
+          // 시간 종료 시 다이얼로그
+          showGameOverDialog_game4(
+            context: context,
+            success: false,
+            score: game.score,
+            usedWordCount: game.usedWords.length,
+            onConfirm: () {
+              Navigator.pop(context); // 이전 화면으로 이동
+            },
+          );
         }
       }
     });
@@ -219,23 +222,19 @@ class _Game4PageState extends State<Game4Page> {
     if (game.gameOver) {
       _timer?.cancel();
 
-      const snackBarDuration = Duration(seconds: 2);
-
       // 기존 스낵바 제거
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      // 게임 오버 스낵바 보여주기
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("게임 오버!"),
-          duration: snackBarDuration,
-        ),
+      // 게임 오버 다이얼로그 띄우기
+      showGameOverDialog_game4(
+        context: context,
+        success: false, // 끝말잇기 게임에서는 success 구분 없으므로 false
+        score: game.score,
+        usedWordCount: game.usedWords.length,
+        onConfirm: () {
+          Navigator.pop(context); // 게임 화면 종료 → 이전 화면 복귀
+        },
       );
-
-      // 스낵바가 완전히 사라진 후 이전 화면으로 이동
-      Future.delayed(snackBarDuration, () {
-        if (mounted) Navigator.pop(context);
-      });
     }
   }
 
