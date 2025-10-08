@@ -907,19 +907,41 @@ class _Game3PageState extends State<Game3Page> {
             const SizedBox(height: 16),
 
             // 입력창
-            TextField(
-              controller: controller,
-              focusNode: answerFocusNode,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "정답 입력",
-              ),
-              onSubmitted: (_) {
-                checkAnswer();
-                FocusScope.of(
-                  context,
-                ).requestFocus(gameFocusNode); // ✅ 자동으로 다시 게임으로
-              },
+            // 입력창 + 제출 버튼
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    focusNode: answerFocusNode,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: "정답 입력",
+                    ),
+                    onSubmitted: (_) {
+                      checkAnswer();
+                      FocusScope.of(context).requestFocus(gameFocusNode);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8), // TextField와 버튼 사이 여백
+                ElevatedButton(
+                  onPressed: () {
+                    checkAnswer();
+                    FocusScope.of(context).requestFocus(gameFocusNode);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4E6E99),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(80, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(0),
+                      side: const BorderSide(color: Colors.black, width: 2),
+                    ),
+                  ),
+                  child: const Text("제출"),
+                ),
+              ],
             ),
           ],
         ),

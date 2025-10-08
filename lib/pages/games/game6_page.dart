@@ -629,18 +629,42 @@ class _Game6PageState extends State<Game6Page> {
             ),
 
             const SizedBox(height: 16),
-            // 정답 입력창
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: "정답 입력",
-              ),
-              onSubmitted: (!showStartMessage && !showSpeedUpMessage)
-                  ? (_) => checkAnswer()
-                  : null,
-              enabled: !showStartMessage && !showSpeedUpMessage,
-            ),
+            // ------------------ 정답 입력창 + 제출 버튼 ------------------
+            Row(
+              children: [
+                // 입력창
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: "정답 입력",
+                    ),
+                    onSubmitted: (!showStartMessage && !showSpeedUpMessage)
+                        ? (_) => checkAnswer()
+                        : null,
+                    enabled: !showStartMessage && !showSpeedUpMessage,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 제출 버튼
+                ElevatedButton(
+                  onPressed: (!showStartMessage && !showSpeedUpMessage)
+                      ? checkAnswer
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF4E6E99),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(80, 40),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(0),
+                      side: const BorderSide(color: Colors.black, width: 2),
+                    ),
+                  ),
+                  child: const Text("제출"),
+                ),
+              ],
+            )
           ],
         ),
       ),
