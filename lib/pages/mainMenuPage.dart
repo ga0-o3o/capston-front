@@ -6,9 +6,8 @@ import 'wordFront/word_front_page.dart';
 import 'game_menu_page.dart';
 import 'levelTest_page.dart';
 import 'userInfo_page.dart';
-import 'word/word_menu_page.dart';
 import 'chating_page.dart';
-import 'review_page.dart';
+import 'review/review_page.dart';
 
 class MainMenuPage extends StatefulWidget {
   final String userName;

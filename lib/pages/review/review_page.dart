@@ -1,7 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'review_api.dart';
+import '../word/word_item.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class Issue {
   final String wrongText;
@@ -21,9 +23,9 @@ class _ReviewPageState extends State<ReviewPage> {
   final TextEditingController _meanCtrl = TextEditingController();
   final TextEditingController _compCtrl = TextEditingController();
 
-  List<dynamic> _wordList = [];
+  List<WordItem> _wordList = [];
   int _currentIndex = 0;
-  Map<String, dynamic>? _cur;
+  WordItem? _cur;
 
   @override
   void initState() {
@@ -32,48 +34,22 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   Future<void> _fetchTodayWords() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token');
-      final userId = prefs.getString('user_id');
+    final prefs = await SharedPreferences.getInstance();
+    final loginId = prefs.getString('user_id') ?? '';
 
-      print('Token: $token');
-      print('UserId: $userId');
-
-      if (userId == null || token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('로그인 정보가 없습니다.')),
-        );
-        return;
-      }
-
-      final url =
-          Uri.parse('http://localhost:8080/api/v1/words/review/today/$userId');
-
-      final res = await http.get(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        setState(() {
-          _wordList = data['words'] ?? [];
-          _currentIndex = 0;
-          _cur = _wordList.isNotEmpty ? _wordList[0] : null;
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('단어 조회 실패: ${res.statusCode}')),
-        );
-      }
-    } catch (e) {
+    if (loginId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('오늘 복습 단어 조회 예외: $e')),
+        const SnackBar(content: Text('로그인 정보가 없습니다.')),
       );
+      return;
     }
+
+    final words = await ReviewApi.fetchReviewWords(loginId);
+    setState(() {
+      _wordList = words;
+      _currentIndex = 0;
+      _cur = _wordList.isNotEmpty ? _wordList[0] : null;
+    });
   }
 
   void _nextQuiz() {
@@ -96,12 +72,8 @@ class _ReviewPageState extends State<ReviewPage> {
 
   bool _isMeaningCorrect() {
     if (_cur == null) return false;
-
     final userMeaning = _meanCtrl.text.trim().toLowerCase();
-    final meaningStr = _cur?['meaning'] ?? '';
-    final correctMeanings =
-        meaningStr.split(',').map((e) => e.trim().toLowerCase()).toList();
-
+    final correctMeanings = _cur!.wordKr.map((e) => e.toLowerCase()).toList();
     return correctMeanings.contains(userMeaning);
   }
 
@@ -122,10 +94,7 @@ class _ReviewPageState extends State<ReviewPage> {
           "Content-Type": "application/json",
           "Authorization": "Bearer 3HFZSH7A9O05TM0Q0SZRA7CB657WEH7B",
         },
-        body: jsonEncode({
-          "text": sentence,
-          "session_id": "quiz_session_1",
-        }),
+        body: jsonEncode({"text": sentence, "session_id": "quiz_session_1"}),
       );
 
       if (response.statusCode == 200) {
@@ -140,7 +109,6 @@ class _ReviewPageState extends State<ReviewPage> {
           final replacement = (e["replacements"] as List?)?.isNotEmpty == true
               ? e["replacements"][0]
               : "Error";
-
           return Issue(wrongText, replacement);
         }).toList();
       } else {
@@ -156,9 +124,8 @@ class _ReviewPageState extends State<ReviewPage> {
 
     final mean = _meanCtrl.text.trim();
     if (mean.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('뜻을 먼저 입력하세요.')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('뜻을 먼저 입력하세요.')));
       return;
     }
 
@@ -166,36 +133,38 @@ class _ReviewPageState extends State<ReviewPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content:
-            Text(isCorrect ? '정답! 🎉' : '오답 😅 정답: ${_cur?['meaning'] ?? ""}'),
+            Text(isCorrect ? '정답! 🎉' : '오답 😅 정답: ${_cur!.wordKr.join(', ')}'),
       ),
     );
 
-    // 서버에 기록
+    // 서버 기록
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token');
       if (token == null) return;
 
-      final url = Uri.parse('http://localhost:8080/api/v1/words/quiz/record');
-      final body = jsonEncode({
-        'personalWordbookId': _cur?['personalWordbookId'],
-        'wordId': _cur?['wordId'],
-        'isWrong': !isCorrect,
-      });
+      for (final wordId in _cur!.groupWordIds ?? []) {
+        final url = Uri.parse('http://localhost:8080/api/v1/words/quiz/record');
+        final body = jsonEncode({
+          'personalWordbookId': _cur!.personalWordbookId,
+          'wordId': wordId,
+          'isWrong': !isCorrect,
+        });
 
-      final res = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: body,
-      );
+        final res = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: body,
+        );
 
-      if (res.statusCode == 200) {
-        print('퀴즈 기록 저장 성공');
-      } else {
-        print('퀴즈 기록 저장 실패: ${res.statusCode}, ${res.body}');
+        if (res.statusCode == 200) {
+          print('퀴즈 기록 저장 성공: $wordId');
+        } else {
+          print('퀴즈 기록 저장 실패: ${res.statusCode}, ${res.body}');
+        }
       }
     } catch (e) {
       print('퀴즈 기록 예외: $e');
@@ -204,7 +173,7 @@ class _ReviewPageState extends State<ReviewPage> {
     // 영작 검사
     final comp = _compCtrl.text.trim();
     if (comp.isNotEmpty) {
-      final issues = _validateComposition(_compCtrl.text, _cur?['word'] ?? '');
+      final issues = _validateComposition(comp, _cur!.word);
       final grammarIssues = await checkGrammar(comp);
       final allIssues = [...issues, ...grammarIssues];
 
@@ -258,7 +227,7 @@ class _ReviewPageState extends State<ReviewPage> {
             : Column(
                 children: [
                   Text(
-                    '단어: ${_cur?['word'] ?? ""}',
+                    '단어: ${_cur!.word}',
                     style: const TextStyle(fontSize: 24),
                   ),
                   const SizedBox(height: 16),
