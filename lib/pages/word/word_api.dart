@@ -45,6 +45,7 @@ class WordApi {
             word: wordEn,
             wordKr: wordKrList,
             favorite: isFavorite,
+            groupWordIds: wordIds,
           );
         }).toList();
       } else {
