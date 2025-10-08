@@ -399,29 +399,18 @@ class _Game3PageState extends State<Game3Page> {
     if (!game.gameOver) return;
 
     Future.delayed(Duration.zero, () {
-      showDialog(
+      showGameOverDialog_game3(
         context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-          title: const Text("게임 종료"),
-          content: Text(
-            "남은 목숨: $lives\n남은 시간: $totalTime초\n풀었던 문제 수: $solvedQuestions",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const GameMenuPage(),
-                  ),
-                  (route) => false, // 기존의 모든 라우트 제거
-                );
-              },
-              child: const Text("확인"),
-            ),
-          ],
-        ),
+        remainingLives: lives,
+        remainingTime: totalTime,
+        solvedQuestions: solvedQuestions,
+        onConfirm: () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const GameMenuPage()),
+            (route) => false,
+          );
+        },
       );
     });
   }
