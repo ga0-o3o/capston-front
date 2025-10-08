@@ -495,26 +495,13 @@ class _Game6PageState extends State<Game6Page> {
   }
 
   void _showGameOverDialog({bool success = false}) {
-    showDialog(
+    showGameOverDialog_game6(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: Text(success ? "게임 성공!" : "게임 종료"),
-        content: Text(
-          success
-              ? "축하합니다! 시간을 버티고 탑을 완성했습니다.\n총 쌓인 블록: ${game.towerHeight}"
-              : "총 쌓인 블록: ${game.towerHeight}",
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text("확인"),
-          ),
-        ],
-      ),
+      success: success,
+      towerHeight: game.towerHeight,
+      onConfirm: () {
+        Navigator.pop(context); // 게임 화면 종료 → 이전 화면으로 돌아감
+      },
     );
   }
 

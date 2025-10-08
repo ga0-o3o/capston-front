@@ -90,3 +90,71 @@ Future<void> showPauseDialog({
     ),
   );
 }
+
+Future<void> showGameOverDialog_game6({
+  required BuildContext context,
+  bool success = false,
+  required int towerHeight,
+  required VoidCallback onConfirm,
+}) async {
+  await showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: 350,
+        height: 350,
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/dialog2.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                success ? "게임 성공!" : "게임 종료",
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                success
+                    ? "축하합니다! 시간을 버티고 탑을 완성했습니다.\n총 쌓인 블록: $towerHeight"
+                    : "총 쌓인 블록: $towerHeight",
+                style: const TextStyle(fontSize: 16, color: Colors.black87),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 35),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  onConfirm();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: success
+                      ? const Color(0xFF4E6E99)
+                      : const Color(0xFFFCC8C8),
+                  foregroundColor: success ? Colors.white : Colors.black,
+                  minimumSize: const Size(120, 40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(0),
+                    side: const BorderSide(color: Colors.black, width: 2),
+                  ),
+                ),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
