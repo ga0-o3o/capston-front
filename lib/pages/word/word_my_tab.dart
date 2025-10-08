@@ -52,6 +52,22 @@ class _WordMyTabState extends State<WordMyTab> {
     super.dispose();
   }
 
+  bool isAnswerCorrect(WordItem wordItem, String userInput) {
+    final normalizedInput = userInput.trim().toLowerCase();
+
+    // 서버 원본 배열 사용
+    return wordItem.wordKrOriginal
+        .any((kr) => kr.toLowerCase() == normalizedInput);
+  }
+
+  void checkQuizAnswer(WordItem wordItem, String userInput) {
+    if (isAnswerCorrect(wordItem, userInput)) {
+      print('정답!');
+    } else {
+      print('오답!');
+    }
+  }
+
   Future<void> _fetchWords() async {
     setState(() => _loading = true);
     try {
@@ -67,7 +83,8 @@ class _WordMyTabState extends State<WordMyTab> {
             : [w.personalWordbookWordId]));
 
         return w.copyWith(
-          wordKr: uniqueMeanings,
+          wordKr: uniqueMeanings, // UI용
+          wordKrOriginal: w.wordKr, // 서버 원본
           groupWordIds: groupWordIds,
         );
       }).toList();

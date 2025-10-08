@@ -15,12 +15,14 @@ class WordQuizTab extends StatefulWidget {
 // 합쳐진 카드 구조
 class QuizCard {
   final String word;
-  final List<String> meanings;
-  final Map<String, WordItem> meaningToOriginal; // 뜻 → 실제 WordItem 매핑
+  final List<String> meanings; // UI용 (중복 제거)
+  final List<String> meaningsOriginal; // 서버 원본
+  final Map<String, WordItem> meaningToOriginal; // 뜻 → WordItem
 
   QuizCard({
     required this.word,
     required this.meanings,
+    required this.meaningsOriginal,
     required this.meaningToOriginal,
   });
 }
@@ -38,23 +40,26 @@ class _WordQuizTabState extends State<WordQuizTab> {
   void initState() {
     super.initState();
 
-    // 같은 단어(word)끼리 묶어서 뜻(wordKr)을 합치고 매핑 생성
+    // 같은 단어(word)끼리 묶어서 뜻(wordKr) 합치고 mapping 생성
     final Map<String, Map<String, WordItem>> wordMap = {};
     for (var w in widget.words) {
       if (!wordMap.containsKey(w.word)) {
         wordMap[w.word] = {};
       }
-      for (var kr in w.wordKr) {
+      for (var kr in w.wordKrOriginal) {
+        // ✅ 서버 원본 사용
         wordMap[w.word]![kr] = w;
       }
     }
 
-    // QuizCard 생성
     _items = wordMap.entries.map((e) {
-      final meanings = e.value.keys.toList();
+      final uiMeanings =
+          e.value.values.expand((w) => w.wordKr).toSet().toList(); // UI용
+      final originalMeanings = e.value.keys.toList(); // 서버 원본
       return QuizCard(
         word: e.key,
-        meanings: meanings,
+        meanings: uiMeanings,
+        meaningsOriginal: originalMeanings,
         meaningToOriginal: e.value,
       );
     }).toList();
@@ -74,9 +79,13 @@ class _WordQuizTabState extends State<WordQuizTab> {
 
   bool _isMeaningCorrect() {
     if (_cur == null) return false;
-    final input = _meanCtrl.text.trim();
+    final input = _meanCtrl.text.trim().toLowerCase();
     if (input.isEmpty) return false;
-    return _cur!.meanings.contains(input);
+
+    // 서버 원본 배열을 소문자로 변환 후 비교
+    return _cur!.meaningsOriginal
+        .map((e) => e.trim().toLowerCase())
+        .contains(input);
   }
 
   List<Issue> _validateComposition(String sentence, String word) {
@@ -95,25 +104,32 @@ class _WordQuizTabState extends State<WordQuizTab> {
     }
     if (_cur == null) return;
 
-    final isCorrect = _isMeaningCorrect();
+    // 대소문자 무시 정답 체크
+    final inputNormalized = mean.toLowerCase();
+    final isCorrect = _cur!.meaningsOriginal
+        .map((e) => e.trim().toLowerCase())
+        .contains(inputNormalized);
 
+    // 스낵바에 UI용 배열 표시
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          isCorrect ? '정답! 🎉' : '오답 😅  정답: ${_cur!.meanings}',
+          isCorrect ? '정답! 🎉' : '오답 😅  정답: ${_cur!.meanings.join(', ')}',
         ),
       ),
     );
 
-    // 서버 기록
-    WordItem recordItem = isCorrect
-        ? _cur!.meaningToOriginal[mean]!
-        : _cur!.meaningToOriginal.values.first;
+    // 서버 기록용 WordItem 찾기 (null-safe, 대소문자 무시)
+    String matchedKey = _cur!.meaningToOriginal.keys.firstWhere(
+      (k) => k.trim().toLowerCase() == inputNormalized,
+      orElse: () => _cur!.meaningToOriginal.keys.first,
+    );
+    final recordItem = _cur!.meaningToOriginal[matchedKey]!;
 
     await WordApi.recordQuiz(
       personalWordbookId: recordItem.personalWordbookId,
       wordId: recordItem.personalWordbookWordId,
-      isWrong: isCorrect ? true : false,
+      isWrong: !isCorrect, // 맞으면 false, 틀리면 true
     );
 
     // 영작 체크
@@ -170,7 +186,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
                   child: TextButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      _nextQuiz(); // ← 닫기 눌렀을 때 다음 문제
+                      _nextQuiz(); // 닫기 눌렀을 때 다음 문제
                     },
                     child: const Text(
                       '닫기',
