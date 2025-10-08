@@ -3,7 +3,6 @@ import 'word_item.dart';
 import 'word_create.dart';
 import 'word_edit.dart';
 import 'word_api.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'word_image.dart';
 import 'word_dialogs.dart';
 
@@ -50,22 +49,6 @@ class _WordMyTabState extends State<WordMyTab> {
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
-  }
-
-  bool isAnswerCorrect(WordItem wordItem, String userInput) {
-    final normalizedInput = userInput.trim().toLowerCase();
-
-    // 서버 원본 배열 사용
-    return wordItem.wordKrOriginal
-        .any((kr) => kr.toLowerCase() == normalizedInput);
-  }
-
-  void checkQuizAnswer(WordItem wordItem, String userInput) {
-    if (isAnswerCorrect(wordItem, userInput)) {
-      print('정답!');
-    } else {
-      print('오답!');
-    }
   }
 
   Future<void> _fetchWords() async {
@@ -316,6 +299,8 @@ class _WordMyTabState extends State<WordMyTab> {
                                 feedback: Material(
                                   color: Colors.transparent,
                                   child: Card(
+                                    color: const Color.fromARGB(
+                                        255, 162, 180, 234),
                                     elevation: 6,
                                     child: Container(
                                       padding: const EdgeInsets.all(16),
