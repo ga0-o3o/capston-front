@@ -52,6 +52,10 @@ class _ReviewPageState extends State<ReviewPage> {
       }
 
       final words = await ReviewApi.fetchReviewWords(loginId);
+      for (var w in words) {
+        print(
+            'word: ${w.word}, personalWordbookId: ${w.personalWordbookId}, groupWordIds: ${w.groupWordIds}');
+      }
 
       if (!mounted) return;
 
