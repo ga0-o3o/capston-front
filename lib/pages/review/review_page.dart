@@ -292,18 +292,28 @@ class _ReviewPageState extends State<ReviewPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4E6E99),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onPressed: _confirmQuiz,
-                    child: const Text('확인',
+                  SizedBox(
+                    width: double.infinity, // 화면 가로 꽉 채움
+                    height: 60, // 높이 60으로 지정
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4E6E99),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 16), // 내부 여백
+                      ),
+                      onPressed: _confirmQuiz,
+                      child: const Text(
+                        '확인',
                         style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white)),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
