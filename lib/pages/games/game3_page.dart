@@ -405,11 +405,8 @@ class _Game3PageState extends State<Game3Page> {
         remainingTime: totalTime,
         solvedQuestions: solvedQuestions,
         onConfirm: () {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const GameMenuPage()),
-            (route) => false,
-          );
+          Navigator.of(context).pop(); // 다이얼로그 닫기
+          Navigator.of(context).pop(); // 게임 페이지 pop → 이전 페이지로 이동
         },
       );
     });
