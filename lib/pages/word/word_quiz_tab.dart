@@ -129,7 +129,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
     await WordApi.recordQuiz(
       personalWordbookId: recordItem.personalWordbookId,
       wordId: recordItem.personalWordbookWordId,
-      isWrong: !isCorrect, // 맞으면 false, 틀리면 true
+      isWrong: isCorrect, // 맞으면 true, 틀리면 false
     );
 
     // 영작 체크
