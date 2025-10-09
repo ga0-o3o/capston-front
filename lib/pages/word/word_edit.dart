@@ -1,4 +1,3 @@
-// lib/pages/word/word_edit.dart
 import 'package:flutter/material.dart';
 import 'word_item.dart';
 import 'word_api.dart';
@@ -18,8 +17,8 @@ class WordEditPage extends StatefulWidget {
 }
 
 class _WordEditPageState extends State<WordEditPage> {
-  List<String> _meanings = []; // 서버에서 가져온 뜻
-  Set<String> _selectedMeanings = {}; // 선택한 뜻
+  List<String> _meanings = []; // 서버에서 불러온 모든 뜻
+  Set<String> _selectedMeanings = {}; // 선택된 뜻
   bool _loading = false;
 
   @override
@@ -30,13 +29,15 @@ class _WordEditPageState extends State<WordEditPage> {
 
   Future<void> _loadMeanings() async {
     setState(() => _loading = true);
+
     final meanings = await WordApi.fetchWordMeanings(widget.wordItem.word);
 
+    // 서버에서 불러온 뜻 + 원래 뜻들을 모두 포함 (중복 제거)
+    final allMeanings = {...meanings, ...widget.wordItem.wordKr}.toList();
+
     setState(() {
-      _meanings = meanings;
-      // 원래 단어의 뜻만 선택
-      _selectedMeanings =
-          meanings.where((m) => widget.wordItem.wordKr.contains(m)).toSet();
+      _meanings = allMeanings;
+      _selectedMeanings = widget.wordItem.wordKr.toSet(); // ✅ 기존 뜻 자동 체크
       _loading = false;
     });
   }
@@ -51,17 +52,17 @@ class _WordEditPageState extends State<WordEditPage> {
 
     setState(() => _loading = true);
 
+    // ✅ selectedWordIds 대신 groupWordIds 사용
     final success = await WordApi.updateWordGroup(
       widget.wordbookId,
-      widget.wordItem.personalWordbookWordId,
-      _selectedMeanings.toList(), // 선택한 뜻 보내기
+      widget.wordItem.groupWordIds,
     );
 
     setState(() => _loading = false);
 
     if (success) {
       widget.wordItem.wordKr = _selectedMeanings.toList();
-      Navigator.of(context).pop(true); // 저장 성공 후 닫기
+      if (mounted) Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('단어가 수정되었습니다.')),
       );
@@ -74,15 +75,14 @@ class _WordEditPageState extends State<WordEditPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Dialog 내에서 다른 영역을 눌러도 닫히지 않도록 GestureDetector 사용
     return WillPopScope(
-      onWillPop: () async => false, // 백버튼도 막음
+      onWillPop: () async => false, // 백버튼 방지
       child: Scaffold(
         backgroundColor: const Color(0xFFF6F0E9),
         appBar: AppBar(
           title: Text('${widget.wordItem.word} 수정'),
           backgroundColor: const Color(0xFF4E6E99),
-          automaticallyImplyLeading: false, // 기본 뒤로가기 제거
+          automaticallyImplyLeading: false, // 뒤로가기 제거
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -93,7 +93,10 @@ class _WordEditPageState extends State<WordEditPage> {
                   children: [
                     const Text(
                       '뜻 선택',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Expanded(
@@ -106,6 +109,10 @@ class _WordEditPageState extends State<WordEditPage> {
                             return ChoiceChip(
                               label: Text(m),
                               selected: selected,
+                              selectedColor: const Color(0xFF4E6E99),
+                              labelStyle: TextStyle(
+                                color: selected ? Colors.white : Colors.black,
+                              ),
                               onSelected: (val) {
                                 setState(() {
                                   if (val) {
@@ -125,16 +132,20 @@ class _WordEditPageState extends State<WordEditPage> {
                       children: [
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: _loading ? null : _saveWord,
+                            onPressed: _loading
+                                ? null
+                                : () =>
+                                    Navigator.of(context).pop(false), // ✅ 단순 종료
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFCC8C8), // 배경색
-                              foregroundColor: Colors.black, // 글자색
-                              minimumSize: const Size(100, 40), // 버튼 최소 크기
+                              backgroundColor: const Color(0xFFFCC8C8),
+                              foregroundColor: Colors.black,
+                              minimumSize: const Size(100, 40),
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(0), // 모서리 각지게
+                                borderRadius: BorderRadius.circular(0),
                                 side: const BorderSide(
-                                    color: Colors.black, width: 2), // 테두리
+                                  color: Colors.black,
+                                  width: 2,
+                                ),
                               ),
                             ),
                             child: const Text('나가기'),
@@ -145,14 +156,15 @@ class _WordEditPageState extends State<WordEditPage> {
                           child: ElevatedButton(
                             onPressed: _loading ? null : _saveWord,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4E6E99), // 배경색
-                              foregroundColor: Colors.white, // 글자색
-                              minimumSize: const Size(100, 40), // 버튼 최소 크기
+                              backgroundColor: const Color(0xFF4E6E99),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(100, 40),
                               shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(0), // 모서리 각지게
+                                borderRadius: BorderRadius.circular(0),
                                 side: const BorderSide(
-                                    color: Colors.black, width: 2), // 테두리
+                                  color: Colors.black,
+                                  width: 2,
+                                ),
                               ),
                             ),
                             child: const Text('저장'),

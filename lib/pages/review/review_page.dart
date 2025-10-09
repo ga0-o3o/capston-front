@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'review_api.dart';
+import 'review_loading.dart';
 import '../word/word_item.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -27,29 +28,46 @@ class _ReviewPageState extends State<ReviewPage> {
   int _currentIndex = 0;
   WordItem? _cur;
 
+  bool _loading = false;
+
   @override
   void initState() {
     super.initState();
-    _fetchTodayWords();
+    _fetchTodayWords(showLoading: true);
   }
 
-  Future<void> _fetchTodayWords() async {
-    final prefs = await SharedPreferences.getInstance();
-    final loginId = prefs.getString('user_id') ?? '';
+  Future<void> _fetchTodayWords({bool showLoading = true}) async {
+    if (showLoading && mounted) setState(() => _loading = true);
 
-    if (loginId.isEmpty) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final loginId = prefs.getString('user_id') ?? '';
+
+      if (loginId.isEmpty) {
+        if (mounted) setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인 정보가 없습니다.')),
+        );
+        return;
+      }
+
+      final words = await ReviewApi.fetchReviewWords(loginId);
+
+      if (!mounted) return;
+
+      setState(() {
+        _wordList = words;
+        _currentIndex = 0;
+        _cur = _wordList.isNotEmpty ? _wordList[0] : null;
+        if (showLoading) _loading = false;
+      });
+    } catch (e) {
+      print('❌ 단어 조회 에러: $e');
+      if (mounted) setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('로그인 정보가 없습니다.')),
+        const SnackBar(content: Text('단어 조회 실패')),
       );
-      return;
     }
-
-    final words = await ReviewApi.fetchReviewWords(loginId);
-    setState(() {
-      _wordList = words;
-      _currentIndex = 0;
-      _cur = _wordList.isNotEmpty ? _wordList[0] : null;
-    });
   }
 
   void _nextQuiz() {
@@ -137,49 +155,44 @@ class _ReviewPageState extends State<ReviewPage> {
       ),
     );
 
-    // 서버 기록
+    // ✅ 복습일 업데이트
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('jwt_token');
-      if (token == null) return;
+      if (_cur != null &&
+          _cur!.groupWordIds != null &&
+          _cur!.groupWordIds!.isNotEmpty) {
+        final updated = await ReviewApi.updateReviewDate(
+            _cur!.personalWordbookId, _cur!.groupWordIds!.first);
 
-      for (final wordId in _cur!.groupWordIds ?? []) {
-        final url = Uri.parse('http://localhost:8080/api/v1/words/quiz/record');
-        final body = jsonEncode({
-          'personalWordbookId': _cur!.personalWordbookId,
-          'wordId': wordId,
-          'isWrong': !isCorrect,
-        });
-
-        final res = await http.post(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
-          },
-          body: body,
-        );
-
-        if (res.statusCode == 200) {
-          print('퀴즈 기록 저장 성공: $wordId');
+        if (updated) {
+          print('복습일 업데이트 성공: ${_cur!.word}');
         } else {
-          print('퀴즈 기록 저장 실패: ${res.statusCode}, ${res.body}');
+          print('복습일 업데이트 실패: ${_cur!.word}');
         }
       }
     } catch (e) {
-      print('퀴즈 기록 예외: $e');
+      print('복습일 업데이트 예외: $e');
     }
 
-    // 영작 검사
+    // ✅ 영작 검사
     final comp = _compCtrl.text.trim();
     if (comp.isNotEmpty) {
-      final issues = _validateComposition(comp, _cur!.word);
+      // 단어 포함 체크
+      final compositionIssues = _validateComposition(comp, _cur!.word);
+
+      // 4단어 이상 체크
+      if (comp.split(RegExp(r'\s+')).length < 4) {
+        compositionIssues.add(Issue(comp, '작문은 최소 4단어 이상이어야 합니다.'));
+      }
+
+      // 문법 체크
       final grammarIssues = await checkGrammar(comp);
-      final allIssues = [...issues, ...grammarIssues];
+
+      final allIssues = [...compositionIssues, ...grammarIssues];
 
       if (allIssues.isNotEmpty) {
         await showModalBottomSheet(
           context: context,
+          isScrollControlled: true,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
           ),
@@ -201,7 +214,11 @@ class _ReviewPageState extends State<ReviewPage> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // 모달 닫은 후에 다음 문제
+                      _nextQuiz();
+                    },
                     child: const Text('닫기'),
                   ),
                 ),
@@ -209,26 +226,47 @@ class _ReviewPageState extends State<ReviewPage> {
             ),
           ),
         );
+        return; // 모달이 있으면 여기서 return, 다음 문제는 모달 닫을 때 진행
       }
     }
 
+    // ✅ 영작이 없거나 오류 없으면 바로 다음 문제
     _nextQuiz();
   }
 
   @override
   Widget build(BuildContext context) {
+    // ✅ 로딩 상태면 review_loading.dart의 로딩 화면 표시
+    if (_loading) {
+      return const LoadingPage(); // 여기서 LoadingPage는 review_loading.dart에서 import
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
-      appBar: AppBar(title: const Text('오늘의 복습')),
+      appBar: AppBar(
+          title: const Text(
+            '오늘의 복습',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          backgroundColor: const Color(0xFF3D4C63)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _cur == null
-            ? const Center(child: Text('복습할 단어가 없습니다!'))
+            ? const Center(
+                child: Text('복습할 단어가 없습니다!',
+                    style: TextStyle(fontSize: 16, color: Colors.black54)))
             : Column(
                 children: [
-                  Text(
-                    '단어: ${_cur!.word}',
-                    style: const TextStyle(fontSize: 24),
+                  Expanded(
+                    child: Center(
+                      child: Text(_cur!.word,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              fontSize: 56, fontWeight: FontWeight.w800)),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -241,15 +279,27 @@ class _ReviewPageState extends State<ReviewPage> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _compCtrl,
-                    decoration: const InputDecoration(
-                      labelText: '영작 입력 (선택)',
-                      border: OutlineInputBorder(),
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: '작문 (선택: 단어 포함, 4단어↑ 권장)',
+                      hintText: '예) I can easily use this word in a sentence.',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4E6E99),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
                     onPressed: _confirmQuiz,
-                    child: const Text('확인'),
+                    child: const Text('확인',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white)),
                   ),
                 ],
               ),

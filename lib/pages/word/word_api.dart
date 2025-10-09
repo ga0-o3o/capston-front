@@ -122,18 +122,20 @@ class WordApi {
 
   // 단어 수정 2. 그룹핑
   static Future<bool> updateWordGroup(
-      int wordbookId, int wordId, List<String> newMeanings) async {
+    int wordbookId,
+    List<int> wordIds,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
       if (token.isEmpty) throw Exception('로그인이 필요합니다.');
 
+      // ✅ 서버 스펙에 맞게 /api/v1 → /api 로 수정
       final url =
           Uri.parse('http://localhost:8080/api/words/$wordbookId/words/group');
 
-      final body = jsonEncode({
-        'wordIds': [wordId],
-      });
+      print('📡 [PUT] 단어 그룹핑 요청: $url');
+      print('📦 전송 데이터: ${jsonEncode({"wordIds": wordIds})}');
 
       final response = await http.put(
         url,
@@ -141,18 +143,18 @@ class WordApi {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json; charset=UTF-8',
         },
-        body: body,
+        body: jsonEncode({'wordIds': wordIds}),
       );
 
       if (response.statusCode == 200) {
-        print('✅ 단어 그룹핑 수정 성공: ${response.body}');
+        print('✅ 단어 그룹핑 성공: ${response.body}');
         return true;
       } else {
-        print('❌ 단어 그룹핑 수정 실패: ${response.statusCode}');
+        print('❌ 단어 그룹핑 실패: ${response.statusCode}, ${response.body}');
         return false;
       }
     } catch (e) {
-      print('❌ 단어 그룹핑 수정 오류: $e');
+      print('❌ 예외 발생: $e');
       return false;
     }
   }

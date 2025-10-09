@@ -38,7 +38,9 @@ class ReviewApi {
               (item['wordIds'] != null && item['wordIds'].isNotEmpty)
                   ? item['wordIds'][0]
                   : 0,
-          personalWordbookId: 0, // 임시 값, 실제 서버 wordbookId가 있다면 넣기
+          personalWordbookId: item['personalWordbookId'] != null
+              ? item['personalWordbookId']
+              : 0, // 서버에서 받은 ID 사용
           word: item['wordEn'] ?? '',
           wordKr: List<String>.from(item['wordKr'] ?? []),
           wordKrOriginal: List<String>.from(item['wordKr'] ?? []),
@@ -49,6 +51,38 @@ class ReviewApi {
     } catch (e) {
       print('❌ fetchReviewWords 에러: $e');
       return [];
+    }
+  }
+
+  /// 복습일 업데이트
+  static Future<bool> updateReviewDate(
+      int personalWordbookId, int wordId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    if (token == null) return false;
+
+    final url = Uri.parse(
+        'http://localhost:8080/api/words/review/$personalWordbookId/$wordId');
+
+    try {
+      final response = await http.put(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        // body: "복습일 업데이트 성공"
+        return true;
+      } else {
+        print('복습일 업데이트 실패: ${response.statusCode} / ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('복습일 업데이트 예외: $e');
+      return false;
     }
   }
 }

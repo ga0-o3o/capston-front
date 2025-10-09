@@ -157,14 +157,14 @@ class _WordQuizTabState extends State<WordQuizTab> {
       final allIssues = [...issues, ...grammarIssues];
 
       if (allIssues.isNotEmpty) {
-        // 문법 오류 모달
         await showModalBottomSheet(
           context: context,
+          isScrollControlled: true, // 모달 높이 자유롭게
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
           ),
           builder: (_) => Container(
-            color: Colors.white,
+            color: Colors.white, // 배경 흰색
             padding: const EdgeInsets.all(16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -173,17 +173,25 @@ class _WordQuizTabState extends State<WordQuizTab> {
                 const Text(
                   '문법 오류가 있습니다.',
                   style: TextStyle(
-                      fontWeight: FontWeight.w700, color: Colors.black),
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black), // 글자 검은색
                 ),
                 const SizedBox(height: 8),
                 ...allIssues.map((d) => Text(
                       "틀린 부분: '${d.wrongText}' → ${d.message}",
                       style: const TextStyle(color: Colors.black),
                     )),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity, // 버튼 가로로 길게
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4E6E99),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 14), // 높이 조정
+                    ),
                     onPressed: () {
                       Navigator.pop(context);
                       _nextQuiz(); // 닫기 눌렀을 때 다음 문제
@@ -191,9 +199,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
                     child: const Text(
                       '닫기',
                       style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
+                          fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
                 ),
