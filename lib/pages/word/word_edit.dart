@@ -77,104 +77,136 @@ class _WordEditPageState extends State<WordEditPage> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async => false, // 백버튼 방지
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF6F0E9),
-        appBar: AppBar(
-          title: Text('${widget.wordItem.word} 수정'),
-          backgroundColor: const Color(0xFF4E6E99),
-          automaticallyImplyLeading: false, // 뒤로가기 제거
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '뜻 선택',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _meanings.map((m) {
-                            final selected = _selectedMeanings.contains(m);
-                            return ChoiceChip(
-                              label: Text(m),
-                              selected: selected,
-                              selectedColor: const Color(0xFF4E6E99),
-                              labelStyle: TextStyle(
-                                color: selected ? Colors.white : Colors.black,
-                              ),
-                              onSelected: (val) {
-                                setState(() {
-                                  if (val) {
-                                    _selectedMeanings.add(m);
-                                  } else {
-                                    _selectedMeanings.remove(m);
-                                  }
-                                });
-                              },
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
+      child: Stack(
+        children: [
+          // 배경 이미지
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/edit_background.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          // 화면 내용
+          Scaffold(
+            backgroundColor: Colors.transparent, // Scaffold 배경 제거
+            body: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _loading
-                                ? null
-                                : () =>
-                                    Navigator.of(context).pop(false), // ✅ 단순 종료
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFCC8C8),
-                              foregroundColor: Colors.black,
-                              minimumSize: const Size(100, 40),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(0),
-                                side: const BorderSide(
-                                  color: Colors.black,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            child: const Text('나가기'),
+                        const SizedBox(height: 50),
+                        // 단어 제목
+                        Text(
+                          '${widget.wordItem.word} 수정',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black, // 이미지 위에 보여야 하므로 흰색 추천
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _loading ? null : _saveWord,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4E6E99),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(100, 40),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(0),
-                                side: const BorderSide(
-                                  color: Colors.black,
-                                  width: 2,
-                                ),
-                              ),
-                            ),
-                            child: const Text('저장'),
+                        const SizedBox(height: 16),
+
+                        // 뜻 선택 라벨
+                        const Text(
+                          '뜻 선택',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.black, // 이미지 위에 흰색
                           ),
                         ),
+                        const SizedBox(height: 8),
+
+                        // 뜻 선택 칩
+                        Expanded(
+                          child: SingleChildScrollView(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _meanings.map((m) {
+                                final selected = _selectedMeanings.contains(m);
+                                return ChoiceChip(
+                                  label: Text(m),
+                                  selected: selected,
+                                  selectedColor: const Color(0xFF4E6E99),
+                                  backgroundColor:
+                                      Colors.white, // ✅ 선택되지 않은 상태 색상
+                                  labelStyle: TextStyle(
+                                    color:
+                                        selected ? Colors.white : Colors.black,
+                                  ),
+                                  side: const BorderSide(
+                                      color: Colors.black), // 흰색 칩에도 테두리 표시
+                                  onSelected: (val) {
+                                    setState(() {
+                                      if (val) {
+                                        _selectedMeanings.add(m);
+                                      } else {
+                                        _selectedMeanings.remove(m);
+                                      }
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // 버튼
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _loading
+                                    ? null
+                                    : () => Navigator.of(context).pop(false),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFCC8C8),
+                                  foregroundColor: Colors.black,
+                                  minimumSize: const Size(100, 40),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(0),
+                                    side: const BorderSide(
+                                      color: Colors.black,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                child: const Text('나가기'),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _loading ? null : _saveWord,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF4E6E99),
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(100, 40),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(0),
+                                    side: const BorderSide(
+                                      color: Colors.black,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                                child: const Text('저장'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
-                  ],
-                ),
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }

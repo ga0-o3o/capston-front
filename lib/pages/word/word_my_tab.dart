@@ -132,11 +132,13 @@ class _WordMyTabState extends State<WordMyTab> {
       final result = await showDialog<bool>(
         context: context,
         builder: (_) => Dialog(
+          backgroundColor: Colors.transparent, // Dialog 자체 배경 완전 투명
+          elevation: 0, // 그림자 제거
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: SizedBox(
             width: 400,
-            height: 500,
+            height: 600,
             child: WordEditPage(
               wordbookId: widget.wordbookId,
               wordItem: it,
