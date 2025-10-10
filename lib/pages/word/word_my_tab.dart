@@ -32,7 +32,7 @@ class _WordMyTabState extends State<WordMyTab> {
   @override
   void initState() {
     super.initState();
-    _fetchWords();
+    _loadInitialWords();
     _searchCtrl.addListener(() {
       final query = _searchCtrl.text.toLowerCase();
       setState(() {
@@ -45,6 +45,12 @@ class _WordMyTabState extends State<WordMyTab> {
     });
   }
 
+  Future<void> _loadInitialWords() async {
+    setState(() => _loading = true);
+    await _fetchWords();
+    if (mounted) setState(() => _loading = false);
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -52,7 +58,6 @@ class _WordMyTabState extends State<WordMyTab> {
   }
 
   Future<void> _fetchWords() async {
-    setState(() => _loading = true);
     try {
       final words = await WordApi.fetchWords(widget.wordbookId);
 
