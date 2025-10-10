@@ -381,11 +381,13 @@ class _WordMyTabState extends State<WordMyTab> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddOptions(context),
-        backgroundColor: const Color(0xFF4E6E99),
-        child: const Icon(Icons.add, size: 32, color: Colors.white),
-      ),
+      floatingActionButton: _loading
+          ? null // 로딩 중에는 버튼 숨김
+          : FloatingActionButton(
+              onPressed: () => _showAddOptions(context),
+              backgroundColor: const Color(0xFF4E6E99),
+              child: const Icon(Icons.add, size: 32, color: Colors.white),
+            ),
     );
   }
 }
