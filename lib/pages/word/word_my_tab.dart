@@ -5,6 +5,7 @@ import 'word_edit.dart';
 import 'word_api.dart';
 import 'word_image.dart';
 import 'word_dialogs.dart';
+import '../loading_page.dart';
 
 class WordMyTab extends StatefulWidget {
   final int wordbookId;
@@ -82,17 +83,6 @@ class _WordMyTabState extends State<WordMyTab> {
       print('❌ 단어 조회 에러: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _deleteWords(int wordbookId, int wordId) async {
-    try {
-      final success = await WordApi.deleteWord(wordbookId, wordId);
-      if (success) {
-        _words.removeWhere((w) => w.personalWordbookWordId == wordId);
-      }
-    } catch (e) {
-      print('단어 삭제 에러: $e');
     }
   }
 
@@ -259,7 +249,7 @@ class _WordMyTabState extends State<WordMyTab> {
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const LoadingPage()
                 : displayWords.isEmpty
                     ? const Center(
                         child: Text(
