@@ -259,9 +259,24 @@ class _ReviewPageState extends State<ReviewPage> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: _cur == null
-            ? const Center(
-                child: Text('복습할 단어가 없습니다!',
-                    style: TextStyle(fontSize: 16, color: Colors.black54)))
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Image.asset(
+                      'assets/images/No_review.png',
+                      width: 450, // 이미지 크기 조절
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      '복습할 단어가 없습니다!',
+                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
             : Column(
                 children: [
                   Expanded(

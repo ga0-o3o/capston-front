@@ -29,18 +29,20 @@ class ReviewApi {
         throw Exception('서버 응답 오류: ${response.statusCode}');
       }
 
-      final List<dynamic> data = json.decode(response.body);
+      final decoded = json.decode(response.body);
+      print('📡 서버 응답 바디: $decoded'); // ✅ 구조 확인용 로그
 
-      // WordItem으로 변환
+      // ✅ data 키가 없을 수도 있고, 전체가 리스트일 수도 있음
+      final List<dynamic> data =
+          decoded is List ? decoded : (decoded['data'] ?? []);
+
       return data.map((item) {
         return WordItem(
           personalWordbookWordId:
               (item['wordIds'] != null && item['wordIds'].isNotEmpty)
                   ? item['wordIds'][0]
                   : 0,
-          personalWordbookId: item['personalWordbookId'] != null
-              ? item['personalWordbookId']
-              : 0, // 서버에서 받은 ID 사용
+          personalWordbookId: item['personalWordbookId'] ?? 0,
           word: item['wordEn'] ?? '',
           wordKr: List<String>.from(item['wordKr'] ?? []),
           wordKrOriginal: List<String>.from(item['wordKr'] ?? []),
