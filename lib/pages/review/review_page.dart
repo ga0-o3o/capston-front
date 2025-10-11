@@ -242,12 +242,93 @@ class _ReviewPageState extends State<ReviewPage> {
   Widget build(BuildContext context) {
     // ✅ 로딩 상태면 review_loading.dart의 로딩 화면 표시
     if (_loading) {
-      return const LoadingPage(); // 여기서 LoadingPage는 review_loading.dart에서 import
+      return const LoadingPage();
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F0E9),
-      appBar: AppBar(
+    return WillPopScope(
+      onWillPop: () async {
+        if (_cur == null) return true; // 복습 중이 아닐 땐 바로 나감
+
+        // 다이얼로그 표시
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/tear_cat1.png',
+                  width: 450,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '정말로 복습을 종료하시겠습니까?',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFCC8C8),
+                          foregroundColor: Colors.black,
+                          minimumSize: const Size(100, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0),
+                            side: const BorderSide(
+                              color: Colors.black,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        child: const Text('종료하기'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4E6E99),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(100, 40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(0),
+                            side: const BorderSide(
+                              color: Colors.black,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        child: const Text('계속하기'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+
+        // true면 종료, false면 계속
+        return shouldExit ?? false;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF6F0E9),
+        appBar: AppBar(
           title: const Text(
             '오늘의 복습',
             style: TextStyle(
@@ -255,83 +336,89 @@ class _ReviewPageState extends State<ReviewPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          backgroundColor: const Color(0xFF3D4C63)),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: _cur == null
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+          backgroundColor: const Color(0xFF3D4C63),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: _cur == null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/No_review.png',
+                        width: 450,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        '복습할 단어가 없습니다!',
+                        style: TextStyle(fontSize: 16, color: Colors.black54),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
                   children: [
-                    Image.asset(
-                      'assets/images/No_review.png',
-                      width: 450, // 이미지 크기 조절
-                      fit: BoxFit.contain,
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          _cur!.word,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 56,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      '복습할 단어가 없습니다!',
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
-                      textAlign: TextAlign.center,
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _meanCtrl,
+                      decoration: const InputDecoration(
+                        labelText: '뜻 입력',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _compCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: '작문 (선택: 단어 포함, 4단어↑ 권장)',
+                        hintText:
+                            '예) I can easily use this word in a sentence.',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 60,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4E6E99),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _confirmQuiz,
+                        child: const Text(
+                          '확인',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              )
-            : Column(
-                children: [
-                  Expanded(
-                    child: Center(
-                      child: Text(_cur!.word,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 56, fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _meanCtrl,
-                    decoration: const InputDecoration(
-                      labelText: '뜻 입력',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _compCtrl,
-                    maxLines: 3,
-                    decoration: InputDecoration(
-                      labelText: '작문 (선택: 단어 포함, 4단어↑ 권장)',
-                      hintText: '예) I can easily use this word in a sentence.',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity, // 화면 가로 꽉 채움
-                    height: 60, // 높이 60으로 지정
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4E6E99),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 16), // 내부 여백
-                      ),
-                      onPressed: _confirmQuiz,
-                      child: const Text(
-                        '확인',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+        ),
       ),
     );
   }
