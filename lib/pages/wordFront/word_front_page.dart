@@ -47,7 +47,7 @@ class _WordFrontPageState extends State<WordFrontPage> {
     setState(() {
       _wordBooks = list.reversed.toList();
       _filteredBooks = List.from(_wordBooks);
-      if (showLoading) _loading = false;
+      _loading = false; // 항상 false로 바꿔줌
     });
   }
 
@@ -55,30 +55,22 @@ class _WordFrontPageState extends State<WordFrontPage> {
     final title = await showWordbookNameDialog(context);
     if (title == null || title.isEmpty) return;
 
+    if (!mounted) return;
     setState(() => _loading = true); // 🌟 skeleton 시작
 
     final data = await WordbookService.addWordbook(title, context);
 
     if (!mounted) return;
 
-    setState(() {
-      if (data != null) {
-        _wordBooks.insert(0, {
-          'title': data['title'] ?? '제목 없음',
-          'id': data['personalWordbookId'] ?? data['id'],
-          'color':
-              Colors.primaries[_wordBooks.length % Colors.primaries.length],
-          'image':
-              'assets/images/wordBook${(data['personalWordbookId'] ?? data['id'] ?? 0) % 3 + 1}.png',
-        });
-        _filteredBooks = List.from(_wordBooks);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('단어장 추가 실패')),
-        );
-      }
-      _loading = false; // 🌟 skeleton 끝
-    });
+    if (data != null) {
+      // 등록 후 fetch로 전체 단어장 새로 가져오기
+      await _loadWordbooks(showLoading: false);
+    } else {
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('단어장 추가 실패')),
+      );
+    }
   }
 
   void _showOptions(int index) {
