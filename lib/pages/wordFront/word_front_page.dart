@@ -3,8 +3,8 @@ import 'wordbook_card.dart';
 import 'wordbook_service.dart';
 import 'wordbook_dialogs.dart';
 import 'wordbook_options.dart';
-import '../loading_page.dart';
 import '../word/word_menu_page.dart';
+import '../skeleton_wordbook.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WordFrontPage extends StatefulWidget {
@@ -55,10 +55,14 @@ class _WordFrontPageState extends State<WordFrontPage> {
     final title = await showWordbookNameDialog(context);
     if (title == null || title.isEmpty) return;
 
+    setState(() => _loading = true); // 🌟 skeleton 시작
+
     final data = await WordbookService.addWordbook(title, context);
-    if (data != null) {
-      setState(() {
-        // 새 단어장만 맨 앞에 insert
+
+    if (!mounted) return;
+
+    setState(() {
+      if (data != null) {
         _wordBooks.insert(0, {
           'title': data['title'] ?? '제목 없음',
           'id': data['personalWordbookId'] ?? data['id'],
@@ -67,14 +71,14 @@ class _WordFrontPageState extends State<WordFrontPage> {
           'image':
               'assets/images/wordBook${(data['personalWordbookId'] ?? data['id'] ?? 0) % 3 + 1}.png',
         });
-
         _filteredBooks = List.from(_wordBooks);
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('단어장 추가 실패')),
-      );
-    }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('단어장 추가 실패')),
+        );
+      }
+      _loading = false; // 🌟 skeleton 끝
+    });
   }
 
   void _showOptions(int index) {
@@ -85,14 +89,20 @@ class _WordFrontPageState extends State<WordFrontPage> {
         final newTitle =
             await showWordbookNameDialog(context, initial: book['title']);
         if (newTitle == null || newTitle.isEmpty) return;
+
+        setState(() => _loading = true); // 🌟 skeleton 시작
         final success =
             await WordbookService.editWordbook(book['id'], newTitle, context);
-        if (success) {
-          setState(() {
+
+        if (!mounted) return;
+
+        setState(() {
+          if (success) {
             _wordBooks[index]['title'] = newTitle;
-            _filteredBooks = List.from(_wordBooks); // 검색 리스트도 갱신
-          });
-        }
+            _filteredBooks = List.from(_wordBooks);
+          }
+          _loading = false; // 🌟 skeleton 끝
+        });
       },
       onMove: () async {
         final prefs = await SharedPreferences.getInstance();
@@ -107,14 +117,19 @@ class _WordFrontPageState extends State<WordFrontPage> {
         final confirm = await showDeleteWordbookDialog(context, book['title']);
         if (!confirm) return;
 
+        setState(() => _loading = true); // 🌟 skeleton 시작
         final success =
             await WordbookService.deleteWordbook(book['id'], context);
-        if (success) {
-          setState(() {
+
+        if (!mounted) return;
+
+        setState(() {
+          if (success) {
             _wordBooks.removeAt(index);
-            _filteredBooks = List.from(_wordBooks); // 검색 리스트도 갱신
-          });
-        }
+            _filteredBooks = List.from(_wordBooks);
+          }
+          _loading = false; // 🌟 skeleton 끝
+        });
       },
     );
   }
@@ -130,7 +145,10 @@ class _WordFrontPageState extends State<WordFrontPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
       body: _loading
-          ? const LoadingPage()
+          ? const SkeletonGrid(
+              itemCount: 6,
+              topPadding: 30,
+            )
           : _wordBooks.isEmpty
               ? const Center(child: Text('단어장이 없습니다.'))
               : Padding(

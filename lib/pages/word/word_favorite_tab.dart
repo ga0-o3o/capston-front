@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'word_api.dart';
 import 'word_item.dart';
+import '../loading_page.dart';
 
 class WordFavoriteTab extends StatefulWidget {
   final int wordbookId;
@@ -55,7 +55,7 @@ class _WordFavoriteTabState extends State<WordFavoriteTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const LoadingPage();
     }
 
     if (_words.isEmpty) {

@@ -6,6 +6,7 @@ import 'word_api.dart';
 import 'word_image.dart';
 import 'word_dialogs.dart';
 import '../loading_page.dart';
+import '../fake_progress_bar.dart';
 
 class WordMyTab extends StatefulWidget {
   final int wordbookId;
@@ -114,26 +115,30 @@ class _WordMyTabState extends State<WordMyTab> {
     if (choice == 'delete') {
       final confirm = await showDeleteWordDialog(context, it.word);
       if (confirm == true) {
+        setState(() => _loading = true); // 🔹 시작
         final success = await WordApi.deleteWord(
             widget.wordbookId, it.personalWordbookWordId);
-        if (success) {
+        if (mounted) {
           setState(() {
-            _words.removeWhere(
-                (w) => w.personalWordbookWordId == it.personalWordbookWordId);
-            _filteredWords.removeWhere(
-                (w) => w.personalWordbookWordId == it.personalWordbookWordId);
+            if (success) {
+              _words.removeWhere(
+                  (w) => w.personalWordbookWordId == it.personalWordbookWordId);
+              _filteredWords.removeWhere(
+                  (w) => w.personalWordbookWordId == it.personalWordbookWordId);
+            }
+            _loading = false; // 🔹 끝
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('단어가 삭제되었습니다.')),
-          );
         }
       }
     } else if (choice == 'edit') {
+      // 🔹 부모 화면 FakeProgressBar 시작
+      setState(() => _loading = true);
+
       final result = await showDialog<bool>(
         context: context,
         builder: (_) => Dialog(
-          backgroundColor: Colors.transparent, // Dialog 자체 배경 완전 투명
-          elevation: 0, // 그림자 제거
+          backgroundColor: Colors.transparent,
+          elevation: 0,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: SizedBox(
@@ -147,9 +152,13 @@ class _WordMyTabState extends State<WordMyTab> {
         ),
       );
 
+      if (mounted) setState(() => _loading = true); // 🔹 FakeProgressBar 유지
+
       if (result == true) {
-        await _fetchWords();
+        await _fetchWords(); // 단어 다시 불러오기
       }
+
+      if (mounted) setState(() => _loading = false); // 🔹 완료 후 종료
     }
   }
 
@@ -210,8 +219,10 @@ class _WordMyTabState extends State<WordMyTab> {
       );
     }
 
+    setState(() => _loading = true);
     widget.onAdd();
-    _fetchWords();
+    await _fetchWords();
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -251,7 +262,12 @@ class _WordMyTabState extends State<WordMyTab> {
           ),
           Expanded(
             child: _loading
-                ? const LoadingPage()
+                ? const Center(
+                    child: FakeProgressBar(
+                      width: 250,
+                      height: 24,
+                    ),
+                  )
                 : displayWords.isEmpty
                     ? const Center(
                         child: Text(

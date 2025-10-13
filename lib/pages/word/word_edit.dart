@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'word_item.dart';
 import 'word_api.dart';
 import 'word_meaning.dart';
+import '../fake_progress_bar.dart';
 
 class WordEditPage extends StatefulWidget {
   final int wordbookId;
@@ -21,6 +22,7 @@ class _WordEditPageState extends State<WordEditPage> {
   List<WordMeaning> _meanings = []; // WordMeaning 객체로 변경
   Set<int> _selectedMeaningIds = {}; // 선택된 id 저장
   bool _loading = false;
+  bool _loadingMeanings = false;
 
   @override
   void initState() {
@@ -29,15 +31,14 @@ class _WordEditPageState extends State<WordEditPage> {
   }
 
   Future<void> _loadMeanings() async {
-    setState(() => _loading = true);
+    setState(() => _loadingMeanings = true);
 
-    // 서버에서 의미 가져오기
     final meanings = await WordApi.fetchWordMeanings(widget.wordItem.word);
 
     setState(() {
       _meanings = meanings;
-      _selectedMeaningIds = {}; // 처음에는 선택 없음
-      _loading = false;
+      _selectedMeaningIds = {};
+      _loadingMeanings = false;
     });
   }
 
@@ -94,6 +95,7 @@ class _WordEditPageState extends State<WordEditPage> {
       onWillPop: () async => false,
       child: Stack(
         children: [
+          // --- 배경 ---
           Positioned.fill(
             child: Image.asset(
               'assets/images/edit_background.png',
@@ -105,111 +107,121 @@ class _WordEditPageState extends State<WordEditPage> {
             body: Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 40.0, vertical: 24.0),
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 50),
-                        Text(
-                          '${widget.wordItem.word} 수정',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          '뜻 선택',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: SingleChildScrollView(
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _meanings.map((m) {
-                                final selected =
-                                    _selectedMeaningIds.contains(m.wordId);
-                                return ChoiceChip(
-                                  label: Text(m.wordKr),
-                                  selected: selected,
-                                  selectedColor: const Color(0xFF4E6E99),
-                                  backgroundColor: Colors.white,
-                                  labelStyle: TextStyle(
-                                    color:
-                                        selected ? Colors.white : Colors.black,
-                                  ),
-                                  side: const BorderSide(color: Colors.black),
-                                  onSelected: (val) {
-                                    setState(() {
-                                      if (val) {
-                                        _selectedMeaningIds.add(m.wordId);
-                                      } else {
-                                        _selectedMeaningIds.remove(m.wordId);
-                                      }
-                                    });
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _loading
-                                    ? null
-                                    : () => Navigator.of(context).pop(false),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFCC8C8),
-                                  foregroundColor: Colors.black,
-                                  minimumSize: const Size(100, 40),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(0),
-                                    side: const BorderSide(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                child: const Text('나가기'),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _loading ? null : _saveWord,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF4E6E99),
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(100, 40),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(0),
-                                    side: const BorderSide(
-                                      color: Colors.black,
-                                      width: 2,
-                                    ),
-                                  ),
-                                ),
-                                child: const Text('저장'),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 50),
+                  Text(
+                    '${widget.wordItem.word} 수정',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '뜻 선택',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _meanings.map((m) {
+                          final selected =
+                              _selectedMeaningIds.contains(m.wordId);
+                          return ChoiceChip(
+                            label: Text(m.wordKr),
+                            selected: selected,
+                            selectedColor: const Color(0xFF4E6E99),
+                            backgroundColor: Colors.white,
+                            labelStyle: TextStyle(
+                              color: selected ? Colors.white : Colors.black,
+                            ),
+                            side: const BorderSide(color: Colors.black),
+                            onSelected: (val) {
+                              setState(() {
+                                if (val) {
+                                  _selectedMeaningIds.add(m.wordId);
+                                } else {
+                                  _selectedMeaningIds.remove(m.wordId);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _loading
+                              ? null
+                              : () => Navigator.of(context).pop(false),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFCC8C8),
+                            foregroundColor: Colors.black,
+                            minimumSize: const Size(100, 40),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(0),
+                              side: const BorderSide(
+                                color: Colors.black,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          child: const Text('나가기'),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _saveWord,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4E6E99),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(100, 40),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(0),
+                              side: const BorderSide(
+                                color: Colors.black,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                          child: const Text('저장'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
+
+          // --- FakeProgressBar 오버레이 ---
+          if (_loadingMeanings)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: const Align(
+                alignment: Alignment(-0.6, 0), // 중앙보다 왼쪽으로 이동
+                child: FakeProgressBar(
+                  width: 250,
+                  height: 24,
+                ),
+              ),
+            ),
         ],
       ),
     );
