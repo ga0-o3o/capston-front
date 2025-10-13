@@ -22,7 +22,6 @@ class _WordEditPageState extends State<WordEditPage> {
   List<WordMeaning> _meanings = []; // WordMeaning 객체로 변경
   Set<int> _selectedMeaningIds = {}; // 선택된 id 저장
   bool _loading = false;
-  bool _loadingMeanings = false;
 
   @override
   void initState() {
@@ -31,14 +30,15 @@ class _WordEditPageState extends State<WordEditPage> {
   }
 
   Future<void> _loadMeanings() async {
-    setState(() => _loadingMeanings = true);
+    setState(() => _loading = true);
 
+    // 서버에서 의미 가져오기
     final meanings = await WordApi.fetchWordMeanings(widget.wordItem.word);
 
     setState(() {
       _meanings = meanings;
-      _selectedMeaningIds = {};
-      _loadingMeanings = false;
+      _selectedMeaningIds = {}; // 처음에는 선택 없음
+      _loading = false;
     });
   }
 
@@ -211,7 +211,7 @@ class _WordEditPageState extends State<WordEditPage> {
           ),
 
           // --- FakeProgressBar 오버레이 ---
-          if (_loadingMeanings)
+          if (_loading)
             Container(
               color: Colors.black.withOpacity(0.3),
               child: const Align(
