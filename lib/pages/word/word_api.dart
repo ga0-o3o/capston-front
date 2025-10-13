@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'word_item.dart';
+import 'word_meaning.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WordApi {
@@ -92,7 +93,7 @@ class WordApi {
   }
 
   // 단어 수정 1. 뜻 조회
-  static Future<List<String>> fetchWordMeanings(String wordEn) async {
+  static Future<List<WordMeaning>> fetchWordMeanings(String wordEn) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
@@ -109,7 +110,13 @@ class WordApi {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
-        return List<String>.from(data['wordKr'] ?? []);
+        final wordMeanings = (data['wordMeanings'] as List)
+            .map((e) => WordMeaning(
+                  wordId: e['wordId'],
+                  wordKr: e['wordKr'],
+                ))
+            .toList();
+        return wordMeanings;
       } else {
         print('❌ 단어 뜻 조회 실패: ${response.statusCode}');
         return [];
@@ -122,39 +129,39 @@ class WordApi {
 
   // 단어 수정 2. 그룹핑
   static Future<bool> updateWordGroup(
-    int wordbookId,
-    List<int> wordIds,
-  ) async {
+      int wordbookId, String wordEn, List<int> wordIds) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token') ?? '';
-      if (token.isEmpty) throw Exception('로그인이 필요합니다.');
 
-      // ✅ 서버 스펙에 맞게 /api/v1 → /api 로 수정
-      final url =
-          Uri.parse('http://localhost:8080/api/words/$wordbookId/words/group');
-
-      print('📡 [PUT] 단어 그룹핑 요청: $url');
-      print('📦 전송 데이터: ${jsonEncode({"wordIds": wordIds})}');
-
-      final response = await http.put(
-        url,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode({'wordIds': wordIds}),
-      );
-
-      if (response.statusCode == 200) {
-        print('✅ 단어 그룹핑 성공: ${response.body}');
-        return true;
-      } else {
-        print('❌ 단어 그룹핑 실패: ${response.statusCode}, ${response.body}');
+      if (token.isEmpty) {
+        print('❌ 토큰이 없습니다. 로그인 후 다시 시도하세요.');
         return false;
       }
+
+      final uri = Uri.parse(
+          'http://localhost:8080/api/words/$wordbookId/words/$wordEn');
+
+      final body = jsonEncode({'wordIds': wordIds});
+
+      print('📤 단어 수정 요청: PUT $uri');
+      print('📦 요청 바디: $body');
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      print('📥 응답 코드: ${response.statusCode}');
+      print('📥 응답 바디: ${response.body}');
+
+      return response.statusCode == 200;
     } catch (e) {
-      print('❌ 예외 발생: $e');
+      print('⚠️ 단어 수정 중 오류 발생: $e');
       return false;
     }
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'word_item.dart';
+import 'word_meaning.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class WordCreatePage extends StatefulWidget {
@@ -16,8 +17,8 @@ class WordCreatePage extends StatefulWidget {
 class _WordCreatePageState extends State<WordCreatePage> {
   final _wordController = TextEditingController();
   List<String> _wordsToAdd = [];
-  Map<String, List<String>> _wordsWithMeanings = {};
-  Map<String, Set<String>> _selectedMeanings = {}; // 선택된 뜻
+  Map<String, List<WordMeaning>> _wordsWithMeanings = {};
+  Map<String, Set<String>> _selectedMeaningIds = {}; // ⚡ int -> String
   bool _loading = false;
 
   @override
@@ -41,11 +42,10 @@ class _WordCreatePageState extends State<WordCreatePage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
 
-    print('📌 _fetchMeanings 호출, 단어 리스트: $_wordsToAdd');
-
     setState(() => _loading = true);
 
     final url = Uri.parse('http://localhost:8080/api/words/save-from-api');
+
     try {
       final response = await http.post(
         url,
@@ -56,17 +56,22 @@ class _WordCreatePageState extends State<WordCreatePage> {
         body: jsonEncode({'wordsEn': _wordsToAdd}),
       );
 
-      print('📌 HTTP 상태 코드: ${response.statusCode}');
-      print('📌 응답 바디: ${response.body}');
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         final List<dynamic> data = jsonDecode(response.body);
-        final Map<String, List<String>> meanings = {};
+        final Map<String, List<WordMeaning>> meanings = {};
+
         for (var item in data) {
-          meanings[item['wordEn']] =
-              List<String>.from(item['wordKr'] ?? <String>[]);
-          _selectedMeanings[item['wordEn']] = <String>{}; // 초기화
+          final wordEn = item['wordEn'];
+          final wordMeanings = (item['wordMeanings'] as List)
+              .map((e) => WordMeaning(
+                    wordId: e['wordId'],
+                    wordKr: e['wordKr'],
+                  ))
+              .toList();
+          meanings[wordEn] = wordMeanings;
+          _selectedMeaningIds[wordEn] = <String>{}; // ⚡ String 사용
         }
+
         setState(() {
           _wordsWithMeanings = meanings;
         });
@@ -76,7 +81,6 @@ class _WordCreatePageState extends State<WordCreatePage> {
         );
       }
     } catch (e) {
-      print('❌ _fetchMeanings 에러: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('뜻 조회 중 오류 발생')),
       );
@@ -86,10 +90,12 @@ class _WordCreatePageState extends State<WordCreatePage> {
   }
 
   Future<void> _saveToWordbook() async {
-    // 선택된 뜻만 전송
-    final selectedData = _selectedMeanings.entries
+    final selectedData = _selectedMeaningIds.entries
         .where((e) => e.value.isNotEmpty)
-        .map((e) => {'wordEn': e.key, 'wordKrList': e.value.toList()})
+        .map((e) => {
+              'wordEn': e.key,
+              'wordKrList': e.value.toList(), // ⚡ String 배열 전송
+            })
         .toList();
 
     if (selectedData.isEmpty) {
@@ -102,14 +108,10 @@ class _WordCreatePageState extends State<WordCreatePage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
 
-    print('📌 _saveToWordbook 호출, 보내는 데이터: $selectedData');
-
     setState(() => _loading = true);
 
     final url = Uri.parse(
         'http://localhost:8080/api/words/personal-wordbook/${widget.wordbookId}');
-    final body = {'words': selectedData};
-
     try {
       final response = await http.post(
         url,
@@ -117,11 +119,8 @@ class _WordCreatePageState extends State<WordCreatePage> {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode(body),
+        body: jsonEncode({'words': selectedData}),
       );
-
-      print('📌 HTTP 상태 코드: ${response.statusCode}');
-      print('📌 응답 바디: ${response.body}');
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -130,7 +129,7 @@ class _WordCreatePageState extends State<WordCreatePage> {
         setState(() {
           _wordsToAdd.clear();
           _wordsWithMeanings.clear();
-          _selectedMeanings.clear();
+          _selectedMeaningIds.clear();
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -138,7 +137,6 @@ class _WordCreatePageState extends State<WordCreatePage> {
         );
       }
     } catch (e) {
-      print('❌ _saveToWordbook 에러: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('단어장 저장 중 오류 발생')),
       );
@@ -166,11 +164,11 @@ class _WordCreatePageState extends State<WordCreatePage> {
               children: [
                 // --- 영단어 입력창 ---
                 Padding(
-                  padding: const EdgeInsets.only(top: 55), // 위쪽 여백
+                  padding: const EdgeInsets.only(top: 55),
                   child: Align(
                     alignment: const Alignment(-0.4, 0),
                     child: SizedBox(
-                      width: 280, // 가로 크기 조절
+                      width: 280,
                       child: TextField(
                         controller: _wordController,
                         decoration: InputDecoration(
@@ -197,7 +195,6 @@ class _WordCreatePageState extends State<WordCreatePage> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 12),
                 if (_wordsToAdd.isNotEmpty)
                   Align(
@@ -212,20 +209,18 @@ class _WordCreatePageState extends State<WordCreatePage> {
                                   setState(() {
                                     _wordsToAdd.remove(w);
                                     _wordsWithMeanings.remove(w);
-                                    _selectedMeanings.remove(w);
+                                    _selectedMeaningIds.remove(w);
                                   });
                                 },
                               ))
                           .toList(),
                     ),
                   ),
-
                 const SizedBox(height: 12),
-                // --- 뜻 선택 리스트 ---
                 Expanded(
                   child: _wordsWithMeanings.isEmpty
                       ? Align(
-                          alignment: const Alignment(-0.1, 0), // 왼쪽 살짝 치우침
+                          alignment: const Alignment(-0.1, 0),
                           child: const Text('뜻이 없습니다.'),
                         )
                       : SingleChildScrollView(
@@ -236,7 +231,7 @@ class _WordCreatePageState extends State<WordCreatePage> {
                               return Align(
                                 alignment: const Alignment(-0.4, 0),
                                 child: SizedBox(
-                                  width: 300, // 🔹 카드 전체 가로 폭 축소 (원하는 만큼 조절)
+                                  width: 300,
                                   child: Card(
                                     color: const Color.fromRGBO(0, 0, 0, 0),
                                     margin:
@@ -255,10 +250,10 @@ class _WordCreatePageState extends State<WordCreatePage> {
                                             spacing: 6,
                                             children: meanings.map((m) {
                                               final selected =
-                                                  _selectedMeanings[word]!
-                                                      .contains(m);
+                                                  _selectedMeaningIds[word]!
+                                                      .contains(m.wordKr);
                                               return ChoiceChip(
-                                                label: Text(m),
+                                                label: Text(m.wordKr),
                                                 selected: selected,
                                                 selectedColor:
                                                     const Color.fromARGB(
@@ -268,11 +263,11 @@ class _WordCreatePageState extends State<WordCreatePage> {
                                                 onSelected: (val) {
                                                   setState(() {
                                                     if (val) {
-                                                      _selectedMeanings[word]!
-                                                          .add(m);
+                                                      _selectedMeaningIds[word]!
+                                                          .add(m.wordKr);
                                                     } else {
-                                                      _selectedMeanings[word]!
-                                                          .remove(m);
+                                                      _selectedMeaningIds[word]!
+                                                          .remove(m.wordKr);
                                                     }
                                                   });
                                                 },
@@ -289,9 +284,9 @@ class _WordCreatePageState extends State<WordCreatePage> {
                           ),
                         ),
                 ),
-                if (_selectedMeanings.values.any((v) => v.isNotEmpty))
+                if (_selectedMeaningIds.values.any((v) => v.isNotEmpty))
                   Align(
-                    alignment: const Alignment(-0.1, 0), // 왼쪽으로 치우침
+                    alignment: const Alignment(-0.1, 0),
                     child: ElevatedButton(
                       onPressed: _loading ? null : _saveToWordbook,
                       style: ElevatedButton.styleFrom(
@@ -308,9 +303,9 @@ class _WordCreatePageState extends State<WordCreatePage> {
                   ),
                 const SizedBox(height: 12),
                 Align(
-                  alignment: const Alignment(-0.1, 0), // 왼쪽으로 치우침
+                  alignment: const Alignment(-0.1, 0),
                   child: Padding(
-                    padding: const EdgeInsets.only(bottom: 60), // 아래 여백
+                    padding: const EdgeInsets.only(bottom: 60),
                     child: ElevatedButton(
                       onPressed: () => Navigator.of(context).pop(),
                       style: ElevatedButton.styleFrom(
