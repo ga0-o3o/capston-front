@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'login/login_page.dart';
 import 'signUp/signup_page.dart';
 
+import '../game/bingo_match_page.dart';
+
 class BeforePage extends StatelessWidget {
   const BeforePage({super.key});
 

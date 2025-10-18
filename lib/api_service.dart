@@ -5,14 +5,16 @@ import 'package:http/http.dart' as http;
 
 /// 스프링 서버 주소 (내 로컬 IP/포트로 교체)
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:8080';
+  //static const String baseUrl = 'http://127.0.0.1:8080';
+  static const String baseUrl =
+      'https://semiconical-shela-loftily.ngrok-free.dev';
 
   /// 공통 GET 요청 (타임아웃/에러 처리)
   static Future<http.Response> _get(Uri uri) async {
     try {
-      final res = await http
-          .get(uri, headers: {'Accept': 'application/json'})
-          .timeout(const Duration(seconds: 10));
+      final res = await http.get(uri, headers: {
+        'Accept': 'application/json'
+      }).timeout(const Duration(seconds: 10));
       return res;
     } on SocketException {
       throw Exception('네트워크 연결을 확인하세요.');
@@ -89,25 +91,25 @@ class ApiService {
   }
 
   /// 카카오 로그인 후 서버에 사용자 정보 보내는 코드 ...... 새로 추가 한 코드
-static Future<bool> saveKakaoUser({
-  required String id,
-  required String name,
-}) async {
-  // Spring Boot 컨트롤러 경로
-  final uri = Uri.parse('$baseUrl/user/save');
+  static Future<bool> saveKakaoUser({
+    required String id,
+    required String name,
+  }) async {
+    // Spring Boot 컨트롤러 경로
+    final uri = Uri.parse('$baseUrl/user/save');
 
-  // POST 요청
-  final res = await _post(uri, {
-    'id': 'KAKAO$id', // 기존 Service 로직과 동일하게 KAKAO prefix 추가
-    'name': name,
-  });
+    // POST 요청
+    final res = await _post(uri, {
+      'id': 'KAKAO$id', // 기존 Service 로직과 동일하게 KAKAO prefix 추가
+      'name': name,
+    });
 
-  if (res.statusCode == 200) {
-    return true; // 성공
+    if (res.statusCode == 200) {
+      return true; // 성공
+    }
+
+    throw Exception('카카오 사용자 저장 실패: ${res.statusCode} - ${res.body}');
   }
-
-  throw Exception('카카오 사용자 저장 실패: ${res.statusCode} - ${res.body}');
-}
 }
 
 /// 서버 User 응답과 매핑되는 간단 DTO
@@ -119,8 +121,8 @@ class UserDto {
   UserDto({required this.id, required this.name, required this.nickname});
 
   factory UserDto.fromJson(Map<String, dynamic> json) => UserDto(
-    id: (json['id'] ?? '').toString(),
-    name: (json['name'] ?? '').toString(),
-    nickname: (json['nickname'] ?? '').toString(),
-  );
+        id: (json['id'] ?? '').toString(),
+        name: (json['name'] ?? '').toString(),
+        nickname: (json['nickname'] ?? '').toString(),
+      );
 }

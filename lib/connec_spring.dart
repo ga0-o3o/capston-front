@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.0.12:8080'; // 스프링 IP:PORT
+  //static const String baseUrl = 'http://192.168.0.12:8080'; // 스프링 IP:PORT
+  static const String baseUrl =
+      'https://semiconical-shela-loftily.ngrok-free.dev';
 
   static Future<String?> ping() async {
     final uri = Uri.parse('$baseUrl/api/ping');

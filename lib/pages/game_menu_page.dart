@@ -8,6 +8,7 @@ import 'games/game4_page.dart';
 import 'games/game6_page.dart';
 import 'games/dummy_game_page.dart';
 import 'games/matching_page.dart';
+import '../game/bingo_match_page.dart'; // ✅ 추가: 빙고 매칭 페이지 import
 
 // -------------------- GameInfo --------------------
 class GameInfo {
@@ -31,43 +32,44 @@ class GameMenuPage extends StatelessWidget {
   const GameMenuPage({Key? key}) : super(key: key);
 
   final List<GameInfo> games = const [
-    // 게임 1: 멀티만
     GameInfo(
       title: "단어 빨리 맞히기",
       multiPageBuilder: _dummyMultiPage,
     ),
-    // 게임 2: 솔로만
     GameInfo(
       title: "제시어 영작 게임",
       soloPage: Game2Page(),
     ),
-    // 게임 3: 솔로만
     GameInfo(
       title: "미로 탈출",
       soloPage: Game3Page(),
     ),
-    // 게임 4: 솔로
     GameInfo(
       title: "끝말 잇기",
       soloPage: Game4Page(),
     ),
-    // 게임 5: 멀티만
+    // ✅ 수정된 부분
     GameInfo(
       title: "빙고 게임",
-      multiPageBuilder: _dummyMultiPage,
+      multiPageBuilder: _bingoMultiPage, // ✅ 여기 바꿈!
     ),
-    // 게임 6: 솔로만
     GameInfo(
       title: "단어 타워 쌓기",
       soloPage: Game6Page(),
     ),
   ];
 
+  // 기존 더미용
   static Widget _dummyMultiPage(List<String> userIds, List<String> tokens) {
     return MatchingPage(
       gameWidgetBuilder: (roomId) =>
           DummyGamePage(userIds: userIds, tokens: tokens),
     );
+  }
+
+  // ✅ 새 빙고 전용 빌더
+  static Widget _bingoMultiPage(List<String> userIds, List<String> tokens) {
+    return const BingoMatchPage(); // 로그인 불필요 — 바로 소켓 연결
   }
 
   @override
@@ -100,19 +102,16 @@ class GameMenuPage extends StatelessWidget {
 
   void _onGameSelected(BuildContext context, GameInfo game) {
     if (game.isSoloOnly) {
-      // 솔로 전용 → 바로 실행
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => game.soloPage!),
       );
     } else if (game.isMultiOnly) {
-      // 멀티 전용 → 바로 매칭 페이지
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => game.multiPageBuilder!([], [])),
       );
     } else if (game.hasBoth) {
-      // 솔로 + 멀티 → StartPageWithModes 선택 페이지
       Navigator.push(
         context,
         MaterialPageRoute(
