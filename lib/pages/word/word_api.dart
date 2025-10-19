@@ -15,8 +15,8 @@ class WordApi {
         throw Exception('로그인이 필요합니다.');
       }
 
-      final url =
-          Uri.parse('http://localhost:8080/api/v1/wordbooks/$wordbookId/words');
+      final url = Uri.parse(
+          'https://semiconical-shela-loftily.ngrok-free.dev/api/v1/wordbooks/$wordbookId/words');
 
       print('📡 [GET] 단어 조회 요청: $url');
 
@@ -24,6 +24,7 @@ class WordApi {
         url,
         headers: {
           'Content-Type': 'application/json; charset=UTF-8',
+          'ngrok-skip-browser-warning': 'true',
           'Authorization': 'Bearer $token',
         },
       );
@@ -104,6 +105,7 @@ class WordApi {
         url,
         headers: {
           'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': 'true',
           'Content-Type': 'application/json; charset=UTF-8',
         },
       );
@@ -151,6 +153,7 @@ class WordApi {
         uri,
         headers: {
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
           'Authorization': 'Bearer $token',
         },
         body: body,
@@ -184,6 +187,7 @@ class WordApi {
         url,
         headers: {
           'Content-Type': 'application/json; charset=UTF-8',
+          'ngrok-skip-browser-warning': 'true',
           'Authorization': 'Bearer $token',
         },
         body: jsonEncode({'wordIds': wordIds}),

@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SignupService {
-  static const String signupUrl = "http://localhost:8080/api/v1/auth/signup";
+  static const String signupUrl =
+      "https://semiconical-shela-loftily.ngrok-free.dev/api/v1/auth/signup";
 
   // 회원가입 요청
   static Future<void> signup({

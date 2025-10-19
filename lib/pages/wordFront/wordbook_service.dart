@@ -18,10 +18,16 @@ class WordbookService {
       return [];
     }
 
-    final url =
-        Uri.parse('http://localhost:8080/api/v1/wordbooks/user/$userId');
-    final res =
-        await http.get(url, headers: {'Authorization': 'Bearer $token'});
+    final url = Uri.parse(
+        'https://semiconical-shela-loftily.ngrok-free.dev/api/v1/wordbooks/user/$userId');
+
+    final res = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'ngrok-skip-browser-warning': 'true',
+      'Content-Type': 'application/json',
+    });
+
+    print('🌐 요청 전송: ${url.toString()} / token: ${token.substring(0, 10)}...');
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
@@ -71,11 +77,13 @@ class WordbookService {
       return null;
     }
 
-    final url = Uri.parse('http://localhost:8080/api/v1/wordbooks');
+    final url = Uri.parse(
+        'https://semiconical-shela-loftily.ngrok-free.dev/api/v1/wordbooks');
     final res = await http.post(
       url,
       headers: {
         'Authorization': 'Bearer $token',
+        'ngrok-skip-browser-warning': 'true',
         'Content-Type': 'application/json',
       },
       body: json.encode({'loginId': loginId, 'title': title}),
@@ -97,11 +105,13 @@ class WordbookService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');
 
-    final url = Uri.parse('http://localhost:8080/api/v1/wordbooks');
+    final url = Uri.parse(
+        'https://semiconical-shela-loftily.ngrok-free.dev/api/v1/wordbooks');
     final res = await http.put(
       url,
       headers: {
         'Authorization': 'Bearer $token',
+        'ngrok-skip-browser-warning': 'true',
         'Content-Type': 'application/json',
       },
       body: json.encode({'personalWordbookId': id, 'title': title}),
@@ -116,7 +126,8 @@ class WordbookService {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('jwt_token');
 
-      final url = Uri.parse('http://localhost:8080/api/v1/wordbooks/$id');
+      final url = Uri.parse(
+          'https://semiconical-shela-loftily.ngrok-free.dev/api/v1/wordbooks/$id');
       final res = await http.delete(
         url,
         headers: {

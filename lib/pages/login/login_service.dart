@@ -4,8 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginService {
-  static const String loginUrl = "http://localhost:8080/api/v1/auth/login";
-  static const String kakaoUrl = "http://localhost:8080/api/v1/auth/kakao";
+  static const String loginUrl =
+      "https://semiconical-shela-loftily.ngrok-free.dev/api/v1/auth/login";
+  static const String kakaoUrl =
+      "https://semiconical-shela-loftily.ngrok-free.dev/api/v1/auth/kakao";
 
   // 토큰 저장
   static Future<void> saveToken(String token) async {

@@ -15,12 +15,13 @@ class ReviewApi {
       }
 
       final url = Uri.parse(
-          'http://localhost:8080/api/v1/wordbooks/$loginId/review-words');
+          'https://semiconical-shela-loftily.ngrok-free.dev/api/v1/wordbooks/$loginId/review-words');
 
       final response = await http.get(
         url,
         headers: {
           'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
           'Authorization': 'Bearer $token',
         },
       );
@@ -64,13 +65,14 @@ class ReviewApi {
     if (token == null) return false;
 
     final url = Uri.parse(
-        'http://localhost:8080/api/words/review/$personalWordbookId/$wordId');
+        'https://semiconical-shela-loftily.ngrok-free.dev/api/words/review/$personalWordbookId/$wordId');
 
     try {
       final response = await http.put(
         url,
         headers: {
           'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': 'true',
           'Content-Type': 'application/json',
         },
       );
