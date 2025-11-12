@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree /F /A \"C:\\Users\\HP\\OneDrive\\문서\\GitHub\\capston-front\" 2)",
+      "Bash(nul)",
+      "Bash(dir /s /b \"C:\\Users\\HP\\OneDrive\\문서\\GitHub\\capston-front\")",
+      "Bash(git checkout:*)",
+      "Bash(flutter run:*)",
+      "Bash(dir:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(findstr:*)",
+      "Bash(cat:*)",
+      "Bash(venv_ocr/Scripts/pip.exe install:*)",
+      "Bash(curl:*)",
+      "Bash(venv_ocr/Scripts/python.exe ocr_server.py)",
+      "Bash(git restore:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

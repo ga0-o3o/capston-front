@@ -1,0 +1,46 @@
+name: english_study
+description: A new Flutter project.
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  web_socket_channel: ^3.0.0
+  # Auth & networking
+  kakao_flutter_sdk: ^1.9.7+3
+  kakao_flutter_sdk_user: ^1.9.7+3
+  jwt_decoder: ^2.0.1
+  http: ^1.2.0
+  dio: ^5.5.0
+
+  # Storage & game engine
+  shared_preferences: ^2.2.2
+  flame: ^1.30.0
+  image_picker: ^0.8.7+5
+  file_picker: ^8.3.7
+
+  shimmer: ^2.0.0
+
+  google_fonts: ^6.2.1
+
+  gif_view: ^1.0.3
+  audioplayers: ^6.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/images/char/
+    - assets/images/game/part6/
+    - assets/audios/
+    - assets/videos/

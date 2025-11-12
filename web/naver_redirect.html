@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Naver Redirect</title>
+</head>
+<body>
+<script>
+  // Flutter 앱이 실행되는 페이지로 코드 전달
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const state = params.get('state');
+
+  if (code && state) {
+    // 서버가 redirect를 보내므로 fetch 사용 대신 바로 이동
+    window.location.href = `http://localhost:57242/login/oauth2/code/naver?code=${code}&state=${state}`;
+  } else {
+    // 에러나 코드 없으면 Flutter 앱 홈으로
+    window.location.href = '/';
+  }
+</script>
+</body>
+</html>
