@@ -426,7 +426,6 @@ class _ChatingPageState extends State<ChatingPage> {
                         Expanded(
                           child: ConstrainedBox(
                             constraints: const BoxConstraints(
-                              // 선택: 안전빵으로 높이 상한(대부분 maxLines로 충분하지만 보조용)
                               maxHeight: 140,
                             ),
                             child: TextField(
