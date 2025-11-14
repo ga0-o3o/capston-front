@@ -318,6 +318,7 @@ class _ChatingPageState extends State<ChatingPage> {
               ),
               child: Column(
                 children: [
+                  const SizedBox(height: 12),
                   // 메시지 리스트
                   Expanded(
                     child: Padding(
