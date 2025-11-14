@@ -101,10 +101,24 @@ class _ChatingPageState extends State<ChatingPage> {
   Future<void> _playAudio(String base64Audio) async {
     try {
       final bytes = base64Decode(base64Audio);
+      await _audioPlayer.stop(); // 🔹 이전 재생 중지
       await _audioPlayer.play(BytesSource(bytes));
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('오디오 재생 실패: $e')),
+      );
+    }
+  }
+
+  // 오디오 일시 정지 함수
+  Future<void> _stopAudio() async {
+    try {
+      await _audioPlayer.stop(); // 재생 중지(위치 0으로)
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('오디오 정지 실패: $e')),
       );
     }
   }
@@ -372,21 +386,46 @@ class _ChatingPageState extends State<ChatingPage> {
                                   if (message.isPodcast)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8),
-                                      child: ElevatedButton.icon(
-                                        onPressed: () =>
-                                            _playAudio(message.audioBase64!),
-                                        icon: const Icon(Icons.play_arrow,
-                                            size: 18),
-                                        label: const Text('재생'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor:
-                                              Colors.orange.shade600,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 6,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // 재생 버튼
+                                          ElevatedButton.icon(
+                                            onPressed: () => _playAudio(
+                                                message.audioBase64!),
+                                            icon: const Icon(Icons.play_arrow,
+                                                size: 18),
+                                            label: const Text('재생'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.orange.shade600,
+                                              foregroundColor: Colors.white,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6),
+                                            ),
                                           ),
-                                        ),
+                                          const SizedBox(width: 8),
+                                          // 정지 버튼
+                                          OutlinedButton.icon(
+                                            onPressed: _stopAudio,
+                                            icon: const Icon(Icons.stop,
+                                                size: 18),
+                                            label: const Text('정지'),
+                                            style: OutlinedButton.styleFrom(
+                                              side: BorderSide(
+                                                  color:
+                                                      Colors.orange.shade600),
+                                              foregroundColor:
+                                                  Colors.orange.shade700,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 12,
+                                                      vertical: 6),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                 ],
