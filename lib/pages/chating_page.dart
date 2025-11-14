@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:english_study/api_service.dart';
@@ -129,15 +128,13 @@ class _ChatingPageState extends State<ChatingPage> {
     });
 
     try {
-      final podcastResponse =
-          await ApiService.generatePodcastFromConversation(
+      final podcastResponse = await ApiService.generatePodcastFromConversation(
         conversationHistory: recentMessages,
       );
 
       setState(() {
         _messages.add(ChatMessage(
-          text:
-              '📻 주제: ${podcastResponse.topic}\n\n${podcastResponse.script}',
+          text: '📻 주제: ${podcastResponse.topic}\n\n${podcastResponse.script}',
           isUser: false,
           audioBase64: podcastResponse.audioBase64,
         ));
@@ -331,7 +328,8 @@ class _ChatingPageState extends State<ChatingPage> {
                                 color: message.isUser
                                     ? const Color(0xFF4E6E99) // 사용자: 파란색
                                     : message.isPodcast
-                                        ? const Color(0xFFFFE5B4) // 팟캐스트: 연한 오렌지
+                                        ? const Color(
+                                            0xFFFFE5B4) // 팟캐스트: 연한 오렌지
                                         : Colors.grey.shade300, // AI: 회색
                                 borderRadius: BorderRadius.circular(15),
                               ),
@@ -426,21 +424,32 @@ class _ChatingPageState extends State<ChatingPage> {
                     child: Row(
                       children: [
                         Expanded(
-                          child: TextField(
-                            controller: _messageController,
-                            enabled: !_isLoading, // ✨ 로딩 중엔 입력 비활성화
-                            decoration: InputDecoration(
-                              hintText: '메시지를 입력하세요...',
-                              filled: true,
-                              fillColor: Colors.white,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 10),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(25),
-                                borderSide: BorderSide.none,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              // 선택: 안전빵으로 높이 상한(대부분 maxLines로 충분하지만 보조용)
+                              maxHeight: 140,
+                            ),
+                            child: TextField(
+                              controller: _messageController,
+                              enabled: !_isLoading,
+                              keyboardType: TextInputType.multiline,
+                              textInputAction: TextInputAction.newline,
+                              minLines: 1, // 한 줄에서 시작
+                              maxLines: 5, // 최대 5줄까지 자동 확장 → 이후 내부 스크롤
+                              decoration: InputDecoration(
+                                hintText: '메시지를 입력하세요...',
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                  vertical: 12,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(25),
+                                  borderSide: BorderSide.none,
+                                ),
                               ),
                             ),
-                            onSubmitted: (_) => _sendMessage(),
                           ),
                         ),
                         const SizedBox(width: 8),
