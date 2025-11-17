@@ -8,6 +8,7 @@ import 'level/levelTest_page.dart';
 import 'userInfo_page.dart';
 import 'chating_page.dart';
 import 'review/review_page.dart';
+import '../widgets/study_accuracy_chart.dart';
 
 class MainMenuPage extends StatefulWidget {
   final String userName;
@@ -56,94 +57,106 @@ class _MainMenuPageState extends State<MainMenuPage> {
       backgroundColor: const Color(0xFFF6F0E9),
       body: _currentIndex == 0
           ? SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 상단 타이틀과 프로필
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 20),
-                    child: Row(
-                      children: [
-                        Text(
-                          'HiLight',
-                          style: GoogleFonts.pacifico(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF4E6E99), // 글씨 색상 변경
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  Center(
-                    child: Column(
-                      children: [
-                        GestureDetector(
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const UserInfoPage()),
-                            );
-                            _loadSelectedCharacter(); // 돌아온 뒤 GIF 업데이트
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(4), // 테두리 두께
-                            decoration: BoxDecoration(
-                              color: Colors.white, // 테두리 색상
-                              shape: BoxShape.circle,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 상단 타이틀과 프로필
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 20),
+                      child: Row(
+                        children: [
+                          Text(
+                            'HiLight',
+                            style: GoogleFonts.pacifico(
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF4E6E99), // 글씨 색상 변경
                             ),
-                            child: ClipOval(
-                              child: SizedBox(
-                                width: 180,
-                                height: 180,
-                                child: Image.asset(
-                                  'assets/videos/char${_selectedCharacterIndex}_run.gif',
-                                  fit: BoxFit.cover,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Center(
+                      child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const UserInfoPage()),
+                              );
+                              _loadSelectedCharacter(); // 돌아온 뒤 GIF 업데이트
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(4), // 테두리 두께
+                              decoration: BoxDecoration(
+                                color: Colors.white, // 테두리 색상
+                                shape: BoxShape.circle,
+                              ),
+                              child: ClipOval(
+                                child: SizedBox(
+                                  width: 180,
+                                  height: 180,
+                                  child: Image.asset(
+                                    'assets/videos/char${_selectedCharacterIndex}_run.gif',
+                                    fit: BoxFit.cover,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
 
-                        const SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
-                        // ✅ 오늘의 복습 버튼
-                        SizedBox(
-                          width: 160,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const ReviewPage()),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4E6E99),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                          // ✅ 오늘의 복습 버튼
+                          SizedBox(
+                            width: 160,
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (_) => const ReviewPage()),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4E6E99),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                            ),
-                            child: const Text(
-                              '오늘의 복습',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                              child: const Text(
+                                '오늘의 복습',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+
+                          const SizedBox(height: 24),
+
+                          // 📊 학습 정확도 그래프
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: const StudyAccuracyChart(),
+                          ),
+
+                          const SizedBox(height: 24),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             )
           : _pages[_currentIndex],

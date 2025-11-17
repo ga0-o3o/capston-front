@@ -14,7 +14,9 @@
       "Bash(venv_ocr/Scripts/pip.exe install:*)",
       "Bash(curl:*)",
       "Bash(venv_ocr/Scripts/python.exe ocr_server.py)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(flutter analyze:*)"
     ],
     "deny": [],
     "ask": []
