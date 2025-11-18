@@ -6,6 +6,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+// ✅ 중앙 URL 관리 import
+import 'config/url_config.dart';
+
 /// 🌐 API 통신 서비스
 ///
 /// 역할 구분:
@@ -22,8 +25,8 @@ class ApiService {
   // ============================================================================
   // Spring Boot 서버 (로그인, 인증, 유저 관리)
   // ============================================================================
-  static const String baseUrl =
-      'https://semiconical-shela-loftily.ngrok-free.dev';
+  /// ✅ Spring Boot URL은 UrlConfig에서 자동으로 가져옵니다
+  static String get baseUrl => UrlConfig.springBootBaseUrl;
 
   // ============================================================================
   // FastAPI 서버 (AI 챗봇, 레벨 테스트, OCR)
@@ -31,99 +34,20 @@ class ApiService {
   //
   // ⚠️ 중요: FastAPI는 Spring Boot와 **다른 서버**입니다!
   //
-  // 🔧 FastAPI 배포 방법:
-  //    1. 로컬 개발: localhost:8000 (개발 중)
-  //    2. ngrok 배포: ngrok http 8000 → Web 배포용
-  //
-  // 📝 설정 방법:
-  //    1. FastAPI를 ngrok으로 실행: `ngrok http 8000`
-  //    2. ngrok URL 복사 (예: https://abc-def-ghi.ngrok-free.dev)
-  //    3. 아래 _fastApiNgrokUrl에 붙여넣기
+  // ✅ FastAPI URL은 UrlConfig에서 자동으로 관리됩니다:
+  //    - localhost 환경: http://127.0.0.1:8000
+  //    - ngrok/배포 환경: config/url_config.dart에서 설정한 ngrok URL
   //
   // ============================================================================
 
-  /// FastAPI ngrok URL (Web 배포 환경에서 사용)
-  ///
-  /// 💡 개발 중에는 null 또는 빈 문자열로 두어도 됩니다!
-  ///    → Web 환경에서는 자동으로 localhost:8000 사용
-  ///    → CORS 문제가 발생하면 그때 ngrok URL 설정
-  ///
-  /// 예시:
-  /// - 개발 중: null 또는 "" (localhost 자동 사용)
-  /// - 배포 시: "https://abc-def-ghi.ngrok-free.dev"
-  static const String? _fastApiNgrokUrl = null;  // ✅ 개발 중에는 null로 두면 됩니다!
-
-  /// FastAPI 로컬 포트 (모바일/데스크톱 환경에서 사용)
-  static const int _fastApiLocalPort = 8000;
-
-  /// FastAPI URL 반환 (중앙 로직)
+  /// FastAPI URL 반환 (UrlConfig에서 자동으로 가져옴)
   ///
   /// 환경별 URL 자동 선택:
-  /// - Web: ngrok URL (있으면) 또는 localhost:8000 (개발용)
+  /// - Web (localhost): http://127.0.0.1:8000
+  /// - Web (ngrok): ngrok URL
   /// - Android: http://10.0.2.2:8000 (에뮬레이터)
   /// - iOS: http://localhost:8000 (시뮬레이터)
-  /// - 기타: http://localhost:8000
-  static String get fastApiUrl => _resolveFastApiUrl();
-
-  /// 🔹 FastAPI URL 결정 로직 (중앙 함수)
-  ///
-  /// ⚠️ 절대로 Exception을 던지지 않습니다!
-  ///    경고만 출력하고 localhost URL을 반환합니다.
-  static String _resolveFastApiUrl() {
-    // ========================================
-    // 1️⃣ Web 환경
-    // ========================================
-    if (kIsWeb) {
-      // ngrok URL이 설정되어 있으면 사용
-      if (_fastApiNgrokUrl != null &&
-          _fastApiNgrokUrl!.isNotEmpty &&
-          _fastApiNgrokUrl != "YOUR_FASTAPI_NGROK_URL_HERE") {
-        print('[API_SERVICE] 🌐 Using FastAPI ngrok URL: $_fastApiNgrokUrl');
-        return _fastApiNgrokUrl!;
-      }
-
-      // ngrok URL이 없으면 localhost 사용 (개발 모드)
-      print('');
-      print('╔════════════════════════════════════════════════════════════');
-      print('║ [API_SERVICE] ⚠️ WARNING: Using localhost for FastAPI');
-      print('╠════════════════════════════════════════════════════════════');
-      print('║ Web 환경에서 localhost:$_fastApiLocalPort 사용 중입니다.');
-      print('║');
-      print('║ 💡 개발 중에는 문제없지만, CORS 오류 발생 시:');
-      print('║    1. FastAPI를 ngrok으로 실행: ngrok http $_fastApiLocalPort');
-      print('║    2. ngrok URL을 복사');
-      print('║    3. api_service.dart의 _fastApiNgrokUrl에 붙여넣기');
-      print('║');
-      print('║ 현재 사용 URL: http://127.0.0.1:$_fastApiLocalPort');
-      print('╚════════════════════════════════════════════════════════════');
-      print('');
-
-      // ✅ 예외를 던지지 않고 localhost URL 반환
-      return 'http://127.0.0.1:$_fastApiLocalPort';
-    }
-
-    // ========================================
-    // 2️⃣ Android 에뮬레이터
-    // ========================================
-    if (Platform.isAndroid) {
-      print('[API_SERVICE] 📱 Using Android emulator URL: http://10.0.2.2:$_fastApiLocalPort');
-      return 'http://10.0.2.2:$_fastApiLocalPort';
-    }
-
-    // ========================================
-    // 3️⃣ iOS 시뮬레이터
-    // ========================================
-    if (Platform.isIOS) {
-      print('[API_SERVICE] 📱 Using iOS simulator URL: http://localhost:$_fastApiLocalPort');
-      return 'http://localhost:$_fastApiLocalPort';
-    }
-
-    // ========================================
-    // 4️⃣ 기타 플랫폼 (Desktop 등)
-    // ========================================
-    print('[API_SERVICE] 💻 Using localhost URL: http://localhost:$_fastApiLocalPort');
-    return 'http://localhost:$_fastApiLocalPort';
-  }
+  static String get fastApiUrl => UrlConfig.fastApiBaseUrl;
 
   // ============================================================================
   // 🔹 JWT 토큰 관리

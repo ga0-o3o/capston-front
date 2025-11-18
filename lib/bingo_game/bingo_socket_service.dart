@@ -4,8 +4,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:web_socket_channel/status.dart' as status;
 
+// ✅ 중앙 URL 관리 import
+import '../config/url_config.dart';
+
 class BingoSocketService {
-  final String baseUrl;
   WebSocketChannel? _channel;
   bool _closed = false;
 
@@ -16,14 +18,19 @@ class BingoSocketService {
   final _controller = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get messages => _controller.stream;
 
-  BingoSocketService({required this.baseUrl});
+  BingoSocketService(); // ✅ 생성자에서 baseUrl 제거
 
   // ✅ WebSocket 연결
   void connect() {
-    final wsUrl = baseUrl.replaceFirst('https://', 'wss://') + '/ws/match';
+    // ✅ UrlConfig에서 WebSocket URL 자동으로 가져옴
+    final wsUrl = UrlConfig.springBootWebSocketUrl;
+    print('🔗 WebSocket 연결 시도: $wsUrl');
+    print('🌐 현재 환경 정보:');
+    UrlConfig.printCurrentEnvironment();
+
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      print('🔗 WebSocket 연결 시도: $wsUrl');
+      print('✅ WebSocket 채널 생성 완료');
 
       _channel!.stream.listen(
         (message) {

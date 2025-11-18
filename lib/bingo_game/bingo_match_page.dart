@@ -37,9 +37,8 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
   @override
   void initState() {
     super.initState();
-    _socket = BingoSocketService(
-      baseUrl: 'https://semiconical-shela-loftily.ngrok-free.dev',
-    );
+    // ✅ BingoSocketService가 UrlConfig에서 자동으로 URL을 가져옵니다
+    _socket = BingoSocketService();
     _socket.connect();
 
     _socket.onMessage = (msg) {

@@ -4,6 +4,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 
+// ✅ 중앙 URL 관리 import
+import '../../config/url_config.dart';
+
 /// 매칭 페이지: 매칭 참가 → 준비 완료 → 게임 시작 → 게임 화면 이동
 class MatchingPage extends StatefulWidget {
   final Widget Function(String roomId) gameWidgetBuilder;
@@ -78,7 +81,10 @@ class _MatchingPageState extends State<MatchingPage> {
     }
 
     try {
-      final url = Uri.parse("http://localhost:8080/join-match");
+      // ✅ UrlConfig를 사용하여 환경에 맞는 URL 자동 선택
+      final url = Uri.parse(UrlConfig.springBootEndpoint('/join-match'));
+      print('[MATCHING] 📡 Requesting match: $url');
+
       final response = await http.post(
         url,
         headers: {
@@ -140,7 +146,8 @@ class _MatchingPageState extends State<MatchingPage> {
   Future<void> _updatePlayerList() async {
     if (roomId == null) return;
     try {
-      final url = Uri.parse("http://localhost:8080/room/$roomId/players");
+      // ✅ UrlConfig를 사용하여 환경에 맞는 URL 자동 선택
+      final url = Uri.parse(UrlConfig.springBootEndpoint('/room/$roomId/players'));
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -198,7 +205,10 @@ class _MatchingPageState extends State<MatchingPage> {
     }
 
     try {
-      final url = Uri.parse("http://localhost:8080/set-ready");
+      // ✅ UrlConfig를 사용하여 환경에 맞는 URL 자동 선택
+      final url = Uri.parse(UrlConfig.springBootEndpoint('/set-ready'));
+      print('[MATCHING] 📡 Setting ready: $url');
+
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
@@ -251,7 +261,10 @@ class _MatchingPageState extends State<MatchingPage> {
     }
 
     try {
-      final url = Uri.parse("http://localhost:8080/start-game");
+      // ✅ UrlConfig를 사용하여 환경에 맞는 URL 자동 선택
+      final url = Uri.parse(UrlConfig.springBootEndpoint('/start-game'));
+      print('[MATCHING] 📡 Starting game: $url');
+
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},

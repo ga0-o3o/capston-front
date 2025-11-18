@@ -6,16 +6,16 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-// ✅ ApiService import 추가
-import '../../api_service.dart';
+// ✅ 중앙 URL 관리 import
+import '../../config/url_config.dart';
 
 /// Level Test API Service
 ///
-/// ⚠️ 중요: FastAPI URL은 ApiService.fastApiUrl을 사용합니다!
+/// ⚠️ 중요: FastAPI URL은 UrlConfig에서 자동으로 가져옵니다!
 ///         레벨 테스트는 Spring Boot가 아닌 FastAPI에서 처리됩니다.
 class LevelTestApi {
-  // ✅ FastAPI server URL - ApiService에서 가져오기
-  static String get baseUrl => ApiService.fastApiUrl;
+  // ✅ FastAPI server URL - UrlConfig에서 가져오기
+  static String get baseUrl => UrlConfig.fastApiBaseUrl;
 
   // -----------------------------------------------------------
   // Common functions

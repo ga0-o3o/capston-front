@@ -14,8 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-// ✅ ApiService import 추가
-import '../../api_service.dart';
+// ✅ 중앙 URL 관리 import
+import '../../config/url_config.dart';
 
 class WordImagePage extends StatefulWidget {
   final int wordbookId;
@@ -158,11 +158,12 @@ class _WordImagePageState extends State<WordImagePage> {
           // ✅ 이 task 안에서 실제 OCR 네트워크 요청 수행
           task: () async {
             try {
-              // ✅ FastAPI URL 사용 (localhost가 아님!)
-              final fastApiUrl = ApiService.fastApiUrl;
+              // ✅ UrlConfig에서 FastAPI URL 자동으로 가져옴
+              final fastApiUrl = UrlConfig.fastApiBaseUrl;
               final uri = Uri.parse('$fastApiUrl/api/ocr/extract');
 
               print('[OCR] 📡 Sending OCR request to: $uri');
+              print('[OCR] 🌐 FastAPI URL: $fastApiUrl');
 
               // ✅ JWT 토큰 가져오기
               final prefs = await SharedPreferences.getInstance();
