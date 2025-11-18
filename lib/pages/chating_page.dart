@@ -71,8 +71,14 @@ class _ChatingPageState extends State<ChatingPage> {
     });
     _messageController.clear();
 
-    // ✨ 추가: API 호출
+    // ✅ 추가: API 호출 전 토큰 로드 확인
     try {
+      // ✅ 토큰이 로드되었는지 먼저 확인
+      final tokenLoaded = await ApiService.ensureTokenLoaded();
+      if (!tokenLoaded) {
+        throw Exception('로그인이 필요합니다. 토큰을 찾을 수 없습니다.');
+      }
+
       final chatResponse = await ApiService.sendChatMessage(
         message: text,
         initialChat: _messages.length == 1, // 첫 메시지 여부
@@ -142,6 +148,12 @@ class _ChatingPageState extends State<ChatingPage> {
     });
 
     try {
+      // ✅ 토큰이 로드되었는지 먼저 확인
+      final tokenLoaded = await ApiService.ensureTokenLoaded();
+      if (!tokenLoaded) {
+        throw Exception('로그인이 필요합니다. 토큰을 찾을 수 없습니다.');
+      }
+
       final podcastResponse = await ApiService.generatePodcastFromConversation(
         conversationHistory: recentMessages,
       );

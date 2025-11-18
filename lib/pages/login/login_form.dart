@@ -71,29 +71,24 @@ class _LoginFormState extends State<LoginForm> {
     );
 
     try {
+      // ✅ loginWithId()가 내부에서 자동으로 토큰과 유저 정보를 저장합니다
       final data = await LoginService.loginWithId(id, pw);
-
-      // 서버에서 받은 데이터 저장
-      await LoginService.saveToken(data!['token']);
-      await LoginService.saveUserInfo(
-        id: data['loginId'],
-        name: data['name'],
-        nickname: data['nickname'],
-        rank: data['userRank'] ?? 'Beginner',
-      );
 
       if (!mounted) return;
       Navigator.pop(context);
 
+      // ✅ 닉네임은 이미 LoginService.saveUserInfo()에서 저장됨
+      final nickname = data?['nickname'] ?? await LoginService.getNickname();
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => MainMenuPage(userName: data['nickname']),
+          builder: (_) => MainMenuPage(userName: nickname),
         ),
       );
     } catch (e) {
       Navigator.pop(context);
-      setState(() => _errorMessage = e.toString());
+      setState(() => _errorMessage = e.toString().replaceAll('Exception: ', ''));
     }
   }
 

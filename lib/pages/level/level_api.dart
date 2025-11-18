@@ -6,20 +6,16 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+// ✅ ApiService import 추가
+import '../../api_service.dart';
+
 /// Level Test API Service
+///
+/// ⚠️ 중요: FastAPI URL은 ApiService.fastApiUrl을 사용합니다!
+///         레벨 테스트는 Spring Boot가 아닌 FastAPI에서 처리됩니다.
 class LevelTestApi {
-  // FastAPI server URL (Level test is handled by FastAPI, not Spring Boot)
-  static String get baseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:8000';
-    } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:8000'; // Android emulator
-    } else if (Platform.isIOS) {
-      return 'http://localhost:8000'; // iOS simulator
-    } else {
-      return 'http://localhost:8000';
-    }
-  }
+  // ✅ FastAPI server URL - ApiService에서 가져오기
+  static String get baseUrl => ApiService.fastApiUrl;
 
   // -----------------------------------------------------------
   // Common functions

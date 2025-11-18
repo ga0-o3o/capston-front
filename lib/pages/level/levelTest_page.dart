@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+// ✅ level_api.dart import 추가
+import 'level_api.dart';
+
 class LevelTestPage extends StatefulWidget {
   const LevelTestPage({super.key});
 
@@ -25,7 +28,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
   bool _isLoading = false;
   bool _isSending = false;
 
-  final String baseUrl = "http://127.0.0.1:8000";
+  // ❌ 제거: 하드코딩된 baseUrl
+  // FastAPI URL은 level_api.dart에서 ApiService.fastApiUrl을 사용합니다
 
   // ==========================================================================
   // 초기화 (Initialization)
@@ -171,33 +175,21 @@ class _LevelTestPageState extends State<LevelTestPage> {
   // Level Test API 호출 (Call Level Test API)
   // ==========================================================================
   Future<LevelTestResponse> _callLevelTestAPI(String message) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    // ✅ level_api.dart의 sendAnswer 메서드 사용
+    try {
+      final response = await LevelTestApi.sendAnswer(message);
 
-    if (token == null) {
-      throw Exception('No auth token found. Please login first.');
-    }
-
-    final url = Uri.parse('$baseUrl/api/test');
-    print('[API] Sending message to $url');
-
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({'message': message}),
-    );
-
-    print('[API] Response status: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      print('[API] Response data: $data');
-      return LevelTestResponse.fromJson(data);
-    } else {
-      throw Exception('API call failed with status ${response.statusCode}: ${response.body}');
+      return LevelTestResponse(
+        message: response.llmReply,
+        dialogNum: response.dialogNum,
+        currentLevel: response.currentLevel,
+        levelChanged: response.levelChanged,
+        evaluatedLevel: response.evaluatedLevel,
+        levelDisplay: response.levelDisplay,
+      );
+    } catch (e) {
+      print('[LEVEL_TEST] ❌ API call failed: $e');
+      rethrow;
     }
   }
 
