@@ -42,10 +42,12 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
     _socket.connect();
 
     _socket.onMessage = (msg) {
+      if (!mounted) return; // ✅ mounted 체크 추가
       final event = msg['event'];
 
       if (event == 'waiting') {
         final cnt = (msg['count'] ?? 0) as int;
+        if (!mounted) return; // ✅ setState 전 체크
         setState(() {
           _waitingCount = cnt;
         });
@@ -57,6 +59,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
             .toString();
 
         if (_manualStart) {
+          if (!mounted) return; // ✅ setState 전 체크
           setState(() {
             _pendingRoomId = roomId;
             _pendingUserId = myUserId;
@@ -81,6 +84,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
         final meId = _pendingUserId ?? _loginId ?? '';
         final meReadyNow = readyUsers.contains(meId);
 
+        if (!mounted) return; // ✅ setState 전 체크
         setState(() {
           _pendingRoomId ??= roomId;
           _readyCount = readyCount;
@@ -111,7 +115,9 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
   void _goToGameOnce(String roomId, String userId) {
     if (_navigated) return;
     _navigated = true;
-    setState(() => _status = '🎯 게임 시작!');
+    if (mounted) {
+      setState(() => _status = '🎯 게임 시작!');
+    }
 
     Navigator.push(
       context,
@@ -124,6 +130,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
       ),
     ).then((_) {
       // 게임 페이지에서 뒤로 오면 다시 매칭 가능 상태로 초기화
+      if (!mounted) return;
       setState(() {
         _navigated = false;
         _pendingRoomId = null;
@@ -135,6 +142,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
   }
 
   void _startMatch() async {
+    if (!mounted) return;
     setState(() => _connecting = true);
 
     final prefs = await SharedPreferences.getInstance();
@@ -143,6 +151,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
 
     if (loginId.isEmpty) {
       print('⚠️ 로그인 정보 없음. 로그인 후 이용해주세요.');
+      if (!mounted) return;
       setState(() {
         _status = '로그인 정보가 없습니다.';
         _connecting = false;
@@ -151,6 +160,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
     }
 
     await _socket.requestMatch(loginId, manualStart: _manualStart);
+    if (!mounted) return;
     setState(() {
       _status = _manualStart ? '매칭 대기 중...' : '매칭 요청 중...';
       _inQueue = true;
@@ -159,7 +169,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
   }
 
   void _startNow() {
-    // ✅ 사용자가 “지금 시작” 누름
+    // ✅ 사용자가 "지금 시작" 누름
     _readyToStart = true;
 
     if (_pendingRoomId != null && _pendingUserId != null) {
@@ -168,6 +178,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
     } else {
       // 아직 roomId를 못 받은 케이스: 서버에 강제 시작 요청
       _socket.forceStartMatch();
+      if (!mounted) return;
       setState(() {
         _status = '🎬 지금 시작 요청!';
       });
@@ -195,6 +206,13 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
     // 연결 종료 및 화면 닫기
     _socket.disconnect();
     if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  void dispose() {
+    // WebSocket 정리
+    _socket.disconnect();
+    super.dispose();
   }
 
   @override

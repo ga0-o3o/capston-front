@@ -137,8 +137,10 @@ class _BingoGamePageState extends State<BingoGamePage> {
   final Map<String, Timer> _highlightTimers = {};
   final Set<String> _highlightResponded = {}; // 정규화된 word 기준
 
-  // 🎯 중복 단어 첫 기회 추적 (정규화된 word 키로 관리)
-  final Map<String, bool> _highlightedFirstChance = {};
+  // 🎯 중복 단어 관리 (정규화된 word 키로 관리)
+  final Map<String, bool> _duplicateWordFirstChance = {}; // 첫 기회 여부
+  final Set<String> _duplicateWordAttempted = {}; // 이미 시도한 중복 단어
+  final Set<String> _myAttemptedWords = {}; // 🎯 내가 시도한 모든 단어 (중복 표시 방지용)
 
   // 이펙트 표시 상태
   bool _showBingoEffect = false;
@@ -286,6 +288,8 @@ class _BingoGamePageState extends State<BingoGamePage> {
   }
 
   void _showAnswerResultEffect(bool correct, String word) {
+    if (!mounted) return; // ✅ mounted 체크 추가
+
     final nw = _normWord(word);
     final now = DateTime.now().millisecondsSinceEpoch;
 
@@ -489,42 +493,39 @@ class _BingoGamePageState extends State<BingoGamePage> {
 
         print('🟦 word_hilight 수신: word=$w (정규화: $nw)');
         print('   hasInBoard=$hasInBoard, alreadyMine=$alreadyMine');
-        print('   Before 상태: crossedOthers=${crossedOthers.toList()}, _highlightedFirstChance=$_highlightedFirstChance');
-        print('   Before 상태: _highlightResponded=${_highlightResponded.toList()}');
+        print('   Before: crossedOthers=${crossedOthers.toList()}');
+        print('   Before: _duplicateWordFirstChance=$_duplicateWordFirstChance');
 
         setState(() {
-          if (!alreadyMine) {
-            // 파란 링 추가 (이미 있어도 다시 추가 - Set이므로 중복 안 됨)
+          if (!alreadyMine && hasInBoard) {
+            // 🎯 중복 단어: 내 보드에 있지만 아직 안 맞춘 경우
             crossedOthers.add(nw);
-            print('   🔵 crossedOthers 추가: $nw');
 
-            // 🎯 내 빙고판에도 있는 중복 단어면 항상 첫 기회로 재설정
-            if (hasInBoard) {
-              // ⚠️ 기존 응답 기록 제거 (새로운 기회)
+            // 중복 단어 첫 기회 설정 (1회만 시도 가능)
+            if (!_duplicateWordAttempted.contains(nw)) {
+              _duplicateWordFirstChance[nw] = true;
               _highlightResponded.remove(nw);
-              // ⚠️ 첫 기회 true로 재설정 (덮어쓰기)
-              _highlightedFirstChance[nw] = true;
-              print('   ✨ 새로운 첫 기회 설정! _highlightedFirstChance[$nw] = true');
-              print('   ✨ _highlightResponded에서 제거하여 재응답 가능하게 함');
+              print('   ✨ 중복 단어 첫 기회 설정: $nw');
             }
+          } else if (!alreadyMine && !hasInBoard) {
+            // 내 보드에 없는 단어
+            crossedOthers.add(nw);
+            print('   🔵 crossedOthers 추가 (내 보드에 없음): $nw');
           } else {
-            print('   ⏭️ 이미 내가 맞춘 단어 (crossedMine에 있음), 무시');
+            print('   ⏭️ 이미 맞춘 단어, 무시');
           }
         });
 
-        print('   After 상태: crossedOthers=${crossedOthers.toList()}, _highlightedFirstChance=$_highlightedFirstChance');
-        print('   After 상태: _highlightResponded=${_highlightResponded.toList()}');
+        print('   After: crossedOthers=${crossedOthers.toList()}');
+        print('   After: _duplicateWordFirstChance=$_duplicateWordFirstChance');
 
         if (!hasInBoard) {
-          print('   ⏰ 내 보드에 없음 → 타이머 시작 (10초)');
-          _startHighlightDeadline(w); // 없는 사람만 타이머 시작
-        } else {
-          print('   ✅ 내 보드에 있음 → 타이머 시작 안 함 (자유롭게 응답 가능)');
+          _startHighlightDeadline(w);
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🟦 하이라이트 도전 시작: "$w" (누구나 응시 가능)'),
+            content: Text('🟦 중복 단어 도전: "$w"'),
             backgroundColor: const Color(0xFF4E6E99),
           ),
         );
@@ -551,88 +552,134 @@ class _BingoGamePageState extends State<BingoGamePage> {
         // ⚠️ 엄격한 타입 체크: true일 때만 정답
         final bool oneOk = (wordCorrRaw is bool && wordCorrRaw == true);
 
-        final bool isFirstChance = _highlightedFirstChance[nw] == true;
+        final bool isDuplicateWord = _duplicateWordFirstChance[nw] == true;
         final bool inMyBoard = _boardHasWord(word);
         final bool alreadyMarked = crossedMine.contains(nw);
 
         print('🔍 highlight_result (단일):');
         print('   word=$word (정규화: $nw)');
+        print('   wordKr=${data['wordKr'] ?? 'N/A'}');
         print('   loginId=$oneLogin (정규화: $normOneLogin)');
         print('   userId=${widget.userId} (정규화: $me)');
         print('   ⭐ isMe=$isMe');
         print('   ⭐ word_corr=$wordCorrRaw (type: ${wordCorrRaw.runtimeType})');
         print('   ⭐ oneOk=$oneOk (엄격한 체크 결과)');
-        print('   isFirstChance=$isFirstChance');
+        print('   isDuplicateWord=$isDuplicateWord');
         print('   inMyBoard=$inMyBoard');
         print('   alreadyMarked=$alreadyMarked');
         print('   _isMyTurn=$_isMyTurn');
+        print('   📋 서버 응답 전체: $data');
 
         // 🎬 Effect는 내가 답한 경우에만 표시
         if (isMe) {
           print('   🎬 Effect 표시 (본인만): oneOk=$oneOk');
           _showAnswerResultEffect(oneOk, word);
         } else {
-          print('   ⏭️ 다른 사람 응답이므로 Effect 표시 안 함');
+          print('   ⏭️ 다른 사람 응답 → Effect 표시 안 함');
+          // 🎯 상대방이 시도한 단어가 내 보드에 있으면 중복 표시 추가
+          // ⚠️ 단, 이미 중복 표시가 있거나 이미 시도한 중복 단어는 제외
+          // ⚠️ 그리고 내가 먼저 시도한 단어도 제외
+          if (!crossedMine.contains(nw) &&
+              !crossedOthers.contains(nw) &&
+              !_duplicateWordAttempted.contains(nw) &&
+              !_myAttemptedWords.contains(nw) && // 🎯 내가 먼저 시도한 단어는 제외
+              _boardHasWord(word)) {
+            setState(() {
+              crossedOthers.add(nw);
+              _duplicateWordFirstChance[nw] = true;
+            });
+            print('   🔵 상대 시도! 내 보드에 중복 표시 추가: $nw (정답 여부: $oneOk)');
+          } else {
+            print('   ℹ️ 상대 시도했지만 중복 표시 안 함 (이유: 이미 맞춤/이미 중복 표시/이미 시도함/내가 먼저 시도함/보드에 없음)');
+          }
+          return; // 상대방 응답은 여기서 종료
         }
 
+        // ✅ 내가 답한 경우만 보드 상태 업데이트
         setState(() {
-          if (isMe) {
-            // ✅ 내가 답한 경우만 처리
-            if (oneOk) {
-              // ✅ 정답인 경우만 X 표시
-              if (!alreadyMarked) {
-                print('   ✅ 정답! crossedOthers 제거, crossedMine 추가');
-                print('   ✅ Before: crossedOthers=${crossedOthers.toList()}, crossedMine=${crossedMine.toList()}');
-                crossedOthers.remove(nw);
-                crossedMine.add(nw);
-                print('   ✅ After: crossedOthers=${crossedOthers.toList()}, crossedMine=${crossedMine.toList()}');
-                _highlightedFirstChance.remove(nw);
-              } else {
-                print('   ✅ 정답이지만 이미 crossedMine에 있음 (중복 방지)');
-              }
+          if (oneOk) {
+            // ✅ 정답
+            if (!alreadyMarked) {
+              print('   ✅ 정답! crossedOthers 제거, crossedMine 추가');
+              crossedOthers.remove(nw);
+              crossedMine.add(nw);
+              _duplicateWordFirstChance.remove(nw);
             } else {
-              // ❌ 오답인 경우: X 표시 안 함, 파란 링 유지
-              print('   ❌ 오답! X 표시 안 함, 파란 링 유지');
-              print('   ❌ crossedOthers 유지: ${crossedOthers.toList()}');
-              _highlightedFirstChance[nw] = false; // 첫 기회 소진
+              print('   ✅ 정답이지만 이미 있음');
             }
           } else {
-            // 다른 사람 응답: 내 보드 상태 업데이트 안 함
-            print('   ⏭️ 다른 사람 응답이므로 내 보드 상태 변경 안 함');
+            // ❌ 오답
+            print('   ❌ 오답 처리');
+
+            // 중복 단어 오답 시 중복 표시 제거
+            if (isDuplicateWord) {
+              crossedOthers.remove(nw);
+              _duplicateWordFirstChance.remove(nw);
+              _duplicateWordAttempted.add(nw);
+              print('   🔴 중복 단어 오답! 중복 표시 제거: $nw');
+            }
+
+            // 이미 X가 있었다면 제거
+            if (alreadyMarked) {
+              crossedMine.remove(nw);
+              print('   🔴 X 제거: $nw');
+            }
           }
         });
 
         _cancelHighlightDeadline(word);
 
-        // ✅ 정답이고 내가 맞춘 경우만 후속 처리
-        if (isMe && oneOk) {
+        // ✅ 후속 처리
+        if (oneOk) {
+          print('   ✅ 정답 처리 완료 → X 추가, 빙고 수 체크');
           _checkWinAfterMark(lastWord: word);
 
-          // 🎯 첫 기회 보너스 턴 처리
-          if (isFirstChance) {
-            print('   🎉 첫 기회 보너스 턴! turnDone 안 보냄');
+          // 🎯 중복 단어는 턴을 소비하지 않음
+          if (isDuplicateWord) {
+            print('   🎉 중복 단어 정답! 턴 유지');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('🎉 중복 단어 첫 기회 성공! 다른 단어를 선택할 수 있습니다.'),
+                content: Text('✅ 중복 단어 정답! 턴을 소비하지 않아 계속 시도할 수 있습니다.'),
                 backgroundColor: Color(0xFF4E6E99),
                 duration: Duration(seconds: 2),
               ),
             );
+            // turnDone 안 보냄 (턴 유지)
           } else {
-            print('   📤 turnDone 전송 (첫 기회 아님, _isMyTurn=$_isMyTurn)');
+            // 일반 정답: 턴 종료
+            print('   📤 일반 정답 → turnDone 전송');
             if (_isMyTurn) {
               widget.socket.sendTurnDone(widget.roomId, widget.userId);
-            } else {
-              print('   ⚠️ 내 차례가 아니므로 turnDone 안 보냄');
             }
           }
-        } else if (isMe && !oneOk) {
-          // ❌ 오답인 경우: 턴 종료
-          print('   📤 turnDone 전송 (오답, _isMyTurn=$_isMyTurn)');
-          if (_isMyTurn) {
-            widget.socket.sendTurnDone(widget.roomId, widget.userId);
+        } else {
+          print('   ❌ 오답 처리 완료 → 중복 표시/X 제거');
+          // ❌ 오답: 빙고 수 재계산
+          if (alreadyMarked) {
+            final newCount = _recalcMyBingos();
+            if (newCount != _myBingoCount) {
+              setState(() => _myBingoCount = newCount);
+              print('   🔴 빙고 수 감소: ${_myBingoCount} → $newCount');
+            }
+          }
+
+          // 🎯 중복 단어는 턴을 소비하지 않음
+          if (isDuplicateWord) {
+            print('   💡 중복 단어 오답! 턴 유지');
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('❌ 중복 단어 오답! 턴을 소비하지 않아 계속 시도할 수 있습니다.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            // turnDone 안 보냄 (턴 유지)
           } else {
-            print('   ⚠️ 내 차례가 아니므로 turnDone 안 보냄');
+            // 일반 오답: 턴 종료
+            print('   📤 일반 오답 → turnDone 전송');
+            if (_isMyTurn) {
+              widget.socket.sendTurnDone(widget.roomId, widget.userId);
+            }
           }
         }
 
@@ -672,79 +719,106 @@ class _BingoGamePageState extends State<BingoGamePage> {
 
       final me = _normId(widget.userId);
       final bool iWon = winners.contains(me);
-      final bool isFirstChance = _highlightedFirstChance[nw] == true;
+      final bool isDuplicateWord = _duplicateWordFirstChance[nw] == true;
       final bool alreadyMarked = crossedMine.contains(nw);
+      final bool inMyBoard = _boardHasWord(word);
 
       print('🔍 highlight_result (results):');
       print('   word=$word (정규화: $nw)');
       print('   raw=$raw');
-      print('   winners=$winners (엄격한 체크 결과)');
-      print('   me=$me');
-      print('   ⭐ iWon=$iWon');
-      print('   isFirstChance=$isFirstChance');
+      print('   winners=$winners');
+      print('   me=$me, iWon=$iWon');
+      print('   isDuplicateWord=$isDuplicateWord');
       print('   alreadyMarked=$alreadyMarked');
-      print('   _isMyTurn=$_isMyTurn');
+      print('   📋 서버 응답 전체: $data');
 
-      // 🎬 Effect는 내가 이긴 경우에만 표시
-      if (iWon) {
-        print('   🎬 Effect 표시 (본인만): iWon=true');
-        _showAnswerResultEffect(true, word);
+      // 🎬 Effect는 내가 답한 경우에만 표시
+      final bool isMyAnswer = iWon || (winners.isEmpty && inMyBoard);
+      if (isMyAnswer) {
+        if (iWon) {
+          print('   🎬 Effect 표시 (정답)');
+          _showAnswerResultEffect(true, word);
+        } else {
+          print('   🎬 Effect 표시 (오답)');
+          _showAnswerResultEffect(false, word);
+        }
       } else {
-        print('   ⏭️ 내가 이기지 않았으므로 Effect 표시 안 함');
+        print('   ⏭️ 다른 사람 응답 → Effect 안 함');
+        return;
       }
 
+      // ✅ 보드 상태 업데이트
       setState(() {
         if (iWon) {
-          // ✅ 정답인 경우만 X 표시
+          // ✅ 정답
           if (!alreadyMarked) {
-            print('   ✅ 정답! crossedOthers 제거, crossedMine 추가');
-            print('   ✅ Before: crossedOthers=${crossedOthers.toList()}, crossedMine=${crossedMine.toList()}');
             crossedOthers.remove(nw);
             crossedMine.add(nw);
-            print('   ✅ After: crossedOthers=${crossedOthers.toList()}, crossedMine=${crossedMine.toList()}');
-            _highlightedFirstChance.remove(nw);
-          } else {
-            print('   ✅ 정답이지만 이미 crossedMine에 있음 (중복 방지)');
+            _duplicateWordFirstChance.remove(nw);
+            print('   ✅ 정답 처리');
           }
         } else {
-          // ❌ 오답인 경우: X 표시 안 함, 파란 링 유지
-          print('   ❌ 오답! X 표시 안 함, 파란 링 유지');
-          print('   ❌ crossedOthers 유지: ${crossedOthers.toList()}');
-          _highlightedFirstChance[nw] = false; // 첫 기회 소진
+          // ❌ 오답
+          print('   ❌ 오답 처리');
+
+          // 중복 단어 오답 시 중복 표시 제거
+          if (isDuplicateWord) {
+            crossedOthers.remove(nw);
+            _duplicateWordFirstChance.remove(nw);
+            _duplicateWordAttempted.add(nw);
+            print('   🔴 중복 표시 제거');
+          }
+
+          // X 제거
+          if (alreadyMarked) {
+            crossedMine.remove(nw);
+            print('   🔴 X 제거');
+          }
         }
       });
 
       _cancelHighlightDeadline(word);
 
-      // ✅ 정답인 경우만 후속 처리
+      // ✅ 후속 처리
       if (iWon) {
         _checkWinAfterMark(lastWord: word);
 
-        // 🎯 첫 기회 보너스 턴 처리
-        if (isFirstChance) {
-          print('   🎉 첫 기회 보너스 턴! turnDone 안 보냄');
+        // 🎯 중복 단어는 턴을 소비하지 않음
+        if (isDuplicateWord) {
+          print('   🎉 중복 단어 정답! 턴 유지');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('🎉 중복 단어 첫 기회 성공! 다른 단어를 선택할 수 있습니다.'),
+              content: Text('✅ 중복 단어 정답! 턴을 소비하지 않아 계속 시도할 수 있습니다.'),
               backgroundColor: Color(0xFF4E6E99),
-              duration: Duration(seconds: 2),
             ),
           );
         } else {
-          print('   📤 turnDone 전송 (첫 기회 아님, _isMyTurn=$_isMyTurn)');
           if (_isMyTurn) {
             widget.socket.sendTurnDone(widget.roomId, widget.userId);
-          } else {
-            print('   ⚠️ 내 차례가 아니므로 turnDone 안 보냄');
           }
         }
       } else {
-        // ❌ 오답인 경우: 턴 종료
-        print('   📤 turnDone 전송 (오답, _isMyTurn=$_isMyTurn)');
-        if (_isMyTurn) {
-          widget.socket.sendTurnDone(widget.roomId, widget.userId);
+        // 오답: 빙고 수 재계산
+        if (alreadyMarked) {
+          final newCount = _recalcMyBingos();
+          if (newCount != _myBingoCount) {
+            setState(() => _myBingoCount = newCount);
+          }
+        }
+
+        // 🎯 중복 단어는 턴을 소비하지 않음
+        if (isDuplicateWord) {
+          print('   💡 중복 단어 오답! 턴 유지');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('❌ 중복 단어 오답! 턴을 소비하지 않아 계속 시도할 수 있습니다.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
         } else {
-          print('   ⚠️ 내 차례가 아니므로 turnDone 안 보냄');
+          if (_isMyTurn) {
+            widget.socket.sendTurnDone(widget.roomId, widget.userId);
+          }
         }
       }
 
@@ -764,13 +838,17 @@ class _BingoGamePageState extends State<BingoGamePage> {
       print('🔍 next_turn: word=$word, prevUser=$prevUser, nextUser=$nextUser');
       print('   ⭐ word_corr=$wordCorrRaw (type: ${wordCorrRaw.runtimeType})');
       print('   ⭐ correct=$correct (엄격한 체크 결과)');
+      print('   📋 서버 응답 전체: $data');
 
       if (word != null && word.isNotEmpty) {
         final nw = _normWord(word);
         final me = _normId(widget.userId);
         final prevIsMe = _normId(prevUser) == me;
+        final isDuplicateWord = _duplicateWordFirstChance[nw] == true;
+        final alreadyMarked = crossedMine.contains(nw);
 
         print('   → prevIsMe=$prevIsMe, me=$me');
+        print('   → isDuplicateWord=$isDuplicateWord, alreadyMarked=$alreadyMarked');
 
         // 🎬 Effect는 내가 답한 경우에만 표시
         if (prevIsMe) {
@@ -781,26 +859,51 @@ class _BingoGamePageState extends State<BingoGamePage> {
         }
 
         setState(() {
-          if (correct) {
-            if (prevIsMe) {
-              // 내가 턴에서 맞춘 경우 → 내 보드만 X
-              if (!crossedMine.contains(nw)) {
-                print('   ✅ 정답! crossedMine 추가: $nw');
-                crossedOthers.remove(nw);
-                crossedMine.add(nw);
-              } else {
-                print('   ✅ 이미 crossedMine에 있음 (중복 방지)');
-              }
+          if (correct && prevIsMe) {
+            // ✅ 내가 턴에서 맞춘 경우만 → 내 보드에 X 표시
+            if (!crossedMine.contains(nw)) {
+              print('   ✅ 정답! crossedMine 추가: $nw');
+              crossedOthers.remove(nw);
+              crossedMine.add(nw);
+              _duplicateWordFirstChance.remove(nw);
             } else {
-              // 남이 맞춘 경우 → 내 보드엔 X 금지, 필요 시 파란 링 유지
-              if (!crossedMine.contains(nw) && _boardHasWord(word)) {
-                print('   🔵 상대 정답! crossedOthers 추가: $nw');
-                crossedOthers.add(nw);
-              }
+              print('   ✅ 이미 crossedMine에 있음 (중복 방지)');
             }
-          } else {
-            print('   ❌ 오답 처리');
+          } else if (!correct && prevIsMe) {
+            // ❌ 내가 오답
+            print('   ❌ 오답 처리 (내가 틀림)');
+
+            // 중복 단어 오답 시 중복 표시 제거
+            if (isDuplicateWord) {
+              crossedOthers.remove(nw);
+              _duplicateWordFirstChance.remove(nw);
+              _duplicateWordAttempted.add(nw);
+              print('   🔴 중복 단어 오답! 파란 링 제거: $nw');
+            }
+
+            // X 제거
+            if (alreadyMarked) {
+              crossedMine.remove(nw);
+              print('   🔴 X 제거: $nw');
+            }
+          } else if (!prevIsMe) {
+            // 🎯 상대방이 단어를 시도한 경우 (정답/오답 무관)
+            // → 내 보드에 같은 단어가 있으면 중복 표시(파란 링) 추가
+            // ⚠️ 단, 이미 중복 표시가 있거나 이미 시도한 중복 단어는 제외
+            // ⚠️ 그리고 내가 먼저 시도한 단어도 제외
+            if (!crossedMine.contains(nw) &&
+                !crossedOthers.contains(nw) &&
+                !_duplicateWordAttempted.contains(nw) &&
+                !_myAttemptedWords.contains(nw) && // 🎯 내가 먼저 시도한 단어는 제외
+                _boardHasWord(word)) {
+              crossedOthers.add(nw);
+              _duplicateWordFirstChance[nw] = true;
+              print('   🔵 상대 시도! 내 보드에 중복 표시 추가: $nw (정답 여부: $correct)');
+            } else {
+              print('   ℹ️ 상대 시도했지만 중복 표시 안 함 (이유: 이미 맞춤/이미 중복 표시/이미 시도함/내가 먼저 시도함/보드에 없음)');
+            }
           }
+
           // 턴 이동 갱신
           if (nextUser != null && nextUser.isNotEmpty) {
             _activeUserId = _normId(nextUser);
@@ -813,11 +916,20 @@ class _BingoGamePageState extends State<BingoGamePage> {
         // 승리 체크 (setState 밖에서)
         if (correct && prevIsMe) {
           _checkWinAfterMark(lastWord: word);
+        } else if (!correct && prevIsMe) {
+          // 오답: 빙고 수 재계산
+          if (alreadyMarked) {
+            final newCount = _recalcMyBingos();
+            if (newCount != _myBingoCount) {
+              setState(() => _myBingoCount = newCount);
+              print('   🔴 빙고 수 감소: ${_myBingoCount} → $newCount');
+            }
+          }
         }
 
-        if (correct && !_boardHasWord(word)) {
-          _startHighlightDeadline(word);
-        }
+        // ❌ 제거됨: next_turn에서는 하이라이트 타이머 시작 안 함
+        // 이유: 일반 턴 모드에서는 하이라이트 시스템이 작동하지 않음
+        // 하이라이트는 word_hilight 이벤트에서만 처리됨
       }
       return;
     }
@@ -981,56 +1093,51 @@ class _BingoGamePageState extends State<BingoGamePage> {
   Future<void> _handleTapOnCell(String word) async {
     final nw = _normWord(word);
     final bool wasHighlighted = crossedOthers.contains(nw);
-    final bool isFirstChance = _highlightedFirstChance[nw] == true;
+    final bool isDuplicateWord = _duplicateWordFirstChance[nw] == true;
     final bool alreadyMarked = crossedMine.contains(nw);
 
-    print('🎯 사용자가 단어 선택:');
-    print('   word=$word (정규화: $nw)');
-    print('   wasHighlighted=$wasHighlighted (파란 링 여부)');
-    print('   isFirstChance=$isFirstChance');
+    print('🎯 단어 선택: $word');
+    print('   wasHighlighted=$wasHighlighted');
+    print('   isDuplicateWord=$isDuplicateWord');
     print('   alreadyMarked=$alreadyMarked');
     print('   _isMyTurn=$_isMyTurn');
-    print('   _highlightResponded=${_highlightResponded.toList()}');
 
     final QuizResult? result = await Navigator.of(context).push<QuizResult>(
       MaterialPageRoute(builder: (_) => BingoQuiz(word: word)),
     );
 
     if (result == null) {
-      print('   ❌ 퀴즈 취소됨');
+      print('   취소됨');
       return;
     }
 
-    print('   → 사용자 답변: ${result.answer}');
+    print('   답변: ${result.answer}');
 
-    final String eventName = wasHighlighted ? 'word_hilight' : 'word_click';
+    // 🎯 내가 시도한 단어 기록 (중복 표시 방지용)
+    _myAttemptedWords.add(nw);
+    print('   📝 내가 시도한 단어 기록: $nw');
 
-    print('   📤 서버로 전송:');
-    print('      event=$eventName');
-    print('      word=$word');
-    print('      wordKr=${result.answer}');
-    print('      wasHighlighted=$wasHighlighted');
-    print('      roomId=${widget.roomId}');
-    print('      loginId=${widget.userId}');
+    // ✅ 수정: 내 차례일 때는 중복 단어여도 일반 턴(word_click)으로 처리
+    final String eventName = (_isMyTurn || !wasHighlighted) ? 'word_click' : 'word_hilight';
 
-    // 서버로 답 전송 (서버가 검증 후 결과를 highlight_result나 next_turn으로 전송)
+    print('   이벤트: $eventName');
+    print('   이유: ${_isMyTurn ? "내 차례" : (wasHighlighted ? "중복 단어(상대 차례)" : "일반 단어")}');
+
     widget.socket.sendUserWordEvent(
       roomId: widget.roomId,
       loginId: widget.userId,
       event: eventName,
       word: word,
       wordKr: result.answer,
-      wasHighlighted: wasHighlighted,
+      wasHighlighted: wasHighlighted && !_isMyTurn,
+      isDuplicate: isDuplicateWord, // 🎯 중복 단어 플래그 추가
     );
 
-    // ⚠️ 하이라이트 단어의 경우 타이머만 취소 (_highlightResponded에는 추가하지 않음)
-    // 이유: _highlightResponded는 타이머 만료용으로만 사용
-    if (wasHighlighted) {
+    if (wasHighlighted && !_isMyTurn) {
       _cancelHighlightDeadline(word);
-      print('   ⏸️ 타이머 취소 (단, _highlightResponded에는 추가 안 함 - 재클릭 가능하게)');
     }
 
-    print('   ⏳ 서버 응답 대기 중... (highlight_result 또는 next_turn 이벤트로 결과 수신 예상)');
+    print('   서버 응답 대기 중...');
   }
 
   @override
