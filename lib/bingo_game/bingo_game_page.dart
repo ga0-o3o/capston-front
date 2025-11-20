@@ -158,6 +158,15 @@ class _BingoGamePageState extends State<BingoGamePage> {
   String? _lastEffectWord;
   int _lastEffectTime = 0;
 
+  // 🎯 현재 검사 중인 단어 (서버 응답 대기 중)
+  String? _wordUnderReview;
+
+  // ⏱️ 턴 타이머 관련
+  int? _turnStartTime; // 서버에서 받은 턴 시작 시각 (밀리초)
+  int _turnDuration = 20; // 턴 제한 시간 (초)
+  Timer? _turnTimer; // 1초마다 UI 업데이트
+  int _remainingSeconds = 0; // 남은 시간 (초)
+
 // 결과 다이얼로그 1회만 뜨도록 가드
   bool _dialogShown = false;
 // 내가 승리 브로드캐스트를 이미 보냈는지 가드
@@ -329,7 +338,51 @@ class _BingoGamePageState extends State<BingoGamePage> {
       t.cancel();
     }
     _highlightTimers.clear();
+    // ⏱️ 턴 타이머 정리
+    _turnTimer?.cancel();
     super.dispose();
+  }
+
+  // ⏱️ 턴 타이머 시작 (서버 시간 기준)
+  void _startTurnTimer(int serverStartTime, int duration) {
+    _turnTimer?.cancel();
+    _turnStartTime = serverStartTime;
+    _turnDuration = duration;
+
+    // 즉시 남은 시간 계산
+    _updateRemainingTime();
+
+    // 1초마다 UI 업데이트
+    _turnTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateRemainingTime();
+    });
+  }
+
+  // ⏱️ 남은 시간 계산 및 UI 업데이트
+  void _updateRemainingTime() {
+    if (_turnStartTime == null) return;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final elapsed = (now - _turnStartTime!) / 1000; // 경과 시간 (초)
+    final remaining = (_turnDuration - elapsed).ceil();
+
+    setState(() {
+      _remainingSeconds = remaining > 0 ? remaining : 0;
+    });
+
+    // 시간 종료 시 타이머 중지
+    if (_remainingSeconds <= 0) {
+      _turnTimer?.cancel();
+    }
+  }
+
+  // ⏱️ 턴 타이머 중지
+  void _stopTurnTimer() {
+    _turnTimer?.cancel();
+    setState(() {
+      _remainingSeconds = 0;
+      _turnStartTime = null;
+    });
   }
 
   void _maybeFixOrderAndStart() {
@@ -422,6 +475,10 @@ class _BingoGamePageState extends State<BingoGamePage> {
       final List<String> orderRaw =
           (data['turnOrder'] as List? ?? const []).map(_normId).toList();
 
+      // ⏱️ 타이머 정보 받기
+      final turnStartTime = data['turnStartTime'] as int?;
+      final turnDuration = data['turnDuration'] as int? ?? 20;
+
       setState(() {
         if (orderRaw.isNotEmpty) {
           _order = orderRaw;
@@ -437,6 +494,12 @@ class _BingoGamePageState extends State<BingoGamePage> {
         if (_turnIndex < 0) _turnIndex = 0;
         _phase = _Phase.playing;
       });
+
+      // ⏱️ 타이머 시작
+      if (turnStartTime != null) {
+        _startTurnTimer(turnStartTime, turnDuration);
+      }
+
       return;
     }
 
@@ -490,32 +553,27 @@ class _BingoGamePageState extends State<BingoGamePage> {
         final nw = _normWord(w);
         final bool hasInBoard = _boardHasWord(w);
         final bool alreadyMine = crossedMine.contains(nw);
+        final bool alreadyHighlighted = crossedOthers.contains(nw);
+        final bool alreadyAttempted = _duplicateWordAttempted.contains(nw);
 
         print('🟦 word_hilight 수신: word=$w (정규화: $nw)');
         print('   hasInBoard=$hasInBoard, alreadyMine=$alreadyMine');
+        print('   alreadyHighlighted=$alreadyHighlighted, alreadyAttempted=$alreadyAttempted');
         print('   Before: crossedOthers=${crossedOthers.toList()}');
 
         setState(() {
-          // 🎯 새 하이라이트 시작 → 이전 하이라이트 모두 제거 (턴이 넘어갔으므로)
-          crossedOthers.clear();
-          _duplicateWordFirstChance.clear();
-          print('   🧹 이전 파란 링 모두 제거');
-
-          if (!alreadyMine && hasInBoard) {
+          // 🎯 파란 링 누적 가능 (여러 개 쌓일 수 있음)
+          if (!alreadyMine && hasInBoard && !alreadyHighlighted && !alreadyAttempted) {
             // 🎯 중복 단어: 내 보드에 있지만 아직 안 맞춘 경우
             crossedOthers.add(nw);
-
-            // 중복 단어 첫 기회 설정 (1회만 시도 가능)
-            if (!_duplicateWordAttempted.contains(nw)) {
-              _duplicateWordFirstChance[nw] = true;
-              _highlightResponded.remove(nw);
-              print('   ✨ 중복 단어 첫 기회 설정: $nw');
-            }
+            _duplicateWordFirstChance[nw] = true;
+            _highlightResponded.remove(nw);
+            print('   ✨ 파란 링 추가: $nw');
           } else if (!alreadyMine && !hasInBoard) {
             // 내 보드에 없는 단어 → 10초 타이머만 작동
             print('   ⏰ 내 보드에 없음 → 타이머만 시작');
           } else {
-            print('   ⏭️ 이미 맞춘 단어, 무시');
+            print('   ⏭️ 이미 맞춤/이미 파란 링/이미 시도함 → 무시');
           }
         });
 
@@ -525,7 +583,7 @@ class _BingoGamePageState extends State<BingoGamePage> {
           _startHighlightDeadline(w);
         }
 
-        if (hasInBoard && !alreadyMine) {
+        if (hasInBoard && !alreadyMine && !alreadyHighlighted && !alreadyAttempted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('🟦 중복 단어 도전: "$w"'),
@@ -628,6 +686,14 @@ class _BingoGamePageState extends State<BingoGamePage> {
         });
 
         _cancelHighlightDeadline(word);
+
+        // 🎯 서버 응답 완료 → 검사 중인 단어 해제
+        if (isMe && _wordUnderReview == nw) {
+          setState(() {
+            _wordUnderReview = null;
+            print('   🔓 검사 완료: $nw (이제 다시 클릭 가능)');
+          });
+        }
 
         // ✅ 후속 처리
         if (oneOk) {
@@ -775,6 +841,14 @@ class _BingoGamePageState extends State<BingoGamePage> {
 
       _cancelHighlightDeadline(word);
 
+      // 🎯 서버 응답 완료 → 검사 중인 단어 해제
+      if (isMyAnswer && _wordUnderReview == nw) {
+        setState(() {
+          _wordUnderReview = null;
+          print('   🔓 검사 완료: $nw (이제 다시 클릭 가능)');
+        });
+      }
+
       // ✅ 후속 처리
       if (iWon) {
         _checkWinAfterMark(lastWord: word);
@@ -826,6 +900,10 @@ class _BingoGamePageState extends State<BingoGamePage> {
       final String? prevUser = data['prev_user'];
       final String? nextUser = data['next_user'];
       final String? word = data['word'];
+
+      // ⏱️ 타이머 정보 받기
+      final turnStartTime = data['turnStartTime'] as int?;
+      final turnDuration = data['turnDuration'] as int? ?? 20;
 
       // ⚠️ 엄격한 타입 체크: true일 때만 정답
       final wordCorrRaw = data['word_corr'];
@@ -905,6 +983,14 @@ class _BingoGamePageState extends State<BingoGamePage> {
           }
         });
 
+        // 🎯 서버 응답 완료 → 검사 중인 단어 해제
+        if (prevIsMe && _wordUnderReview == nw) {
+          setState(() {
+            _wordUnderReview = null;
+            print('   🔓 검사 완료: $nw (이제 다시 클릭 가능)');
+          });
+        }
+
         // 승리 체크 (setState 밖에서)
         if (correct && prevIsMe) {
           _checkWinAfterMark(lastWord: word);
@@ -923,6 +1009,12 @@ class _BingoGamePageState extends State<BingoGamePage> {
         // 이유: 일반 턴 모드에서는 하이라이트 시스템이 작동하지 않음
         // 하이라이트는 word_hilight 이벤트에서만 처리됨
       }
+
+      // ⏱️ 타이머 시작
+      if (turnStartTime != null) {
+        _startTurnTimer(turnStartTime, turnDuration);
+      }
+
       return;
     }
 
@@ -1084,22 +1176,51 @@ class _BingoGamePageState extends State<BingoGamePage> {
 
   Future<void> _handleTapOnCell(String word) async {
     final nw = _normWord(word);
-    final bool wasHighlighted = crossedOthers.contains(nw);
-    final bool isDuplicateWord = _duplicateWordFirstChance[nw] == true;
+
+    // 🚫 이 단어가 현재 검사 중이면 차단 (중복 제출 방지)
+    if (_wordUnderReview == nw) {
+      print('⛔ 검사 중인 단어 → 중복 클릭 차단: $word');
+      return;
+    }
+
+    // 🎯 클릭 시점에 파란 링 여부 저장 (퀴즈 풀고 오는 동안 변할 수 있음)
+    final bool wasHighlightedAtClick = crossedOthers.contains(nw);
+    final bool alreadyAttemptedAtClick = _duplicateWordAttempted.contains(nw);
     final bool alreadyMarked = crossedMine.contains(nw);
 
     print('🎯 단어 선택: $word');
-    print('   wasHighlighted=$wasHighlighted');
-    print('   isDuplicateWord=$isDuplicateWord');
+    print('   wasHighlightedAtClick=$wasHighlightedAtClick');
+    print('   alreadyAttemptedAtClick=$alreadyAttemptedAtClick');
     print('   alreadyMarked=$alreadyMarked');
     print('   _isMyTurn=$_isMyTurn');
 
+    // 🎯 파란 링 중복 클릭 방지: 즉시 기록 (퀴즈 들어가기 전에!)
+    final bool useDuplicateChance = wasHighlightedAtClick && !alreadyAttemptedAtClick;
+    if (useDuplicateChance) {
+      setState(() {
+        _duplicateWordAttempted.add(nw);
+        print('   📝 중복 단어 기회 사용 시작: $nw (중복 클릭 방지)');
+      });
+    }
+
     final QuizResult? result = await Navigator.of(context).push<QuizResult>(
-      MaterialPageRoute(builder: (_) => BingoQuiz(word: word)),
+      MaterialPageRoute(
+        builder: (_) => BingoQuiz(
+          word: word,
+          initialSeconds: _remainingSeconds > 0 ? _remainingSeconds : 20,
+        ),
+      ),
     );
 
     if (result == null) {
       print('   취소됨');
+      // 🎯 취소했으면 기록도 취소
+      if (useDuplicateChance) {
+        setState(() {
+          _duplicateWordAttempted.remove(nw);
+          print('   ↩️ 취소: 중복 단어 기회 복원');
+        });
+      }
       return;
     }
 
@@ -1109,12 +1230,18 @@ class _BingoGamePageState extends State<BingoGamePage> {
     _myAttemptedWords.add(nw);
     print('   📝 내가 시도한 단어 기록: $nw');
 
-    // 🎯 파란 링(중복 단어)이 있으면 무조건 word_hilight로 전송 (턴 소비 안 함)
+    // 🎯 클릭 시점에 파란 링이 있고 아직 시도 안 했으면 word_hilight (턴 소비 절대 안 함!)
     // 백엔드는 event 필드만 보고 판단: word_click=턴소비, word_hilight=턴유지
-    final String eventName = wasHighlighted ? 'word_hilight' : 'word_click';
+    final String eventName = useDuplicateChance ? 'word_hilight' : 'word_click';
 
     print('   이벤트: $eventName');
-    print('   이유: ${wasHighlighted ? "중복 단어 (파란 링)" : (_isMyTurn ? "내 차례 (일반 단어)" : "일반 단어")}');
+    print('   이유: ${useDuplicateChance ? "중복 단어 기회 (파란 링, 턴 소비 없음!)" : (_isMyTurn ? "내 차례 (일반 단어)" : "일반 단어")}');
+
+    // 🎯 검사 시작: 이 단어는 서버 응답까지 클릭 불가
+    setState(() {
+      _wordUnderReview = nw;
+      print('   🔒 검사 시작: $nw (서버 응답까지 이 단어만 클릭 차단)');
+    });
 
     widget.socket.sendUserWordEvent(
       roomId: widget.roomId,
@@ -1122,14 +1249,14 @@ class _BingoGamePageState extends State<BingoGamePage> {
       event: eventName,
       word: word,
       wordKr: result.answer,
-      wasHighlighted: wasHighlighted,
+      wasHighlighted: wasHighlightedAtClick,
     );
 
-    if (wasHighlighted && !_isMyTurn) {
+    if (wasHighlightedAtClick && !_isMyTurn) {
       _cancelHighlightDeadline(word);
     }
 
-    print('   서버 응답 대기 중...');
+    print('   서버 응답 대기 중... (다른 단어는 클릭 가능)');
   }
 
   @override
@@ -1146,6 +1273,64 @@ class _BingoGamePageState extends State<BingoGamePage> {
           Column(
             children: [
               const SizedBox(height: 20),
+
+              // ⏱️ 턴 정보 및 타이머
+              if (_phase == _Phase.playing)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // 현재 턴 표시
+                      Text(
+                        _isMyTurn ? '내 차례' : '상대 차례',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: _isMyTurn ? const Color(0xFF4E6E99) : Colors.grey,
+                        ),
+                      ),
+                      // 남은 시간 표시
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _remainingSeconds <= 5
+                              ? Colors.red.withOpacity(0.1)
+                              : const Color(0xFF4E6E99).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _remainingSeconds <= 5
+                                ? Colors.red
+                                : const Color(0xFF4E6E99),
+                            width: 2,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.timer,
+                              size: 20,
+                              color: _remainingSeconds <= 5
+                                  ? Colors.red
+                                  : const Color(0xFF4E6E99),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${_remainingSeconds}초',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: _remainingSeconds <= 5
+                                    ? Colors.red
+                                    : const Color(0xFF4E6E99),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
               // 빙고 보드
               Expanded(

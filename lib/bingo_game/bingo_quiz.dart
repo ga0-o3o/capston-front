@@ -15,12 +15,16 @@ class BingoQuiz extends StatefulWidget {
   /// 문제 설명/지문/힌트 (선택)
   final String? prompt;
 
+  /// ⏱️ 초기 남은 시간 (턴 타이머와 동기화)
+  final int? initialSeconds;
+
   const BingoQuiz({
     super.key,
     required this.word,
     this.correctAnswers,
     this.validator,
     this.prompt,
+    this.initialSeconds,
   });
 
   @override
@@ -39,8 +43,8 @@ class _BingoQuizState extends State<BingoQuiz> {
   final _focus = FocusNode();
   bool _submitting = false;
 
-  // ⏱️ 제한시간 10초
-  static const int _limit = 10;
+  // ⏱️ 제한시간 20초 (턴 제한 시간과 동일)
+  static const int _limit = 20;
   int _secsLeft = _limit;
   Timer? _timer;
   bool _finished = false;
@@ -52,6 +56,9 @@ class _BingoQuizState extends State<BingoQuiz> {
   @override
   void initState() {
     super.initState();
+    // ⏱️ 초기 시간 설정 (턴 남은 시간 또는 기본값)
+    _secsLeft = widget.initialSeconds ?? _limit;
+
     // 제한시간 타이머 시작
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
