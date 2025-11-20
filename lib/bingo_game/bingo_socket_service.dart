@@ -125,16 +125,14 @@ class BingoSocketService {
     required String word,
     String? wordKr,
     bool wasHighlighted = false,
-    bool isDuplicate = false, // 🎯 중복 단어 플래그 추가
   }) {
     _send({
-      'event': event, // ⚠️ 백엔드 이벤트명과 정확히 일치해야 함 ('word_hilight')
+      'event': event, // 백엔드는 event 필드로 턴 소비 여부 판단
       'roomId': roomId,
       'loginId': loginId,
       'word': word,
       if (wordKr != null) 'wordKr': wordKr,
       if (wasHighlighted) 'wasHighlighted': true,
-      if (isDuplicate) 'isDuplicate': true, // 🎯 중복 단어일 때만 전송
     });
   }
 
