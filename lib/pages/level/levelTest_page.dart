@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // ✅ level_api.dart import 추가
 import 'level_api.dart';
@@ -22,7 +23,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
   final List<ChatMessage> _messages = [];
 
   // ✅ 서버 dialog_num만 사용 (로컬 turn 증가 없음)
-  int _serverDialogNum = 0;  // 서버에서 받은 dialog_num만 저장
+  int _serverDialogNum = 0; // 서버에서 받은 dialog_num만 저장
   String _currentLevel = "Beginner";
 
   bool _isLoading = false;
@@ -67,10 +68,12 @@ class _LevelTestPageState extends State<LevelTestPage> {
           _serverDialogNum = savedDialogNum;
           _currentLevel = savedLevel;
           _messages.clear();
-          _messages.addAll(decoded.map((m) => ChatMessage.fromJson(m)).toList());
+          _messages
+              .addAll(decoded.map((m) => ChatMessage.fromJson(m)).toList());
         });
 
-        print('[LOAD] Loaded ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_currentLevel');
+        print(
+            '[LOAD] Loaded ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_currentLevel');
       } else {
         setState(() {
           _serverDialogNum = 0;
@@ -89,14 +92,16 @@ class _LevelTestPageState extends State<LevelTestPage> {
   Future<void> _saveMessages() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final messagesJson = jsonEncode(_messages.map((m) => m.toJson()).toList());
+      final messagesJson =
+          jsonEncode(_messages.map((m) => m.toJson()).toList());
 
       // ✅ 서버 dialog_num 저장
       await prefs.setString('level_test_messages', messagesJson);
       await prefs.setInt('server_dialog_num', _serverDialogNum);
       await prefs.setString('current_level', _currentLevel);
 
-      print('[SAVE] Saved ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_currentLevel');
+      print(
+          '[SAVE] Saved ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_currentLevel');
     } catch (e) {
       print('[ERROR] Failed to save messages: $e');
     }
@@ -151,12 +156,12 @@ class _LevelTestPageState extends State<LevelTestPage> {
           _isSending = false;
         });
 
-        print('[LEVEL TEST] Response received - Server Dialog Num ${response.dialogNum}/100');
+        print(
+            '[LEVEL TEST] Response received - Server Dialog Num ${response.dialogNum}/100');
       }
 
       await _saveMessages();
       _scrollToBottom();
-
     } catch (e) {
       if (mounted) {
         setState(() => _isSending = false);
@@ -309,23 +314,9 @@ class _LevelTestPageState extends State<LevelTestPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF4E6E99),
-        title: const Text(
-          'Level Test',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.restart_alt),
-            onPressed: _showRestartConfirmDialog,
-            tooltip: 'Restart Test',
-          ),
-        ],
-      ),
       body: Column(
         children: [
+          _buildHeader(),
           // ========================================
           // 상단 정보 표시 (Top Info Display)
           // ========================================
@@ -402,6 +393,67 @@ class _LevelTestPageState extends State<LevelTestPage> {
     );
   }
 
+  /// 상단 커스텀 헤더 (AppBar 대신)
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: Color(0xFF3D4C63),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 70,
+          child: Stack(
+            children: [
+              // ⭐ 중앙 LevelTest 텍스트
+              Align(
+                alignment: Alignment.center,
+                child: Text(
+                  'LevelTest',
+                  style: GoogleFonts.pacifico(
+                    fontSize: 30,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              // ⭐ 완전히 오른쪽 끝 아이콘
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6), // 더 끝으로 가게
+                  child: SizedBox(
+                    height: 40,
+                    width: 40,
+                    child: Center(
+                      child: IconButton(
+                        padding: EdgeInsets.zero, // 불필요한 내부 padding 제거
+                        icon: const Icon(
+                          Icons.restart_alt,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        onPressed: _showRestartConfirmDialog,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 메시지 목록
   Widget _buildMessageList() {
     if (_messages.isEmpty) {
@@ -441,57 +493,107 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
   /// 메시지 말풍선
   Widget _buildMessageBubble(ChatMessage message) {
-    return Align(
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: message.isUser
-              ? const Color(0xFF4E6E99)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              message.text,
-              style: TextStyle(
-                fontSize: 15,
-                color: message.isUser ? Colors.white : Colors.black87,
-              ),
-            ),
-            if (message.levelDisplay != null && message.levelDisplay!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F4F8),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  message.levelDisplay!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF4E6E99),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+    if (message.isUser) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.7,
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFF4E6E99),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
             ],
-          ],
+          ),
+          child: Text(
+            message.text,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Colors.white,
+            ),
+          ),
         ),
+      );
+    }
+
+    // AI 메시지면 프로필 + 말풍선
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 👤 프로필 사진
+          ClipOval(
+            child: Image.asset(
+              'assets/images/hanbok/ai.png', // ← 네 이미지 경로에 맞게 수정
+              width: 40,
+              height: 40,
+              fit: BoxFit.cover,
+            ),
+          ),
+          const SizedBox(width: 10),
+
+          // 💬 말풍선
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.65,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  message.text,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    color: Colors.black87,
+                  ),
+                ),
+
+                // 레벨 표시 있을 때만 추가
+                if (message.levelDisplay != null &&
+                    message.levelDisplay!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F4F8),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      message.levelDisplay!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF4E6E99),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -546,7 +648,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
                     : const Icon(Icons.send, color: Colors.white),
