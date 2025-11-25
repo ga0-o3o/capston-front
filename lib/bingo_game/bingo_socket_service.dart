@@ -22,19 +22,18 @@ class BingoSocketService {
 
   // ✅ WebSocket 연결
   void connect() {
-    // ✅ UrlConfig에서 WebSocket URL 자동으로 가져옴
+    // 🔗 ngrok WebSocket URL 가져오기
     final wsUrl = UrlConfig.springBootWebSocketUrl;
-    print('🔗 WebSocket 연결 시도: $wsUrl');
-    print('🌐 현재 환경 정보:');
-    UrlConfig.printCurrentEnvironment();
+    print('🔗 WebSocket 연결 시도 → $wsUrl');
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      print('✅ WebSocket 채널 생성 완료');
+      print('✅ WebSocket 채널 생성 완료 (ngrok 연결 성공)');
 
       _channel!.stream.listen(
         (message) {
           print('📩 서버 메시지 수신: $message');
+
           Map<String, dynamic>? data;
           try {
             final decoded = jsonDecode(message);
@@ -44,23 +43,29 @@ class BingoSocketService {
               data = {'event': 'raw', 'data': decoded};
             }
           } catch (e) {
-            print('⚠️ jsonDecode 실패: $e');
+            print('⚠️ jsonDecode 실패 → $e');
             data = {'event': 'decode_error', 'raw': message.toString()};
           }
 
           if (data != null) {
-            // 1) 레거시 단일 콜백 호출(있다면)
             onMessage?.call(data);
-            // 2) ✅ 브로드캐스트로 모든 구독자에게 전달
-            if (!_controller.isClosed) _controller.add(data);
+            if (!_controller.isClosed) {
+              _controller.add(data);
+            }
           }
         },
-        onDone: () => print('❌ 연결 종료됨 (onDone)'),
-        onError: (error) => print('⚠️ 연결 오류 발생: $error'),
+        onDone: () {
+          print('❌ WebSocket 연결 종료됨');
+        },
+        onError: (error) {
+          print('⚠️ WebSocket 오류 발생: $error');
+          print('⚠️ 현재 WebSocket URL = $wsUrl');
+        },
         cancelOnError: false,
       );
     } catch (e) {
-      print('🚨 예외 발생: $e');
+      print('🚨 WebSocket 예외 발생: $e');
+      print('🚨 현재 WebSocket URL = $wsUrl');
     }
   }
 
