@@ -12,11 +12,10 @@ class LoginPage extends StatelessWidget {
       backgroundColor: const Color(0xFFFAF8F6),
       body: SafeArea(
         child: Center(
-          // <- 화면 중앙 정렬
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center, // 가운데 정렬
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const SizedBox(height: 30),
                 GifView.asset(

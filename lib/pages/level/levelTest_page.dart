@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -24,7 +23,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
   // ✅ 서버 dialog_num만 사용 (로컬 turn 증가 없음)
   int _serverDialogNum = 0; // 서버에서 받은 dialog_num만 저장
-  String _currentLevel = "Beginner";
+  String _userRank = "Beginner";
 
   bool _isLoading = false;
   bool _isSending = false;
@@ -59,25 +58,25 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
       // ✅ 서버 dialog_num 불러오기
       final savedDialogNum = prefs.getInt('server_dialog_num') ?? 0;
-      final savedLevel = prefs.getString('current_level') ?? 'Beginner';
+      final savedUserRank = prefs.getString('user_rank') ?? 'Beginner';
       final savedMessagesJson = prefs.getString('level_test_messages');
 
       if (savedMessagesJson != null) {
         final List<dynamic> decoded = jsonDecode(savedMessagesJson);
         setState(() {
           _serverDialogNum = savedDialogNum;
-          _currentLevel = savedLevel;
+          _userRank = savedUserRank;
           _messages.clear();
           _messages
               .addAll(decoded.map((m) => ChatMessage.fromJson(m)).toList());
         });
 
         print(
-            '[LOAD] Loaded ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_currentLevel');
+            '[LOAD] Loaded ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_userRank');
       } else {
         setState(() {
           _serverDialogNum = 0;
-          _currentLevel = 'Beginner';
+          _userRank = savedUserRank;
         });
         print('[LOAD] No saved messages');
       }
@@ -98,10 +97,10 @@ class _LevelTestPageState extends State<LevelTestPage> {
       // ✅ 서버 dialog_num 저장
       await prefs.setString('level_test_messages', messagesJson);
       await prefs.setInt('server_dialog_num', _serverDialogNum);
-      await prefs.setString('current_level', _currentLevel);
+      await prefs.setString('current_level', _userRank);
 
       print(
-          '[SAVE] Saved ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_currentLevel');
+          '[SAVE] Saved ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_userRank');
     } catch (e) {
       print('[ERROR] Failed to save messages: $e');
     }
@@ -152,7 +151,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
           _messages.add(aiMessage);
           // ✅ 서버의 dialog_num만 사용
           _serverDialogNum = response.dialogNum;
-          _currentLevel = response.currentLevel;
+          _userRank = response.currentLevel;
           _isSending = false;
         });
 
@@ -231,7 +230,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Your Final Level: $_currentLevel',
+              'Your Final Level: $_userRank',
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -267,12 +266,12 @@ class _LevelTestPageState extends State<LevelTestPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('level_test_messages');
       await prefs.remove('server_dialog_num');
-      await prefs.remove('current_level');
+      await prefs.remove('user_rank');
 
       setState(() {
         _messages.clear();
         _serverDialogNum = 0;
-        _currentLevel = 'Beginner';
+        _userRank = 'Beginner';
       });
 
       print('[RESTART] Test restarted');
@@ -366,7 +365,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
         children: [
           const Icon(Icons.stars, color: Colors.amber, size: 24),
           Text(
-            'Level: $_currentLevel',
+            'Level: $_userRank',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,

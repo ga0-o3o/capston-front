@@ -35,7 +35,8 @@ class LoginService {
         // ✅ ngrok 브라우저 경고 우회 헤더
         "ngrok-skip-browser-warning": "69420",
         "Ngrok-Skip-Browser-Warning": "69420",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       };
 
   // ============================================================================
@@ -48,7 +49,8 @@ class LoginService {
   /// 만료 시간: 현재 시각 + 1시간
   static Future<void> saveToken(String token) async {
     print('[LOGIN_SERVICE] 💾 Attempting to save token...');
-    print('[LOGIN_SERVICE] Token (first 30 chars): ${token.length > 30 ? token.substring(0, 30) : token}...');
+    print(
+        '[LOGIN_SERVICE] Token (first 30 chars): ${token.length > 30 ? token.substring(0, 30) : token}...');
 
     final prefs = await SharedPreferences.getInstance();
 
@@ -57,7 +59,8 @@ class LoginService {
     print('[LOGIN_SERVICE] Token save result: $tokenSaved');
 
     // 만료 시간 저장
-    final expiryTimestamp = DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch;
+    final expiryTimestamp =
+        DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch;
     final expirySaved = await prefs.setInt('token_expiry', expiryTimestamp);
     print('[LOGIN_SERVICE] Expiry save result: $expirySaved');
 
@@ -78,7 +81,8 @@ class LoginService {
     }
 
     print('[LOGIN_SERVICE] ✅ Token saved and verified successfully!');
-    print('[LOGIN_SERVICE] Expiry: ${DateTime.fromMillisecondsSinceEpoch(savedExpiry)}');
+    print(
+        '[LOGIN_SERVICE] Expiry: ${DateTime.fromMillisecondsSinceEpoch(savedExpiry)}');
   }
 
   /// 유저 정보 저장
@@ -88,7 +92,8 @@ class LoginService {
     required String nickname,
     required String rank,
   }) async {
-    print('[LOGIN_SERVICE] 💾 Saving user info: $nickname ($rank)');
+    print(
+        '[LOGIN_SERVICE] 💾 Saving user info: id=$id, name=$name, nickname=$nickname, rank=$rank');
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_id', id);
@@ -144,6 +149,71 @@ class LoginService {
   }
 
   // ============================================================================
+  // 🔹 rank 파싱 헬퍼 (DB rank_id → 문자열 랭크)
+  // ============================================================================
+
+  static String _extractRank(Map<String, dynamic> responseData) {
+    // 서버가 줄 수 있는 여러 형태를 다 체크
+    dynamic raw = responseData['rank'];
+
+    // ✅ 지금 실제 응답 키: userRank
+    raw ??= responseData['userRank'];
+
+    // 혹시 추가로 rankId / rank_id 쓰는 경우 대비
+    raw ??= responseData['rankId'];
+    raw ??= responseData['rank_id'];
+
+    if (raw == null) {
+      print('[LOGIN_SERVICE] ❌ ERROR: rank field not found in response!');
+      print('[LOGIN_SERVICE] Response keys: ${responseData.keys.toList()}');
+      throw Exception('서버 응답에 rank 정보가 없습니다.');
+    }
+
+    // 문자열인 경우
+    if (raw is String) {
+      // "3" 같은 숫자 문자열이면 → 매핑
+      final parsed = int.tryParse(raw);
+      if (parsed != null) {
+        final mapped = _mapRankId(parsed);
+        print('[LOGIN_SERVICE] 🔎 Rank parsed from string id: $raw → $mapped');
+        return mapped;
+      }
+      print('[LOGIN_SERVICE] 🔎 Rank string detected: $raw');
+      return raw; // "Beginner", "B1", "C2" 등
+    }
+
+    // 숫자인 경우 (1~7)
+    if (raw is int) {
+      final mapped = _mapRankId(raw);
+      print('[LOGIN_SERVICE] 🔎 Rank mapped from id: $raw → $mapped');
+      return mapped;
+    }
+
+    // 그 외 타입이면 그냥 문자열로
+    print(
+        '[LOGIN_SERVICE] ⚠️ Rank type is ${raw.runtimeType}, using toString(): $raw');
+    return raw.toString();
+  }
+
+  static String _mapRankId(int id) {
+    const map = {
+      1: 'Beginner',
+      2: 'A1',
+      3: 'A2',
+      4: 'B1',
+      5: 'B2',
+      6: 'C1',
+      7: 'C2',
+    };
+
+    if (!map.containsKey(id)) {
+      print('[LOGIN_SERVICE] ⚠️ Unknown rank_id: $id, fallback to toString()');
+      return id.toString();
+    }
+    return map[id]!;
+  }
+
+  // ============================================================================
   // 🔹 로그인 API
   // ============================================================================
 
@@ -151,7 +221,8 @@ class LoginService {
   ///
   /// POST /api/v1/auth/login
   /// Request: { loginId, loginPw }
-  /// Response: { token, loginId, name, nickname, rank }
+  /// Response 예시:
+  ///   { loginId, name, nickname, userRank, token }
   static Future<Map<String, dynamic>?> loginWithId(String id, String pw) async {
     print('');
     print('╔════════════════════════════════════════════════════════════');
@@ -162,14 +233,16 @@ class LoginService {
     print('╚════════════════════════════════════════════════════════════');
 
     try {
-      final response = await http.post(
-        Uri.parse(loginUrl),
-        headers: _defaultHeaders,
-        body: jsonEncode({
-          "loginId": id,
-          "loginPw": pw,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse(loginUrl),
+            headers: _defaultHeaders,
+            body: jsonEncode({
+              "loginId": id,
+              "loginPw": pw,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       print('');
       print('╔════════════════════════════════════════════════════════════');
@@ -192,38 +265,43 @@ class LoginService {
         print('');
 
         final responseData = jsonDecode(response.body);
-        print('[LOGIN_SERVICE] 📋 Parsed response data keys: ${responseData.keys.toList()}');
+        print(
+            '[LOGIN_SERVICE] 📋 Parsed response data keys: ${responseData.keys.toList()}');
 
         // ✅ 토큰 추출 (여러 가능한 키 시도)
         String? token;
 
         // 시도 1: 'token' 키
-        if (responseData.containsKey('token') && responseData['token'] != null) {
+        if (responseData.containsKey('token') &&
+            responseData['token'] != null) {
           token = responseData['token'] as String;
           print('[LOGIN_SERVICE] ✅ Token found at key: "token"');
         }
         // 시도 2: 'accessToken' 키
-        else if (responseData.containsKey('accessToken') && responseData['accessToken'] != null) {
+        else if (responseData.containsKey('accessToken') &&
+            responseData['accessToken'] != null) {
           token = responseData['accessToken'] as String;
           print('[LOGIN_SERVICE] ✅ Token found at key: "accessToken"');
         }
         // 시도 3: 'data.token' 중첩 구조
         else if (responseData.containsKey('data') &&
-                 responseData['data'] is Map &&
-                 (responseData['data'] as Map).containsKey('token')) {
+            responseData['data'] is Map &&
+            (responseData['data'] as Map).containsKey('token')) {
           token = (responseData['data'] as Map)['token'] as String;
           print('[LOGIN_SERVICE] ✅ Token found at nested key: "data.token"');
         }
         // 시도 4: 'jwt' 키
-        else if (responseData.containsKey('jwt') && responseData['jwt'] != null) {
+        else if (responseData.containsKey('jwt') &&
+            responseData['jwt'] != null) {
           token = responseData['jwt'] as String;
           print('[LOGIN_SERVICE] ✅ Token found at key: "jwt"');
-        }
-        else {
+        } else {
           print('[LOGIN_SERVICE] ❌ ERROR: No token found in response!');
-          print('[LOGIN_SERVICE] Available keys: ${responseData.keys.toList()}');
+          print(
+              '[LOGIN_SERVICE] Available keys: ${responseData.keys.toList()}');
           print('[LOGIN_SERVICE] Response data: $responseData');
-          throw Exception("서버 응답에 토큰이 없습니다. 응답 키: ${responseData.keys.toList()}");
+          throw Exception(
+              "서버 응답에 토큰이 없습니다. 응답 키: ${responseData.keys.toList()}");
         }
 
         if (token.isEmpty) {
@@ -234,12 +312,17 @@ class LoginService {
         // ✅ 토큰 저장 (검증 포함)
         await saveToken(token);
 
-        // ✅ 유저 정보 자동 저장
+        // ✅ 랭크 파싱 (userRank / rank / rankId 등 → 문자열)
+        final rankString = _extractRank(responseData);
+
+        // ✅ 유저 정보 자동 저장 (기본값 없이 서버 값 / 입력값만 사용)
         await saveUserInfo(
-          id: responseData['loginId']?.toString() ?? responseData['id']?.toString() ?? id,
+          id: responseData['loginId']?.toString() ??
+              responseData['id']?.toString() ??
+              id,
           name: responseData['name']?.toString() ?? '',
           nickname: responseData['nickname']?.toString() ?? id,
-          rank: responseData['rank']?.toString() ?? 'Beginner',
+          rank: rankString,
         );
 
         print('');
@@ -247,12 +330,11 @@ class LoginService {
         print('║ [LOGIN_SERVICE] ✅ Login completed successfully!');
         print('╠════════════════════════════════════════════════════════════');
         print('║ Token saved: ✅');
-        print('║ User info saved: ✅');
+        print('║ User info saved: ✅ (rank: $rankString)');
         print('╚════════════════════════════════════════════════════════════');
         print('');
 
         return responseData;
-
       } else if (response.statusCode == 400) {
         print('[LOGIN_SERVICE] ❌ User not found (400)');
         throw Exception("존재하지 않는 사용자입니다.");
@@ -281,14 +363,16 @@ class LoginService {
     print('[LOGIN_SERVICE] URL: $kakaoUrl');
 
     try {
-      final response = await http.post(
-        Uri.parse(kakaoUrl),
-        headers: _defaultHeaders,
-        body: jsonEncode({
-          "loginId": kakaoId,
-          "name": kakaoName,
-        }),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse(kakaoUrl),
+            headers: _defaultHeaders,
+            body: jsonEncode({
+              "loginId": kakaoId,
+              "name": kakaoName,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
 
       print('[LOGIN_SERVICE] Response status: ${response.statusCode}');
       print('[LOGIN_SERVICE] Full response body:');
@@ -300,12 +384,13 @@ class LoginService {
 
         // ✅ 토큰 추출 (여러 가능한 키 시도)
         String? token;
-        if (responseData.containsKey('token') && responseData['token'] != null) {
+        if (responseData.containsKey('token') &&
+            responseData['token'] != null) {
           token = responseData['token'] as String;
         } else if (responseData.containsKey('accessToken')) {
           token = responseData['accessToken'] as String;
         } else if (responseData.containsKey('data') &&
-                   (responseData['data'] as Map).containsKey('token')) {
+            (responseData['data'] as Map).containsKey('token')) {
           token = (responseData['data'] as Map)['token'] as String;
         } else {
           print('[LOGIN_SERVICE] ❌ No token found in response');
@@ -319,13 +404,20 @@ class LoginService {
         // ✅ 토큰 저장 (검증 포함)
         await saveToken(token);
 
+        // ✅ 랭크 파싱
+        final rankString = _extractRank(responseData);
+
         // ✅ 유저 정보 자동 저장
         await saveUserInfo(
-          id: responseData['loginId']?.toString() ?? responseData['id']?.toString() ?? kakaoId,
+          id: responseData['loginId']?.toString() ??
+              responseData['id']?.toString() ??
+              kakaoId,
           name: responseData['name']?.toString() ?? kakaoName,
           nickname: responseData['nickname']?.toString() ?? kakaoName,
-          rank: responseData['rank']?.toString() ?? 'Beginner',
+          rank: rankString,
         );
+
+        print('[LOGIN_SERVICE] ✅ Kakao user info saved (rank: $rankString)');
 
         return responseData;
       } else {
