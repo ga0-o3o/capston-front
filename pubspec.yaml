@@ -44,6 +44,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/char/
+    - assets/images/rank/
     - assets/images/game/part6/
     - assets/audios/
     - assets/videos/
