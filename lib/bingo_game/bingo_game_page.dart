@@ -376,9 +376,14 @@ class _BingoGamePageState extends State<BingoGamePage> {
       _remainingSeconds = remaining > 0 ? remaining : 0;
     });
 
-    // 시간 종료 시 타이머 중지
+    // ⏰ 시간 종료 시 타이머 중지 및 자동 제출
     if (_remainingSeconds <= 0) {
       _turnTimer?.cancel();
+
+      // 🎯 내 차례일 때만 자동 제출
+      if (_isMyTurn && _phase == _Phase.playing) {
+        _autoSubmitOnTimeout();
+      }
     }
   }
 
@@ -389,6 +394,44 @@ class _BingoGamePageState extends State<BingoGamePage> {
       _remainingSeconds = 0;
       _turnStartTime = null;
     });
+  }
+
+  // 🎯 타이머 만료 시 자동 제출 로직
+  void _autoSubmitOnTimeout() {
+    print('⏰ 타이머 만료! 자동 제출 시작');
+
+    // 1. 빙고판에서 아직 X 표시 안 된 단어들 중 랜덤 선택
+    final List<String> availableCells = [];
+    for (int r = 0; r < 5; r++) {
+      for (int c = 0; c < 5; c++) {
+        final word = bingoBoard[r][c];
+        if (word != null && !crossedMine.contains(_normWord(word))) {
+          availableCells.add(word);
+        }
+      }
+    }
+
+    if (availableCells.isEmpty) {
+      print('⚠️ 선택 가능한 단어가 없음');
+      return;
+    }
+
+    // 2. 랜덤 단어 선택
+    final random = Random();
+    final selectedWord = availableCells[random.nextInt(availableCells.length)];
+    print('🎲 자동 선택된 단어: $selectedWord');
+
+    // 3. 공백 문자로 제출 (의도적으로 틀리게)
+    widget.socket.sendUserWordEvent(
+      roomId: widget.roomId,
+      loginId: widget.userId,
+      event: 'word_click',
+      word: selectedWord,
+      wordKr: ' ', // 공백 문자 = 오답
+      wasHighlighted: false,
+    );
+
+    print('📤 자동 제출 완료 (오답 처리, 본인은 prevIsMe 조건으로 파란 링 안 생김)');
   }
 
   void _maybeFixOrderAndStart() {
@@ -581,16 +624,14 @@ class _BingoGamePageState extends State<BingoGamePage> {
         print('   Before: crossedOthers=${crossedOthers.toList()}');
 
         setState(() {
-          // 🎯 파란 링 누적 가능 (여러 개 쌓일 수 있음)
-          if (!alreadyMine &&
-              hasInBoard &&
-              !alreadyHighlighted &&
-              !alreadyAttempted) {
+          // 🎯 새로운 word_hilight 이벤트 → 이전 실패 기록 리셋 (다른 사람이 재시도하면 새 기회 부여)
+          if (!alreadyMine && hasInBoard && !alreadyHighlighted) {
             // 🎯 중복 단어: 내 보드에 있지만 아직 안 맞춘 경우
             crossedOthers.add(nw);
             _duplicateWordFirstChance[nw] = true;
             _highlightResponded.remove(nw);
-            print('   ✨ 파란 링 추가: $nw');
+            _duplicateWordAttempted.remove(nw); // 🔄 새 하이라이트 기회 → 이전 실패 기록 리셋
+            print('   ✨ 파란 링 추가 (새 하이라이트 기회): $nw');
           } else if (!alreadyMine && !hasInBoard) {
             // 내 보드에 없는 단어 → 10초 타이머만 작동
             print('   ⏰ 내 보드에 없음 → 타이머만 시작');
@@ -663,23 +704,9 @@ class _BingoGamePageState extends State<BingoGamePage> {
           _showAnswerResultEffect(oneOk, word);
         } else {
           print('   ⏭️ 다른 사람 응답 → Effect 표시 안 함');
-          // 🎯 상대방이 시도한 단어가 내 보드에 있으면 중복 표시 추가
-          // ⚠️ 단, 이미 중복 표시가 있거나 이미 시도한 중복 단어는 제외
-          // ⚠️ 그리고 내가 먼저 시도한 단어도 제외
-          if (!crossedMine.contains(nw) &&
-              !crossedOthers.contains(nw) &&
-              !_duplicateWordAttempted.contains(nw) &&
-              !_myAttemptedWords.contains(nw) && // 🎯 내가 먼저 시도한 단어는 제외
-              _boardHasWord(word)) {
-            setState(() {
-              crossedOthers.add(nw);
-              _duplicateWordFirstChance[nw] = true;
-            });
-            print('   🔵 상대 시도! 내 보드에 중복 표시 추가: $nw (정답 여부: $oneOk)');
-          } else {
-            print(
-                '   ℹ️ 상대 시도했지만 중복 표시 안 함 (이유: 이미 맞춤/이미 중복 표시/이미 시도함/내가 먼저 시도함/보드에 없음)');
-          }
+          // ⚠️ highlight_result는 파란 링 시도 결과이므로 다른 사람에게 파란 링 안 줌
+          // (턴 소비 없이 시도한 것이므로 새로운 하이라이트 기회를 주지 않음)
+          print('   ℹ️ 파란 링 시도 결과 → 다른 사람에게 파란 링 안 줌 (턴 소비 없음)');
           return; // 상대방 응답은 여기서 종료
         }
 
@@ -986,19 +1013,17 @@ class _BingoGamePageState extends State<BingoGamePage> {
           } else if (!prevIsMe) {
             // 🎯 상대방이 단어를 시도한 경우 (정답/오답 무관)
             // → 내 보드에 같은 단어가 있으면 중복 표시(파란 링) 추가
-            // ⚠️ 단, 이미 중복 표시가 있거나 이미 시도한 중복 단어는 제외
-            // ⚠️ 그리고 내가 먼저 시도한 단어도 제외
+            // 🔄 새로운 하이라이트 기회 → 이전 실패 기록 리셋 (내가 이미 시도한 단어도 다시 받을 수 있음)
             if (!crossedMine.contains(nw) &&
                 !crossedOthers.contains(nw) &&
-                !_duplicateWordAttempted.contains(nw) &&
-                !_myAttemptedWords.contains(nw) && // 🎯 내가 먼저 시도한 단어는 제외
                 _boardHasWord(word)) {
               crossedOthers.add(nw);
               _duplicateWordFirstChance[nw] = true;
-              print('   🔵 상대 시도! 내 보드에 중복 표시 추가: $nw (정답 여부: $correct)');
+              _duplicateWordAttempted.remove(nw); // 🔄 새 하이라이트 기회 → 이전 실패 기록 리셋
+              print('   🔵 상대 시도! 내 보드에 중복 표시 추가: $nw (새 하이라이트 기회)');
             } else {
               print(
-                  '   ℹ️ 상대 시도했지만 중복 표시 안 함 (이유: 이미 맞춤/이미 중복 표시/이미 시도함/내가 먼저 시도함/보드에 없음)');
+                  '   ℹ️ 상대 시도했지만 중복 표시 안 함 (이유: 이미 맞춤/이미 중복 표시/보드에 없음)');
             }
           }
 
@@ -1036,6 +1061,17 @@ class _BingoGamePageState extends State<BingoGamePage> {
         // ❌ 제거됨: next_turn에서는 하이라이트 타이머 시작 안 함
         // 이유: 일반 턴 모드에서는 하이라이트 시스템이 작동하지 않음
         // 하이라이트는 word_hilight 이벤트에서만 처리됨
+      } else {
+        // ✅ word가 비어있어도 턴 전환은 처리 (나간 사람 처리 등)
+        print('   ⚠️ word가 비어있음 (나간 사람 등의 이유로 턴만 전환)');
+        setState(() {
+          if (nextUser != null && nextUser.isNotEmpty) {
+            _activeUserId = _normId(nextUser);
+            final idx = _order.indexOf(_activeUserId!);
+            if (idx >= 0) _turnIndex = idx;
+            print('   🔄 턴 이동 (word 없음): $_activeUserId (index: $_turnIndex)');
+          }
+        });
       }
 
       // ⏱️ 타이머 시작

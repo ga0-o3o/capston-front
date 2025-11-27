@@ -108,6 +108,33 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
             _loginId ??
             'guest-${DateTime.now().millisecondsSinceEpoch}';
         _goToGameOnce(roomId, myUserId);
+      } else if (event == 'already_in_game') {
+        // 🚨 중복 로그인 감지: 팝업 표시
+        final message = msg['data']?['message'] ??
+                       '다른 곳에서 이미 매칭/게임 진행중입니다. 매칭을 시도할 수 없습니다.';
+
+        if (!mounted) return;
+        setState(() {
+          _connecting = false;
+          _inQueue = false;
+        });
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('⚠️ 중복 로그인'),
+            content: Text(message),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop(); // 다이얼로그 닫기
+                },
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
       }
     };
   }
