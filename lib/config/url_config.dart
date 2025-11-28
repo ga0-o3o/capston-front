@@ -58,7 +58,8 @@ class UrlConfig {
   // ========================================================================
 
   static String get springBootWebSocketUrl {
-    final base = springBootBaseUrl;
+    // ✅ Bingo Game은 항상 ngrok URL 사용 (다른 PC 간 매칭을 위해)
+    final base = _springBootNgrokUrl ?? 'https://semiconical-shela-loftily.ngrok-free.dev';
     if (base.startsWith('https://')) {
       return base.replaceFirst('https://', 'wss://') + '/ws/match';
     } else {

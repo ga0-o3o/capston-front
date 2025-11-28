@@ -18,7 +18,7 @@ class MultiplayerFastWordGame {
   VoidCallback? onUpdate;
 
   Future<void> startGame(List<String> userIds, String token) async {
-    final url = Uri.parse("http://localhost:8080/api/personal-words/for-game");
+    final url = Uri.parse("https://semiconical-shela-loftily.ngrok-free.dev/api/personal-words/for-game");
     final response = await http.post(
       url,
       headers: {
