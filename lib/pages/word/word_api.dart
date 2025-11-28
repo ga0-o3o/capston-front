@@ -295,7 +295,7 @@ class WordApi {
         url,
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer 3HFZSH7A9O05TM0Q0SZRA7CB657WEH7B",
+          "Authorization": "Bearer N2QEVVE9CQYMDDD87XQ0A0LCB14GKFXB",
         },
         body: jsonEncode({
           "text": sentence,
