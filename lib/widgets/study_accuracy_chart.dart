@@ -205,7 +205,36 @@ class _StudyAccuracyChartState extends State<StudyAccuracyChart> {
                 maxY: maxY,
                 minY: 0,
                 barGroups: barGroups,
-                barTouchData: BarTouchData(enabled: false),
+
+                /// ✅ 막대 터치 시 말풍선(tooltip)으로 몇 개 학습했는지 표시
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  handleBuiltInTouches: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    tooltipMargin: 12,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      // group.x == 우리가 넣은 index
+                      final record = displayRecords[group.x.toInt()];
+                      final weekdayIndex = record.date.weekday % 7;
+
+                      return BarTooltipItem(
+                        '${weekdayLabels[weekdayIndex]} '
+                        '${record.date.month}/${record.date.day}\n'
+                        '${record.count}개 학습',
+                        GoogleFonts.notoSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
@@ -285,37 +314,39 @@ class _StudyAccuracyChartState extends State<StudyAccuracyChart> {
 
             // ✅ 막대 “안 위쪽 중앙”에 항상 보이는 count 텍스트 (0이면 표시 안 함)
             Positioned.fill(
-              child: IgnorePointer(
-                child: Stack(
-                  children: [
-                    for (int i = 0; i < barCount; i++)
-                      if (displayRecords[i].count > 0)
-                        Align(
-                          alignment: () {
-                            // x: 막대 개수만큼 균등 분포 (-1 ~ 1)
-                            final x = -1 + 2.05 * (i + 0.5) / barCount;
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final chartWidth = constraints.maxWidth;
+                  final chartHeight = constraints.maxHeight;
 
-                            // y: count 비율에 따라 위/아래 위치 (-1 top ~ 1 bottom)
-                            final ratio =
-                                displayRecords[i].count.toDouble() / maxY;
-                            // 막대 안 "약간 아래" 위치에 오도록 보정
-                            double y = 1 - 1.5 * ratio - 0.2;
-                            if (y < -0.9) y = -0.9;
-                            if (y > 0.9) y = 0.9;
+                  return Stack(
+                    children: List.generate(barGroups.length, (i) {
+                      final record = displayRecords[i];
+                      if (record.count == 0) return const SizedBox.shrink();
 
-                            return Alignment(x, y);
-                          }(),
-                          child: Text(
-                            '${displayRecords[i].count}',
-                            style: GoogleFonts.notoSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                      // 막대 x 위치 계산
+                      final barWidth = chartWidth / barGroups.length;
+                      final barCenterX = barWidth * (i + 0.5);
+
+                      // 막대 높이 비율 → 실제 y값
+                      final ratio = record.count / maxY;
+                      final barTopY = chartHeight * (1 - ratio);
+
+                      return Positioned(
+                        left: barCenterX - 10, // 텍스트 가로 중심
+                        top: barTopY + 8, // 막대 맨 위보다 조금 아래
+                        child: Text(
+                          '${record.count}',
+                          style: GoogleFonts.notoSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
-                  ],
-                ),
+                      );
+                    }),
+                  );
+                },
               ),
             ),
           ],
@@ -353,7 +384,7 @@ class _StudyAccuracyChartState extends State<StudyAccuracyChart> {
         color: averageColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
       ),
-      // ✅ FIX: Row → Wrap으로 변경 (overflow 방지)
+      // ✅ Row → Wrap (overflow 방지)
       child: Wrap(
         alignment: WrapAlignment.center,
         crossAxisAlignment: WrapCrossAlignment.center,
