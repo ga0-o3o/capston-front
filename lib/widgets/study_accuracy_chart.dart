@@ -149,7 +149,7 @@ class _StudyAccuracyChartState extends State<StudyAccuracyChart> {
     );
   }
 
-  /// 막대 차트 위젯 (통통한 캡슐 + 요일/날짜 + 막대 안에 항상 count 표시)
+  /// 막대 차트 위젯 (통통한 캡슐 + 요일/날짜)
   Widget _buildBarChart() {
     // 최대 7일치 데이터만 표시
     final displayRecords =
@@ -191,167 +191,114 @@ class _StudyAccuracyChartState extends State<StudyAccuracyChart> {
       );
     }).toList();
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final barCount = displayRecords.length;
-        if (barCount == 0) return const SizedBox.shrink();
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxY,
+        minY: 0,
+        barGroups: barGroups,
 
-        return Stack(
-          children: [
-            // 실제 막대 차트
-            BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: maxY,
-                minY: 0,
-                barGroups: barGroups,
-
-                /// ✅ 막대 터치 시 말풍선(tooltip)으로 몇 개 학습했는지 표시
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  handleBuiltInTouches: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    tooltipPadding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    tooltipMargin: 12,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      // group.x == 우리가 넣은 index
-                      final record = displayRecords[group.x.toInt()];
-                      final weekdayIndex = record.date.weekday % 7;
-
-                      return BarTooltipItem(
-                        '${weekdayLabels[weekdayIndex]} '
-                        '${record.date.month}/${record.date.day}\n'
-                        '${record.count}개 학습',
-                        GoogleFonts.notoSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: maxY <= 5 ? 1 : (maxY / 5).ceilToDouble(),
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: Colors.grey[300]!,
-                    strokeWidth: 1,
-                    dashArray: const [4, 4],
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  topTitles:
-                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles:
-                      AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 28,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        if (value % 1 != 0) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 4.0),
-                          child: Text(
-                            value.toInt().toString(),
-                            style: GoogleFonts.notoSans(
-                              fontSize: 10,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 34,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= displayRecords.length) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final record = displayRecords[index];
-                        final weekdayIndex = record.date.weekday % 7;
-
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              weekdayLabels[weekdayIndex],
-                              style: GoogleFonts.notoSans(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF3D4C63),
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${record.date.month}/${record.date.day}',
-                              style: GoogleFonts.notoSans(
-                                fontSize: 9,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ),
+        /// 막대 터치 시 말풍선(tooltip)으로 몇 개 학습했는지 표시
+        barTouchData: BarTouchData(
+          enabled: true,
+          handleBuiltInTouches: true,
+          touchTooltipData: BarTouchTooltipData(
+            tooltipPadding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 6,
             ),
+            tooltipMargin: 12,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final record = displayRecords[group.x.toInt()];
+              final weekdayIndex = record.date.weekday % 7;
 
-            // ✅ 막대 “안 위쪽 중앙”에 항상 보이는 count 텍스트 (0이면 표시 안 함)
-            Positioned.fill(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final chartWidth = constraints.maxWidth;
-                  final chartHeight = constraints.maxHeight;
+              return BarTooltipItem(
+                '${weekdayLabels[weekdayIndex]} '
+                '${record.date.month}/${record.date.day}\n'
+                '${record.count}개 학습',
+                GoogleFonts.notoSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              );
+            },
+          ),
+        ),
 
-                  return Stack(
-                    children: List.generate(barGroups.length, (i) {
-                      final record = displayRecords[i];
-                      if (record.count == 0) return const SizedBox.shrink();
-
-                      // 막대 x 위치 계산
-                      final barWidth = chartWidth / barGroups.length;
-                      final barCenterX = barWidth * (i + 0.5);
-
-                      // 막대 높이 비율 → 실제 y값
-                      final ratio = record.count / maxY;
-                      final barTopY = chartHeight * (1 - ratio);
-
-                      return Positioned(
-                        left: barCenterX - 10, // 텍스트 가로 중심
-                        top: barTopY + 8, // 막대 맨 위보다 조금 아래
-                        child: Text(
-                          '${record.count}',
-                          style: GoogleFonts.notoSans(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      );
-                    }),
-                  );
-                },
-              ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: maxY <= 5 ? 1 : (maxY / 5).ceilToDouble(),
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Colors.grey[300]!,
+            strokeWidth: 1,
+            dashArray: const [4, 4],
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                if (value % 1 != 0) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(right: 4.0),
+                  child: Text(
+                    value.toInt().toString(),
+                    style: GoogleFonts.notoSans(
+                      fontSize: 10,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                );
+              },
             ),
-          ],
-        );
-      },
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 34,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= displayRecords.length) {
+                  return const SizedBox.shrink();
+                }
+
+                final record = displayRecords[index];
+                final weekdayIndex = record.date.weekday % 7;
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      weekdayLabels[weekdayIndex],
+                      style: GoogleFonts.notoSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF3D4C63),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${record.date.month}/${record.date.day}',
+                      style: GoogleFonts.notoSans(
+                        fontSize: 9,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -384,7 +331,7 @@ class _StudyAccuracyChartState extends State<StudyAccuracyChart> {
         color: averageColor.withOpacity(0.08),
         borderRadius: BorderRadius.circular(12),
       ),
-      // ✅ Row → Wrap (overflow 방지)
+      // Row → Wrap (overflow 방지)
       child: Wrap(
         alignment: WrapAlignment.center,
         crossAxisAlignment: WrapCrossAlignment.center,
