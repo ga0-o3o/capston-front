@@ -2,69 +2,51 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:convert';
 import 'package:flame/game.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'game_dialogs.dart';
 
-// ------------------- 단어 존재 확인 -------------------
-// Web 환경(kIsWeb == true)에서는 Datamuse 호출을 건너뜀
-Future<bool> checkWordExists(String word) async {
-  if (kIsWeb) {
-    // 🔹 Web에서는 외부 무료 API(CORS/방화벽 문제)가 자주 막히니까
-    //    일단 "존재한다고 가정"하고 넘어가도록 설정
-    //    (원하면 false로 바꿔도 됨)
-    return true;
-  }
-
+/// ------------------- 단어 유효성 검사 -------------------
+/// dictionaryapi.dev 를 사용해서:
+///  - HTTP 200 이고
+///  - meanings 안에 definitions 가 1개 이상 있으면
+///    => "정상 영어 단어" 로 인정
+Future<bool> checkWordValid(String word) async {
   try {
-    final url = Uri.parse('https://api.datamuse.com/words?sp=$word&max=1');
+    final url =
+        Uri.parse('https://api.dictionaryapi.dev/api/v2/entries/en/$word');
     final response = await http.get(url);
 
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
-      return data.isNotEmpty;
-    } else {
-      debugPrint('Datamuse API error: ${response.statusCode}');
+    // 200 이 아니면(404 포함) 바로 실패 처리
+    if (response.statusCode != 200) {
+      debugPrint(
+          'Dictionary API status: ${response.statusCode} body: ${response.body}');
       return false;
     }
-  } catch (e, st) {
-    debugPrint('checkWordExists error: $e\n$st');
-    return false;
-  }
-}
 
-// ------------------- 단어 뜻 확인 -------------------
-// 여기도 마찬가지로 Web이면 그냥 true로 통과시킬 수 있음
-Future<bool> checkWordHasDefinition(String word) async {
-  if (kIsWeb) {
-    return true;
-  }
+    final data = jsonDecode(response.body);
 
-  try {
-    final url = Uri.parse(
-      'https://api.dictionaryapi.dev/api/v2/entries/en/$word',
-    );
-    final response = await http.get(url);
+    // 응답이 List 형태가 아니거나 비어 있으면 실패
+    if (data is! List || data.isEmpty) return false;
 
-    if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
-      if (data.isEmpty) return false;
+    final first = data[0];
+    final meanings = first['meanings'];
 
-      for (var meaning in data[0]['meanings']) {
-        if (meaning['definitions'] != null &&
-            meaning['definitions'].isNotEmpty) {
-          return true;
-        }
+    if (meanings is! List) return false;
+
+    // meanings 안에 definitions 가 하나라도 있으면 유효한 단어
+    for (final meaning in meanings) {
+      final defs = meaning['definitions'];
+      if (defs is List && defs.isNotEmpty) {
+        return true;
       }
-      return false;
-    } else {
-      debugPrint('Dictionary API error: ${response.statusCode}');
-      return false;
     }
+
+    return false;
   } catch (e, st) {
-    debugPrint('checkWordHasDefinition error: $e\n$st');
+    debugPrint('checkWordValid error: $e\n$st');
+    // 네트워크 에러 / JSON 파싱 에러 등은 "유효하지 않은 단어"로 처리
     return false;
   }
 }
@@ -80,7 +62,7 @@ class WordChainGame extends FlameGame {
   final List<String> wordBank = [
     "pasta", // a
     "club", // b
-    "arc", // c
+    "magic", // c
     "trend", // d
     "hope", // e
     "calf", // f
@@ -142,19 +124,10 @@ class WordChainGame extends FlameGame {
       return "끝말잇기 규칙 위반! 단어: $word. 남은 목숨: $lives";
     }
 
-    // 단어 존재 및 뜻 확인
-    bool exists = false;
-    bool hasDef = false;
+    // dictionaryapi.dev 로 단어 유효성 검사
+    final isValid = await checkWordValid(word);
 
-    try {
-      exists = await checkWordExists(word);
-      hasDef = await checkWordHasDefinition(word);
-    } catch (e, st) {
-      debugPrint('submitWordWithCheck error: $e\n$st');
-      return "단어 검사 중 오류가 발생했습니다. 네트워크를 확인해주세요.";
-    }
-
-    if (!exists || !hasDef) {
+    if (!isValid) {
       lives--;
       if (lives <= 0) gameOver = true;
       onUpdate?.call();
@@ -192,7 +165,7 @@ class _Game4PageState extends State<Game4Page> {
     super.initState();
     game = WordChainGame();
     game.onUpdate = () {
-      if (!mounted) return; // 🔹 dispose된 후에는 setState 방지
+      if (!mounted) return;
       setState(() {});
     };
     game.startGame();
@@ -237,7 +210,7 @@ class _Game4PageState extends State<Game4Page> {
     if (!_timerStarted) startTimer();
 
     final msg = await game.submitWordWithCheck(controller.text);
-    if (!mounted) return; // 🔹 비동기 이후 화면이 사라졌으면 중단
+    if (!mounted) return;
 
     controller.clear();
 
@@ -284,7 +257,7 @@ class _Game4PageState extends State<Game4Page> {
   @override
   void dispose() {
     _timer?.cancel();
-    game.onUpdate = null; // 🔹 참조 끊어주기
+    game.onUpdate = null;
     controller.dispose();
     super.dispose();
   }
@@ -294,7 +267,7 @@ class _Game4PageState extends State<Game4Page> {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
-        title: const Text("개인 영단어 끝말잇기 (솔로 모드)"),
+        title: const Text("개인 영단어 끝말잇기"),
         automaticallyImplyLeading: false,
         backgroundColor: const Color(0xFF4E6E99),
       ),
