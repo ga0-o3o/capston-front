@@ -282,7 +282,7 @@ class _Game2PageState extends State<Game2Page> {
       backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
-        title: const Text("제시어 영작 게임 (솔로 모드)"),
+        title: const Text("제시어 영작 게임"),
         automaticallyImplyLeading: false,
       ),
       body: Padding(

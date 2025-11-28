@@ -511,7 +511,7 @@ class _Game6PageState extends State<Game6Page> {
       backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF4E6E99),
-        title: const Text("개인 단어 타워 (솔로 모드)"),
+        title: const Text("단어 타워 쌓기"),
         automaticallyImplyLeading: false,
       ),
       body: Padding(

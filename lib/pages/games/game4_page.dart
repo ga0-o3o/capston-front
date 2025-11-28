@@ -2,42 +2,69 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:convert';
 import 'package:flame/game.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'game_dialogs.dart';
 
 // ------------------- 단어 존재 확인 -------------------
+// Web 환경(kIsWeb == true)에서는 Datamuse 호출을 건너뜀
 Future<bool> checkWordExists(String word) async {
-  final url = Uri.parse('https://api.datamuse.com/words?sp=$word&max=1');
-  final response = await http.get(url);
+  if (kIsWeb) {
+    // 🔹 Web에서는 외부 무료 API(CORS/방화벽 문제)가 자주 막히니까
+    //    일단 "존재한다고 가정"하고 넘어가도록 설정
+    //    (원하면 false로 바꿔도 됨)
+    return true;
+  }
 
-  if (response.statusCode == 200) {
-    final List data = jsonDecode(response.body);
-    return data.isNotEmpty;
-  } else {
-    throw Exception('API 요청 실패');
+  try {
+    final url = Uri.parse('https://api.datamuse.com/words?sp=$word&max=1');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.isNotEmpty;
+    } else {
+      debugPrint('Datamuse API error: ${response.statusCode}');
+      return false;
+    }
+  } catch (e, st) {
+    debugPrint('checkWordExists error: $e\n$st');
+    return false;
   }
 }
 
 // ------------------- 단어 뜻 확인 -------------------
+// 여기도 마찬가지로 Web이면 그냥 true로 통과시킬 수 있음
 Future<bool> checkWordHasDefinition(String word) async {
-  final url = Uri.parse(
-    'https://api.dictionaryapi.dev/api/v2/entries/en/$word',
-  );
-  final response = await http.get(url);
+  if (kIsWeb) {
+    return true;
+  }
 
-  if (response.statusCode == 200) {
-    final List data = jsonDecode(response.body);
-    if (data.isEmpty) return false;
+  try {
+    final url = Uri.parse(
+      'https://api.dictionaryapi.dev/api/v2/entries/en/$word',
+    );
+    final response = await http.get(url);
 
-    for (var meaning in data[0]['meanings']) {
-      if (meaning['definitions'] != null && meaning['definitions'].isNotEmpty) {
-        return true;
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      if (data.isEmpty) return false;
+
+      for (var meaning in data[0]['meanings']) {
+        if (meaning['definitions'] != null &&
+            meaning['definitions'].isNotEmpty) {
+          return true;
+        }
       }
+      return false;
+    } else {
+      debugPrint('Dictionary API error: ${response.statusCode}');
+      return false;
     }
-    return false;
-  } else {
+  } catch (e, st) {
+    debugPrint('checkWordHasDefinition error: $e\n$st');
     return false;
   }
 }
@@ -91,25 +118,19 @@ class WordChainGame extends FlameGame {
     onUpdate?.call();
   }
 
-  Future<void> submitWordWithCheck(String word, BuildContext context) async {
-    if (gameOver) return;
+  /// 성공이면 null 리턴, 실패하면 에러 메시지(String) 리턴
+  Future<String?> submitWordWithCheck(String word) async {
+    if (gameOver) return null;
 
     word = word.toLowerCase().trim();
-    if (word.isEmpty) return;
+    if (word.isEmpty) return null;
 
     // 이미 사용한 단어 체크
     if (usedWords.contains(word)) {
       lives--;
       if (lives <= 0) gameOver = true;
       onUpdate?.call();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("이미 사용한 단어입니다: $word. 남은 목숨: $lives"),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return;
+      return "이미 사용한 단어입니다: $word. 남은 목숨: $lives";
     }
 
     // 끝말잇기 규칙 위반 체크
@@ -118,32 +139,26 @@ class WordChainGame extends FlameGame {
       lives--;
       if (lives <= 0) gameOver = true;
       onUpdate?.call();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("끝말잇기 규칙 위반! 단어: $word. 남은 목숨: $lives"),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return;
+      return "끝말잇기 규칙 위반! 단어: $word. 남은 목숨: $lives";
     }
 
     // 단어 존재 및 뜻 확인
-    bool exists = await checkWordExists(word);
-    bool hasDef = await checkWordHasDefinition(word);
+    bool exists = false;
+    bool hasDef = false;
+
+    try {
+      exists = await checkWordExists(word);
+      hasDef = await checkWordHasDefinition(word);
+    } catch (e, st) {
+      debugPrint('submitWordWithCheck error: $e\n$st');
+      return "단어 검사 중 오류가 발생했습니다. 네트워크를 확인해주세요.";
+    }
 
     if (!exists || !hasDef) {
       lives--;
       if (lives <= 0) gameOver = true;
       onUpdate?.call();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("사용 불가 단어입니다: $word. 남은 목숨: $lives"),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-      return;
+      return "사용 불가 단어입니다: $word. 남은 목숨: $lives";
     }
 
     // 정상 단어
@@ -151,6 +166,8 @@ class WordChainGame extends FlameGame {
     currentWord = word;
     score += 10;
     onUpdate?.call();
+
+    return null; // 성공
   }
 }
 
@@ -170,13 +187,12 @@ class _Game4PageState extends State<Game4Page> {
   int remainingTime = 120;
   bool _timerStarted = false;
 
-  DateTime? pauseStart;
-
   @override
   void initState() {
     super.initState();
     game = WordChainGame();
     game.onUpdate = () {
+      if (!mounted) return; // 🔹 dispose된 후에는 setState 방지
       setState(() {});
     };
     game.startGame();
@@ -186,6 +202,11 @@ class _Game4PageState extends State<Game4Page> {
     _timerStarted = true;
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
       if (remainingTime > 0 && !game.gameOver) {
         setState(() {
           remainingTime--;
@@ -196,14 +217,13 @@ class _Game4PageState extends State<Game4Page> {
           setState(() {
             game.gameOver = true;
           });
-          // 시간 종료 시 다이얼로그
           showGameOverDialog_game4(
             context: context,
             success: false,
             score: game.score,
             usedWordCount: game.usedWords.length,
             onConfirm: () {
-              Navigator.pop(context); // 이전 화면으로 이동
+              Navigator.pop(context);
             },
           );
         }
@@ -216,23 +236,32 @@ class _Game4PageState extends State<Game4Page> {
 
     if (!_timerStarted) startTimer();
 
-    await game.submitWordWithCheck(controller.text, context);
+    final msg = await game.submitWordWithCheck(controller.text);
+    if (!mounted) return; // 🔹 비동기 이후 화면이 사라졌으면 중단
+
     controller.clear();
+
+    // 에러/안내 메시지 있으면 스낵바 출력
+    if (msg != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
 
     if (game.gameOver) {
       _timer?.cancel();
-
-      // 기존 스낵바 제거
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-      // 게임 오버 다이얼로그 띄우기
       showGameOverDialog_game4(
         context: context,
-        success: false, // 끝말잇기 게임에서는 success 구분 없으므로 false
+        success: false,
         score: game.score,
         usedWordCount: game.usedWords.length,
         onConfirm: () {
-          Navigator.pop(context); // 게임 화면 종료 → 이전 화면 복귀
+          Navigator.pop(context);
         },
       );
     }
@@ -244,7 +273,7 @@ class _Game4PageState extends State<Game4Page> {
     showPauseDialog(
       context: context,
       onResume: () {
-        startTimer(); // 타이머 그대로 재개
+        startTimer(); // 타이머 재개
       },
       onExit: () {
         Navigator.pop(context); // 게임 화면 종료
@@ -255,6 +284,7 @@ class _Game4PageState extends State<Game4Page> {
   @override
   void dispose() {
     _timer?.cancel();
+    game.onUpdate = null; // 🔹 참조 끊어주기
     controller.dispose();
     super.dispose();
   }
@@ -315,7 +345,7 @@ class _Game4PageState extends State<Game4Page> {
                     right: 0,
                     child: IconButton(
                       icon: const Icon(Icons.pause, size: 28),
-                      onPressed: _pauseGame, // 기존 startTimer 대신 호출
+                      onPressed: _pauseGame,
                     ),
                   ),
                 ],
