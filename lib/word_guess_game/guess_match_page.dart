@@ -29,6 +29,8 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
 
   int _roomTotal = 3; // Speed Game은 3명
 
+  bool _matchPressed = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,7 +53,10 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
       } else if (event == 'match_success_speed') {
         final roomId = msg['roomId']?.toString() ?? '';
         // ✅ FIX: 괄호 추가로 삼항 연산자 우선순위 보장
-        final myUserId = (msg['myUserId'] ?? (_loginId.isNotEmpty ? _loginId : 'guest-${DateTime.now().millisecondsSinceEpoch}'))
+        final myUserId = (msg['myUserId'] ??
+                (_loginId.isNotEmpty
+                    ? _loginId
+                    : 'guest-${DateTime.now().millisecondsSinceEpoch}'))
             .toString();
 
         if (!mounted) return;
@@ -65,7 +70,9 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
         // 3명 모임 → 자동 게임 시작
         final roomId = _pendingRoomId ?? msg['roomId']?.toString() ?? '';
         final myUserId = _pendingUserId ??
-            (_loginId.isNotEmpty ? _loginId : 'guest-${DateTime.now().millisecondsSinceEpoch}');
+            (_loginId.isNotEmpty
+                ? _loginId
+                : 'guest-${DateTime.now().millisecondsSinceEpoch}');
         _goToGameOnce(roomId, myUserId);
       }
     };
@@ -102,7 +109,11 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
 
   void _startMatch() async {
     if (!mounted) return;
-    setState(() => _connecting = true);
+
+    setState(() {
+      _connecting = true;
+      _matchPressed = true;
+    });
 
     final prefs = await SharedPreferences.getInstance();
     final loginId = prefs.getString('user_id') ?? '';
@@ -114,6 +125,7 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
       setState(() {
         _status = '로그인 정보가 없습니다.';
         _connecting = false;
+        _matchPressed = false;
       });
       return;
     }
@@ -241,7 +253,9 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                       SizedBox(
                         width: 250,
                         child: ElevatedButton(
-                          onPressed: _connecting ? null : _startMatch,
+                          onPressed: (_connecting || _matchPressed)
+                              ? null
+                              : _startMatch,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4E6E99),
                             foregroundColor: Colors.white,
@@ -261,7 +275,6 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-
                       SizedBox(
                         width: 250,
                         child: OutlinedButton(
