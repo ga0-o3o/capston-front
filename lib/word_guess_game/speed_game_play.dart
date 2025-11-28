@@ -1,30 +1,30 @@
-// guess_game.dart - Speed Game (턴 없는 실시간 경쟁)
+// speed_game_play.dart - Speed Game 전용 게임 화면 (Guess Game UI 복사)
 import 'package:flutter/material.dart';
 import 'guess_effect.dart';
 import 'guess_socket_service.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class GuessGamePage extends StatefulWidget {
-  final String? roomId;
-  final String? userId;
-  final GuessSocketService? socket;
+class SpeedGamePlayPage extends StatefulWidget {
+  final String roomId;
+  final String userId;
+  final GuessSocketService socket;
 
-  const GuessGamePage({
+  const SpeedGamePlayPage({
     Key? key,
-    this.roomId,
-    this.userId,
-    this.socket,
+    required this.roomId,
+    required this.userId,
+    required this.socket,
   }) : super(key: key);
 
   @override
-  State<GuessGamePage> createState() => _GuessGamePageState();
+  State<SpeedGamePlayPage> createState() => _SpeedGamePlayPageState();
 }
 
-class _GuessGamePageState extends State<GuessGamePage> {
+class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   // ✅ 공통 단어 (모든 플레이어가 동일하게 봄)
   String _currentWord = '';  // 영어 단어 (정답)
-  String _currentWordKr = '매칭 대기 중...';  // 한글 뜻 (화면에 표시)
+  String _currentWordKr = '게임을 준비하고 있습니다...';  // 한글 뜻 (화면에 표시)
 
   // 정답 입력용 컨트롤러
   final TextEditingController _answerController = TextEditingController();
@@ -36,7 +36,7 @@ class _GuessGamePageState extends State<GuessGamePage> {
   // 내 점수
   int get _myScore => _playerScores[_loginId] ?? 0;
 
-  String _statusMessage = '매칭 중...';
+  String _statusMessage = '게임 준비 중...';
 
   int _correctCount = 0;
   int _currentWordLength = 10;  // ✅ 동적으로 변경되는 단어 길이
@@ -73,187 +73,148 @@ class _GuessGamePageState extends State<GuessGamePage> {
     final prefs = await SharedPreferences.getInstance();
     _loginId = prefs.getString('user_id') ?? '';
 
-    if (widget.socket != null && widget.roomId != null) {
-      // WebSocket 모드: 방 참가 요청
-      final safeUserId = widget.userId ?? (_loginId.isNotEmpty ? _loginId : 'guest');
+    print('🎮 [Speed] 게임 시작: roomId=${widget.roomId}, userId=${widget.userId}');
+    widget.socket.joinRoom(widget.roomId, widget.userId);
 
-      print('🎮 [Speed] 게임 시작: roomId=${widget.roomId}, userId=$safeUserId');
-      widget.socket!.joinRoom(widget.roomId!, safeUserId);
+    // 이벤트 리스너 등록
+    _socketSubscription = widget.socket.messages.listen((msg) {
+      if (!mounted) return;
+      final event = msg['event'];
 
-      // 이벤트 리스너 등록
-      _socketSubscription = widget.socket!.messages.listen((msg) {
+      print('📩 [Speed] 이벤트 수신: $event');
+
+      // ✅ 이벤트 처리
+      if (event == 'all_words_speed') {
+        // ✅ 전체 단어 리스트 수신
+        print('✅ [Speed] 단어 리스트 수신 완료!');
+
         if (!mounted) return;
-        final event = msg['event'];
+        setState(() {
+          _currentWordKr = '게임이 곧 시작됩니다!';
+          _statusMessage = '다른 플레이어를 기다리는 중...';
+        });
 
-        print('📩 [Speed] 이벤트 수신: $event');
+        // 보드 준비 완료 전송
+        widget.socket.sendBoardReady(widget.roomId, userId: widget.userId);
+      } else if (event == 'game_start_speed') {
+        // ✅ 게임 시작
+        final data = msg['data'] as Map<String, dynamic>?;
+        final players = (data?['players'] as List?)?.map((e) => e.toString()).toList() ?? [];
+        print('🎮 [Speed] 게임 시작! 플레이어: $players');
 
-        // ✅ 이벤트 처리
-        if (event == 'all_words_speed') {
-          // ✅ 전체 단어 리스트 수신
-          print('✅ [Speed] 단어 리스트 수신 완료!');
+        if (!mounted) return;
+        setState(() {
+          _gameStarted = true;
+          _playerOrder = players;
+          // 초기 점수 설정
+          for (var player in players) {
+            _playerScores[player] = 0;
+          }
+          _currentWordKr = '첫 번째 문제를 준비하고 있습니다...';
+          _statusMessage = '🎮 게임 시작! 단어를 기다리는 중...';
+          _waitingForWord = true;
+        });
 
+        // 60초 타이머 시작
+        _startTimer();
+      } else if (event == 'word_ready_speed') {
+        // ✅✅✅ 핵심! 서버에서 보내는 word_ready_speed 이벤트 처리
+        print('═══════════════════════════════════════════════════════');
+        print('📩 [Speed] word_ready_speed 이벤트 수신!');
+
+        final word = msg['word']?.toString() ?? '';
+        print('📝 [Speed] 받은 단어: "$word"');
+
+        if (word.isNotEmpty) {
           if (!mounted) return;
           setState(() {
-            _currentWordKr = '게임이 곧 시작됩니다!';
-            _statusMessage = '다른 플레이어를 기다리는 중...';
-          });
-
-          // 보드 준비 완료 전송
-          widget.socket!.sendBoardReady(widget.roomId!, userId: widget.userId);
-        } else if (event == 'game_start_speed') {
-          // ✅ 게임 시작
-          final data = msg['data'] as Map<String, dynamic>?;
-          final players = (data?['players'] as List?)?.map((e) => e.toString()).toList() ?? [];
-          print('🎮 [Speed] 게임 시작! 플레이어: $players');
-
-          if (!mounted) return;
-          setState(() {
-            _gameStarted = true;
-            _playerOrder = players;
-            // 초기 점수 설정
-            for (var player in players) {
-              _playerScores[player] = 0;
-            }
-            _currentWordKr = '첫 번째 문제를 준비하고 있습니다...';
-            _statusMessage = '🎮 게임 시작! 단어를 기다리는 중...';
-            _waitingForWord = true;
-          });
-
-          // 60초 타이머 시작
-          _startTimer();
-        } else if (event == 'word_ready_speed') {
-          // ✅✅✅ 핵심! 서버에서 보내는 word_ready_speed 이벤트 처리
-          print('═══════════════════════════════════════════════════════');
-          print('📩 [Speed] word_ready_speed 이벤트 수신!');
-
-          final word = msg['word']?.toString() ?? '';
-          print('📝 [Speed] 받은 단어: "$word"');
-
-          if (word.isNotEmpty) {
-            if (!mounted) return;
-            setState(() {
-              _currentWord = word;
-              _currentWordKr = word;  // 화면에 표시할 단어
-              _currentWordLength = word.length;  // ✅ 단어 길이에 맞춰 박스 개수 설정
-              _statusMessage = '⚡ 빠르게 단어를 입력하세요!';
-              _isSubmitting = false;
-              _waitingForWord = false;
-            });
-            print('✅ [Speed] UI 업데이트 완료! 단어: $word (길이: ${word.length})');
-
-            // 입력창 초기화
-            _answerController.clear();
-          } else {
-            print('⚠️ [Speed] 단어가 비어있습니다!');
-          }
-          print('═══════════════════════════════════════════════════════');
-        } else if (event == 'speed_new_word') {
-          // ✅ 서버에서 data 형식으로 보낼 경우 대비
-          print('📩 [Speed] speed_new_word 이벤트 수신!');
-
-          final data = msg['data'] as Map<String, dynamic>?;
-          final word = data?['word']?.toString() ?? '';
-          final wordKr = data?['wordKr']?.toString() ?? '';
-
-          if (word.isNotEmpty) {
-            if (!mounted) return;
-            setState(() {
-              _currentWord = word;
-              _currentWordKr = wordKr.isNotEmpty ? wordKr : word;
-              _currentWordLength = word.length;
-              _statusMessage = '⚡ 빠르게 단어를 입력하세요!';
-              _isSubmitting = false;
-              _waitingForWord = false;
-            });
-            print('✅ [Speed] UI 업데이트 완료! 단어: $word (길이: ${word.length})');
-
-            _answerController.clear();
-          }
-        } else if (event == 'speed_answer_result') {
-          // ✅ 누군가 정답을 맞춤
-          final data = msg['data'] as Map<String, dynamic>?;
-          final loginId = data?['loginId']?.toString() ?? '';
-          final word = data?['word']?.toString() ?? '';
-          final answer = data?['answer']?.toString() ?? '';
-
-          // ✅ Boolean 변환 처리 (문자열 "true"/"false"도 처리)
-          bool isCorrect = false;
-          final isCorrectRaw = data?['isCorrect'];
-          if (isCorrectRaw is bool) {
-            isCorrect = isCorrectRaw;
-          } else if (isCorrectRaw is String) {
-            isCorrect = isCorrectRaw.toLowerCase() == 'true';
-          }
-
-          if (isCorrect) {
-            // ✅ 정답! 점수 증가
-            if (!mounted) return;
-            setState(() {
-              _playerScores[loginId] = (_playerScores[loginId] ?? 0) + 1;
-
-              if (loginId == _loginId) {
-                // ✅ 내가 맞춤 → 내 칸만 채워짐
-                _correctCount = (_correctCount + 1).clamp(0, _currentWordLength);
-                _statusMessage = '🎉 정답! +1점 (${_playerScores[loginId]}점)';
-                _showGuessEffect(GuessResultType.hadIt);
-                print('🎉 [Speed] 내가 정답을 맞혔습니다! 현재 칸: $_correctCount/$_currentWordLength');
-
-                // 다음 문제 대기 상태
-                _waitingForWord = true;
-                _currentWordKr = '다음 문제를 준비하고 있습니다...';
-              } else {
-                // ✅ 다른 플레이어가 맞춤 → 내 칸은 안 채워짐
-                _statusMessage = '💨 $loginId님이 먼저 맞혔습니다!';
-                print('😢 [Speed] $loginId님이 먼저 맞췄습니다. (내 칸은 안 채워짐)');
-
-                // 다음 문제 대기 상태
-                _waitingForWord = true;
-                _currentWordKr = '다음 문제를 준비하고 있습니다...';
-              }
-            });
-
-            // 입력창 비우기
-            _answerController.clear();
+            _currentWord = word;
+            _currentWordKr = word;  // 화면에 표시할 단어
+            _currentWordLength = word.length;  // ✅ 단어 길이에 맞춰 박스 개수 설정
+            _statusMessage = '⚡ 빠르게 단어를 입력하세요!';
             _isSubmitting = false;
-          } else {
-            // ❌ 오답
-            if (loginId == _loginId) {
-              // 내가 틀림
-              if (!mounted) return;
-              setState(() {
-                _statusMessage = '❌ 오답! 다시 도전하세요!';
-              });
-              _isSubmitting = false;
-              print('❌ [Speed] 내가 틀렸습니다: "$answer"');
+            _waitingForWord = false;
+          });
+          print('✅ [Speed] UI 업데이트 완료! 단어: $word (길이: ${word.length})');
 
-              // 입력창 내용만 지우고 다시 시도
-              _answerController.clear();
-            }
-          }
-
-          print('📢 [Speed] $loginId가 "$answer" 제출 (정답 여부: $isCorrect)');
-        } else if (event == 'speed_game_over') {
-          // 게임 종료
-          final data = msg['data'] as Map<String, dynamic>?;
-          final winner = data?['winner']?.toString() ?? '';
-          final winnerScore = data?['score'] as int? ?? 0;
-
-          _handleGameOver(winner, winnerScore);
+          // 입력창 초기화
+          _answerController.clear();
+        } else {
+          print('⚠️ [Speed] 단어가 비어있습니다!');
         }
-      });
-    } else {
-      // ✅ 로컬 테스트 모드
-      setState(() {
-        _currentWord = 'apple';  // 정답
-        _currentWordKr = 'apple';  // 화면에 표시될 단어
-        _currentWordLength = 5;  // 단어 길이
-        _statusMessage = '⚡ 단어를 빠르게 입력하세요!';
-        _playerScores[_loginId] = 0;
-        _playerOrder = [_loginId];
-        _gameStarted = true;
-        _waitingForWord = false;
-      });
-    }
+        print('═══════════════════════════════════════════════════════');
+      } else if (event == 'speed_answer_result') {
+        // ✅ 누군가 정답을 맞춤
+        final data = msg['data'] as Map<String, dynamic>?;
+        final loginId = data?['loginId']?.toString() ?? '';
+        final word = data?['word']?.toString() ?? '';
+        final answer = data?['answer']?.toString() ?? '';
+
+        // ✅ Boolean 변환 처리 (문자열 "true"/"false"도 처리)
+        bool isCorrect = false;
+        final isCorrectRaw = data?['isCorrect'];
+        if (isCorrectRaw is bool) {
+          isCorrect = isCorrectRaw;
+        } else if (isCorrectRaw is String) {
+          isCorrect = isCorrectRaw.toLowerCase() == 'true';
+        }
+
+        if (isCorrect) {
+          // ✅ 정답! 점수 증가
+          if (!mounted) return;
+          setState(() {
+            _playerScores[loginId] = (_playerScores[loginId] ?? 0) + 1;
+
+            if (loginId == _loginId) {
+              // ✅ 내가 맞춤 → 내 칸만 채워짐
+              _correctCount = (_correctCount + 1).clamp(0, _currentWordLength);
+              _statusMessage = '🎉 정답! +1점 (${_playerScores[loginId]}점)';
+              _showGuessEffect(GuessResultType.hadIt);
+              print('🎉 [Speed] 내가 정답을 맞혔습니다! 현재 칸: $_correctCount/$_currentWordLength');
+
+              // 다음 문제 대기 상태
+              _waitingForWord = true;
+              _currentWordKr = '다음 문제를 준비하고 있습니다...';
+            } else {
+              // ✅ 다른 플레이어가 맞춤 → 내 칸은 안 채워짐
+              _statusMessage = '💨 $loginId님이 먼저 맞혔습니다!';
+              print('😢 [Speed] $loginId님이 먼저 맞췄습니다. (내 칸은 안 채워짐)');
+
+              // 다음 문제 대기 상태
+              _waitingForWord = true;
+              _currentWordKr = '다음 문제를 준비하고 있습니다...';
+            }
+          });
+
+          // 입력창 비우기
+          _answerController.clear();
+          _isSubmitting = false;
+        } else {
+          // ❌ 오답
+          if (loginId == _loginId) {
+            // 내가 틀림
+            if (!mounted) return;
+            setState(() {
+              _statusMessage = '❌ 오답! 다시 도전하세요!';
+            });
+            _isSubmitting = false;
+            print('❌ [Speed] 내가 틀렸습니다: "$answer"');
+
+            // 입력창 내용만 지우고 다시 시도
+            _answerController.clear();
+          }
+        }
+
+        print('📢 [Speed] $loginId가 "$answer" 제출 (정답 여부: $isCorrect)');
+      } else if (event == 'speed_game_over') {
+        // 게임 종료
+        final data = msg['data'] as Map<String, dynamic>?;
+        final winner = data?['winner']?.toString() ?? '';
+        final winnerScore = data?['score'] as int? ?? 0;
+
+        _handleGameOver(winner, winnerScore);
+      }
+    });
   }
 
   void _startTimer() {
@@ -281,18 +242,11 @@ class _GuessGamePageState extends State<GuessGamePage> {
     _gameOver = true;
 
     // 승리 선언 (현재 점수 전송)
-    if (widget.socket != null && widget.roomId != null && _loginId.isNotEmpty) {
-      widget.socket!.sendWin(
-        roomId: widget.roomId!,
-        loginId: _loginId,
-        score: _myScore,
-      );
-    }
-
-    // 로컬에서는 바로 결과 표시
-    if (widget.socket == null) {
-      _showGameOverDialog('당신', _myScore);
-    }
+    widget.socket.sendWin(
+      roomId: widget.roomId,
+      loginId: _loginId,
+      score: _myScore,
+    );
   }
 
   void _handleGameOver(String winner, int winnerScore) {
@@ -404,41 +358,16 @@ class _GuessGamePageState extends State<GuessGamePage> {
     _isSubmitting = true;
 
     // WebSocket 모드: 서버에 답안 제출
-    if (widget.socket != null && widget.roomId != null && _loginId.isNotEmpty) {
-      widget.socket!.sendAnswer(
-        roomId: widget.roomId!,
-        loginId: _loginId,
-        word: _currentWord,
-        answer: answer,
-      );
+    widget.socket.sendAnswer(
+      roomId: widget.roomId,
+      loginId: _loginId,
+      word: _currentWord,
+      answer: answer,
+    );
 
-      setState(() {
-        _statusMessage = '제출 중...';
-      });
-    } else {
-      // 로컬 테스트: 즉시 정답 확인
-      final bool isCorrect = answer.toLowerCase() == _currentWord.toLowerCase();
-
-      setState(() {
-        if (isCorrect) {
-          _playerScores[_loginId] = (_playerScores[_loginId] ?? 0) + 1;
-          _statusMessage = '🎉 정답! +1점';
-          _correctCount = (_correctCount + 1).clamp(0, _currentWordLength);
-
-          // 로컬 모드에서는 즉시 다음 문제 (여기서는 같은 문제 반복)
-          _currentWordKr = 'apple';
-        } else {
-          _statusMessage = '❌ 오답! 다시 도전하세요!';
-        }
-        _isSubmitting = false;
-      });
-
-      _answerController.clear();
-
-      if (isCorrect) {
-        _showGuessEffect(GuessResultType.hadIt);
-      }
-    }
+    setState(() {
+      _statusMessage = '제출 중...';
+    });
   }
 
   @override
@@ -684,7 +613,7 @@ class _GuessGamePageState extends State<GuessGamePage> {
                             );
                           },
                           child: Text(
-                            _currentWordKr,  // ✅ 단어 표시 (서버에서 받은 text)
+                            _currentWordKr,  // ✅ 단어 표시 (서버에서 받은 word)
                             key: ValueKey<String>(_currentWordKr),
                             textAlign: TextAlign.center,
                             style: TextStyle(

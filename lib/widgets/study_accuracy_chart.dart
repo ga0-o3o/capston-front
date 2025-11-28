@@ -324,15 +324,18 @@ class _StudyAccuracyChartState extends State<StudyAccuracyChart> {
         color: averageColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      // ✅ FIX: Row → Wrap으로 변경 (overflow 방지)
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 4,
         children: [
           Icon(
             Icons.trending_up,
             color: averageColor,
             size: 16,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           Text(
             '평균 정확도: ',
             style: GoogleFonts.notoSans(

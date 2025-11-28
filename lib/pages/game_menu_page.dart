@@ -8,6 +8,7 @@ import 'games/game6_page.dart';
 import 'games/dummy_game_page.dart';
 import 'games/matching_page.dart';
 import '../bingo_game/bingo_match_page.dart';
+import '../word_guess_game/guess_match_page.dart';
 
 // -------------------- GameInfo --------------------
 class GameInfo {
@@ -33,7 +34,7 @@ class GameMenuPage extends StatelessWidget {
   final List<GameInfo> games = const [
     GameInfo(
       title: "단어 빨리 맞히기",
-      multiPageBuilder: _dummyMultiPage,
+      multiPageBuilder: _speedGameMultiPage,
     ),
     GameInfo(
       title: "제시어 영작 게임",
@@ -66,7 +67,12 @@ class GameMenuPage extends StatelessWidget {
     );
   }
 
-  // ✅ 새 빙고 전용 빌더
+  // ✅ Speed Game 전용 빌더
+  static Widget _speedGameMultiPage(List<String> userIds, List<String> tokens) {
+    return const GuessMatchPage(); // 로그인 불필요 — 바로 소켓 연결
+  }
+
+  // ✅ 빙고 전용 빌더
   static Widget _bingoMultiPage(List<String> userIds, List<String> tokens) {
     return const BingoMatchPage(); // 로그인 불필요 — 바로 소켓 연결
   }
