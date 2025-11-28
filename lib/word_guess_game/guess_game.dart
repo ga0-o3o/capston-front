@@ -23,8 +23,8 @@ class GuessGamePage extends StatefulWidget {
 
 class _GuessGamePageState extends State<GuessGamePage> {
   // ✅ 공통 단어 (모든 플레이어가 동일하게 봄)
-  String _currentWord = '';  // 영어 단어 (정답)
-  String _currentWordKr = '매칭 대기 중...';  // 한글 뜻 (화면에 표시)
+  String _currentWord = ''; // 영어 단어 (정답)
+  String _currentWordKr = '매칭 대기 중...'; // 한글 뜻 (화면에 표시)
 
   // 정답 입력용 컨트롤러
   final TextEditingController _answerController = TextEditingController();
@@ -39,7 +39,7 @@ class _GuessGamePageState extends State<GuessGamePage> {
   String _statusMessage = '매칭 중...';
 
   int _correctCount = 0;
-  int _currentWordLength = 10;  // ✅ 동적으로 변경되는 단어 길이
+  int _currentWordLength = 10; // ✅ 동적으로 변경되는 단어 길이
 
   static const Color _bgColor = Color(0xFFF6F0E9);
   static const Color _primary = Color(0xFF213654);
@@ -75,7 +75,8 @@ class _GuessGamePageState extends State<GuessGamePage> {
 
     if (widget.socket != null && widget.roomId != null) {
       // WebSocket 모드: 방 참가 요청
-      final safeUserId = widget.userId ?? (_loginId.isNotEmpty ? _loginId : 'guest');
+      final safeUserId =
+          widget.userId ?? (_loginId.isNotEmpty ? _loginId : 'guest');
 
       print('🎮 [Speed] 게임 시작: roomId=${widget.roomId}, userId=$safeUserId');
       widget.socket!.joinRoom(widget.roomId!, safeUserId);
@@ -103,7 +104,9 @@ class _GuessGamePageState extends State<GuessGamePage> {
         } else if (event == 'game_start_speed') {
           // ✅ 게임 시작
           final data = msg['data'] as Map<String, dynamic>?;
-          final players = (data?['players'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final players =
+              (data?['players'] as List?)?.map((e) => e.toString()).toList() ??
+                  [];
           print('🎮 [Speed] 게임 시작! 플레이어: $players');
 
           if (!mounted) return;
@@ -133,8 +136,8 @@ class _GuessGamePageState extends State<GuessGamePage> {
             if (!mounted) return;
             setState(() {
               _currentWord = word;
-              _currentWordKr = word;  // 화면에 표시할 단어
-              _currentWordLength = word.length;  // ✅ 단어 길이에 맞춰 박스 개수 설정
+              _currentWordKr = word; // 화면에 표시할 단어
+              _currentWordLength = word.length; // ✅ 단어 길이에 맞춰 박스 개수 설정
               _statusMessage = '⚡ 빠르게 단어를 입력하세요!';
               _isSubmitting = false;
               _waitingForWord = false;
@@ -193,10 +196,12 @@ class _GuessGamePageState extends State<GuessGamePage> {
 
               if (loginId == _loginId) {
                 // ✅ 내가 맞춤 → 내 칸만 채워짐
-                _correctCount = (_correctCount + 1).clamp(0, _currentWordLength);
+                _correctCount =
+                    (_correctCount + 1).clamp(0, _currentWordLength);
                 _statusMessage = '🎉 정답! +1점 (${_playerScores[loginId]}점)';
                 _showGuessEffect(GuessResultType.hadIt);
-                print('🎉 [Speed] 내가 정답을 맞혔습니다! 현재 칸: $_correctCount/$_currentWordLength');
+                print(
+                    '🎉 [Speed] 내가 정답을 맞혔습니다! 현재 칸: $_correctCount/$_currentWordLength');
 
                 // 다음 문제 대기 상태
                 _waitingForWord = true;
@@ -244,9 +249,9 @@ class _GuessGamePageState extends State<GuessGamePage> {
     } else {
       // ✅ 로컬 테스트 모드
       setState(() {
-        _currentWord = 'apple';  // 정답
-        _currentWordKr = 'apple';  // 화면에 표시될 단어
-        _currentWordLength = 5;  // 단어 길이
+        _currentWord = 'apple'; // 정답
+        _currentWordKr = 'apple'; // 화면에 표시될 단어
+        _currentWordLength = 5; // 단어 길이
         _statusMessage = '⚡ 단어를 빠르게 입력하세요!';
         _playerScores[_loginId] = 0;
         _playerOrder = [_loginId];
@@ -460,7 +465,7 @@ class _GuessGamePageState extends State<GuessGamePage> {
                       const Icon(Icons.flash_on, color: _primary, size: 24),
                       const SizedBox(width: 8),
                       const Text(
-                        'Fast Word Guess',
+                        '단어 빨리 맞추기',
                         style: TextStyle(
                           color: _primary,
                           fontSize: 20,
@@ -678,19 +683,24 @@ class _GuessGamePageState extends State<GuessGamePage> {
                             return FadeTransition(
                               opacity: animation,
                               child: ScaleTransition(
-                                scale: Tween<double>(begin: 0.8, end: 1.0).animate(animation),
+                                scale: Tween<double>(begin: 0.8, end: 1.0)
+                                    .animate(animation),
                                 child: child,
                               ),
                             );
                           },
                           child: Text(
-                            _currentWordKr,  // ✅ 단어 표시 (서버에서 받은 text)
+                            _currentWordKr, // ✅ 단어 표시 (서버에서 받은 text)
                             key: ValueKey<String>(_currentWordKr),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: _waitingForWord ? 18 : 32,
-                              fontWeight: _waitingForWord ? FontWeight.w500 : FontWeight.bold,
-                              color: _waitingForWord ? Colors.grey[600] : const Color(0xFF3E2A1C),
+                              fontWeight: _waitingForWord
+                                  ? FontWeight.w500
+                                  : FontWeight.bold,
+                              color: _waitingForWord
+                                  ? Colors.grey[600]
+                                  : const Color(0xFF3E2A1C),
                             ),
                           ),
                         ),
@@ -750,7 +760,8 @@ class _GuessGamePageState extends State<GuessGamePage> {
                   color: isFilled ? _keyCorrect : _keyDefault.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isFilled ? _keyCorrect : _keyDefault.withOpacity(0.5),
+                    color:
+                        isFilled ? _keyCorrect : _keyDefault.withOpacity(0.5),
                     width: 2,
                   ),
                 ),
@@ -820,9 +831,15 @@ class _GuessGamePageState extends State<GuessGamePage> {
               ),
               elevation: 3,
             ),
-            onPressed: (_gameOver || _isSubmitting || _waitingForWord) ? null : _submitAnswer,
+            onPressed: (_gameOver || _isSubmitting || _waitingForWord)
+                ? null
+                : _submitAnswer,
             child: Text(
-              _isSubmitting ? '제출 중...' : _waitingForWord ? '대기 중...' : '확인',
+              _isSubmitting
+                  ? '제출 중...'
+                  : _waitingForWord
+                      ? '대기 중...'
+                      : '확인',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,

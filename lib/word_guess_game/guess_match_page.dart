@@ -31,6 +31,8 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
 
   bool _matchPressed = false;
 
+  bool _matched = false;
+
   @override
   void initState() {
     super.initState();
@@ -39,20 +41,24 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
     _socket.connect();
 
     _socket.onMessage = (msg) {
-      if (!mounted) return; // mounted 체크 추가
+      if (!mounted) return;
       final event = msg['event'];
 
-      // ✅ Boolean 처리: event는 String이므로 문자열 비교
       if (event == 'waiting') {
-        final cnt = (msg['count'] ?? 0) as int;
         if (!mounted) return;
+
+        final cnt = (msg['count'] ?? 0) as int? ?? 0;
+
         setState(() {
           _waitingCount = cnt;
-          _status = '대기 중... ($cnt명 접속)';
+
+          // ✅ 이미 매칭 성공했으면 status 건드리지 않기
+          if (_matched) return;
+
+          _status = _inQueue ? '매칭 대기 중...' : '대기 중...';
         });
       } else if (event == 'match_success_speed') {
         final roomId = msg['roomId']?.toString() ?? '';
-        // ✅ FIX: 괄호 추가로 삼항 연산자 우선순위 보장
         final myUserId = (msg['myUserId'] ??
                 (_loginId.isNotEmpty
                     ? _loginId
@@ -63,8 +69,8 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
         setState(() {
           _pendingRoomId = roomId;
           _pendingUserId = myUserId;
-          _status = '✅ 매칭 완료! $_roomTotal명이 모이면 자동으로 시작됩니다.';
           _roomTotal = (msg['total'] ?? 3) as int;
+          _matched = true; // ✅ 매칭 성공 표시
         });
       } else if (event == 'game_start_speed') {
         // 3명 모임 → 자동 게임 시작
@@ -73,7 +79,19 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
             (_loginId.isNotEmpty
                 ? _loginId
                 : 'guest-${DateTime.now().millisecondsSinceEpoch}');
-        _goToGameOnce(roomId, myUserId);
+
+        if (!mounted) return;
+
+        // 🎯 입장 직전에 한 번 더 상태 문구 보여주기
+        setState(() {
+          _status = '✅ 매칭 완료! 자동으로 게임이 시작됩니다.';
+        });
+
+        // ✅ 0.6초 정도 딜레이 후 게임 입장 (문구 눈에 보이게)
+        Future.delayed(const Duration(milliseconds: 3000), () {
+          if (!mounted) return;
+          _goToGameOnce(roomId, myUserId);
+        });
       }
     };
   }
@@ -229,18 +247,6 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        if (_waitingCount > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                              '현재 대기 인원: $_waitingCount명',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -302,7 +308,7 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 100),
+                  const SizedBox(height: 180),
                 ],
               ),
             ),
