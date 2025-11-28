@@ -19,7 +19,7 @@ class MainMenuPage extends StatefulWidget {
 }
 
 class _MainMenuPageState extends State<MainMenuPage> {
-  int _selectedCharacterIndex = 0; // 추가: 캐릭터 번호
+  int _selectedCharacterIndex = 0; // 캐릭터 번호
   int _currentIndex = 0; // 현재 선택된 탭 인덱스
 
   final List<Widget> _pages = [
@@ -27,7 +27,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
     const WordFrontPage(),
     const GameMenuPage(),
     const LevelTestPage(),
-    const ChatingPage(), // 채팅
+    const ChatingPage(),
   ];
 
   @override

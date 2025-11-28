@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'login/login_page.dart';
 import 'loading_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class UserInfoPage extends StatefulWidget {
   const UserInfoPage({Key? key}) : super(key: key);
@@ -39,6 +40,17 @@ class _UserInfoPageState extends State<UserInfoPage> {
     "B2": [0, 1, 2, 3, 4],
     "C1": [0, 1, 2, 3, 4, 5],
     "C2": [0, 1, 2, 3, 4, 5, 6],
+  };
+
+  // 랭크별 이미지 경로 (파일 이름은 네가 실제로 써놓은 이름에 맞춰 수정!)
+  final Map<String, String> rankImagePaths = {
+    'Beginner': 'assets/images/rank/Beginner.png',
+    'A1': 'assets/images/rank/A1.png',
+    'A2': 'assets/images/rank/A2.png',
+    'B1': 'assets/images/rank/B1.png',
+    'B2': 'assets/images/rank/B2.png',
+    'C1': 'assets/images/rank/C1.png',
+    'C2': 'assets/images/rank/C2.png',
   };
 
   // 해제된 캐릭터 (기본으로 char0은 무조건 해제)
@@ -602,68 +614,159 @@ class _UserInfoPageState extends State<UserInfoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F0E9),
-      appBar: AppBar(
-        title: const Text('사용자 정보'),
-        backgroundColor: const Color(0xFF4E6E99),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
+      backgroundColor: const Color(0xFF3D4C63), // 🔵 위쪽 배경 (HiLight 영역)
+      body: SafeArea(
         child: Column(
           children: [
-            // CircleAvatar 부분
-            GestureDetector(
-              onTap: _selectCharacter, // 클릭 시 함수 실행
-              child: Container(
-                padding: const EdgeInsets.all(5), // 테두리 두께
-                decoration: BoxDecoration(
-                  color: Colors.white, // 테두리 색상
-                  shape: BoxShape.circle,
-                ),
-                child: CircleAvatar(
-                  radius: 80, // 캐릭터 크기
-                  backgroundColor: Colors.grey.shade300,
-                  backgroundImage: AssetImage(selectedCharacter), // 선택된 캐릭터
-                ),
+            // 상단 HiLight 로고
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context); // 전 페이지로
+                    },
+                    child: Text(
+                      'HiLight',
+                      style: GoogleFonts.pacifico(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFFF6F0E9), // 진한 배경 위에서 잘 보이게
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: 8),
 
-            const SizedBox(height: 16),
-            Text(
-              userName,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('닉네임: $nickname', style: const TextStyle(fontSize: 18)),
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  onPressed: _changeNickname,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '랭크: $userRank',
-              style: const TextStyle(fontSize: 18, color: Colors.deepPurple),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _logout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            // 아래 둥근 네모 전체 영역 (배경: F6F0E9)
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF6F0E9), // 🟡 아래 카드 배경
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(32),
+                    topRight: Radius.circular(32),
                   ),
                 ),
-                child: const Text(
-                  '로그아웃',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+
+                  // 👇 전체 내용을 스크롤 가능하게
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // 프로필 아바타
+                        GestureDetector(
+                          onTap: _selectCharacter,
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: CircleAvatar(
+                              radius: 80,
+                              backgroundColor: Colors.grey.shade300,
+                              backgroundImage: AssetImage(selectedCharacter),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+                        Text(
+                          userName,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '닉네임: $nickname',
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.edit, size: 20),
+                              onPressed: _changeNickname,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+
+                        // 🔹 랭크 박스 (흰색 둥근 네모)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 20, horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white, // 흰색 네모
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 6,
+                                offset: Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              if (rankImagePaths[userRank] != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Image.asset(
+                                    rankImagePaths[userRank]!,
+                                    height: 180,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              const SizedBox(height: 8),
+                              Text(
+                                '랭크: $userRank',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.deepPurple,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _logout,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text(
+                              '로그아웃',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
