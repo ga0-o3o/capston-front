@@ -23,6 +23,8 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
   int _waitingCount = 0;
   bool get _canStartNow => _inQueue && _pendingRoomId != null;
 
+  bool _matchPressed = false;
+
   // ✅ 수동 시작 모드를 위한 대기 변수들
   String? _pendingRoomId;
   String? _pendingUserId;
@@ -111,7 +113,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
       } else if (event == 'already_in_game') {
         // 🚨 중복 로그인 감지: 팝업 표시
         final message = msg['data']?['message'] ??
-                       '다른 곳에서 이미 매칭/게임 진행중입니다. 매칭을 시도할 수 없습니다.';
+            '다른 곳에서 이미 매칭/게임 진행중입니다. 매칭을 시도할 수 없습니다.';
 
         if (!mounted) return;
         setState(() {
@@ -170,7 +172,12 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
 
   void _startMatch() async {
     if (!mounted) return;
-    setState(() => _connecting = true);
+
+    if (!mounted) return;
+    setState(() {
+      _connecting = true;
+      _matchPressed = true; // ✅ 여기서 잠금
+    });
 
     final prefs = await SharedPreferences.getInstance();
     final loginId = prefs.getString('user_id') ?? '';
@@ -182,6 +189,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
       setState(() {
         _status = '로그인 정보가 없습니다.';
         _connecting = false;
+        _matchPressed = false;
       });
       return;
     }
@@ -310,10 +318,11 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
                       SizedBox(
                         width: 250,
                         child: ElevatedButton(
-                          // 연결 중이면 비활성화, 그 외에는 상태에 따라 함수 변경
                           onPressed: _connecting
                               ? null
-                              : (_canStartNow ? _startNow : _startMatch),
+                              : (_canStartNow
+                                  ? _startNow
+                                  : (_matchPressed ? null : _startMatch)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4E6E99),
                             foregroundColor: Colors.white,

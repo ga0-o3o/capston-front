@@ -1022,8 +1022,7 @@ class _BingoGamePageState extends State<BingoGamePage> {
               _duplicateWordAttempted.remove(nw); // 🔄 새 하이라이트 기회 → 이전 실패 기록 리셋
               print('   🔵 상대 시도! 내 보드에 중복 표시 추가: $nw (새 하이라이트 기회)');
             } else {
-              print(
-                  '   ℹ️ 상대 시도했지만 중복 표시 안 함 (이유: 이미 맞춤/이미 중복 표시/보드에 없음)');
+              print('   ℹ️ 상대 시도했지만 중복 표시 안 함 (이유: 이미 맞춤/이미 중복 표시/보드에 없음)');
             }
           }
 
@@ -1200,7 +1199,7 @@ class _BingoGamePageState extends State<BingoGamePage> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  iWon ? "3빙고를 먼저 달성했습니다!" : "상대가 3빙고를 먼저 달성했습니다.",
+                  iWon ? "당신이 이겼습니다!" : "상대가 3빙고를 먼저 달성했습니다.",
                   style: const TextStyle(fontSize: 16, color: Colors.black87),
                   textAlign: TextAlign.center,
                 ),
