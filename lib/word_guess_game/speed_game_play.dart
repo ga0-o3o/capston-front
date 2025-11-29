@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'guess_effect.dart';
 import 'guess_socket_service.dart';
 import 'dart:async';
+import '../pages/game_menu_page.dart';
 
 /// Speed Game 플레이 페이지
 /// 서버(Spring Boot) 이벤트 규칙에 100% 맞춤
@@ -47,6 +48,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   bool _isSubmitting = false;
   bool _gameStarted = false;
   bool _gameOver = false;
+  bool _skipUsed = false; // Skip 버튼 사용 여부
 
   int _remainingSeconds = 60;
   Timer? _gameTimer;
@@ -89,6 +91,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
           _onWrong(msg);
           break;
         case 'game_complete':
+        case 'game_over': // 백엔드에서 game_over 이벤트도 보냄
           _onGameOver(msg);
           break;
       }
@@ -124,15 +127,36 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   void _onWordServe(Map msg) {
     final data = msg['data'] ?? {};
     final word = data['word']?.toString() ?? '';
+    final lastSolver = data['lastSolver']; // 이전 정답자 (없으면 null)
+    final message = data['message']?.toString() ?? '';
 
     if (word.isEmpty) return;
+
+    // ✅ 이전 단어를 아무도 못 맞춘 경우 (스킵된 경우)
+    if (message != 'START' && lastSolver == null) {
+      setState(() {
+        _statusMessage = '❌ 아무도 못맞춤 - 다음 문제!';
+      });
+
+      // 잠깐 메시지 표시 후 다시 입력 대기 상태로
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          setState(() {
+            _statusMessage = '⚡ 단어를 입력하세요!';
+          });
+        }
+      });
+    }
 
     setState(() {
       _currentWord = word;
       _currentWordKr = word;
       _waitingForWord = false;
       _isSubmitting = false;
-      _statusMessage = '⚡ 단어를 입력하세요!';
+      _skipUsed = false; // 새로운 단어가 나올 때마다 Skip 버튼 활성화
+      if (message == 'START') {
+        _statusMessage = '⚡ 게임 시작! 단어를 입력하세요!';
+      }
     });
 
     _answerController.clear();
@@ -216,6 +240,16 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     final winner = data['winner']?.toString() ?? '';
     final score = data['score'] ?? 0;
 
+    // ✅ 전체 플레이어 점수 업데이트 (있는 경우)
+    if (data['scores'] != null && data['scores'] is Map) {
+      final scores = data['scores'] as Map;
+      setState(() {
+        _playerScores = scores.map((key, value) =>
+          MapEntry(key.toString(), (value ?? 0) as int)
+        );
+      });
+    }
+
     _showGameOverDialog(winner, score);
   }
 
@@ -270,10 +304,12 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   // 게임 종료 Dialog
   // -------------------------------------------------
   void _showGameOverDialog(String winner, int score) {
+    if (!mounted) return;
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('🎉 게임 종료'),
           content: Column(
@@ -284,22 +320,33 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                     ? '🏆 당신이 승리했습니다!\n점수: $score점'
                     : '😢 $winner 님이 승리했습니다.\n점수: $score점',
                 textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 20),
               const Text(
                 '최종 순위',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
+              const SizedBox(height: 10),
               ..._buildFinalRanking(),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () {
+                // 1. 다이얼로그 닫기
+                Navigator.of(dialogContext).pop();
+
+                // 2. 게임 플레이 페이지 닫기 (SpeedGamePlayPage)
                 Navigator.of(context).pop();
+
+                // 3. 매칭 페이지 닫기 (GuessMatchPage) - 게임 메뉴로 돌아감
                 Navigator.of(context).pop();
               },
-              child: const Text('확인'),
+              child: const Text(
+                '게임 메뉴로 돌아가기',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         );
@@ -519,11 +566,26 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                     right: 16,
                     bottom: 16,
                     child: ElevatedButton(
-                      onPressed: () {
-                        // 기능은 나중에 추가 예정
+                      onPressed: _skipUsed ? null : () {
+                        // Skip 버튼 클릭 시
+                        setState(() {
+                          _skipUsed = true;
+                        });
+
+                        // 서버에 skip 요청 전송
+                        widget.socket.sendAnswer(
+                          roomId: widget.roomId,
+                          loginId: widget.loginId,
+                          word: "{skip}",
+                          wordKr: "{master_key}",
+                        );
+
+                        print('🔄 [Skip] 스킵 요청 전송됨');
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _primary,
+                        backgroundColor: _skipUsed
+                            ? _primary.withOpacity(0.3)
+                            : _primary,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 8),
                         minimumSize: const Size(60, 32),
@@ -531,10 +593,12 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         "Skip",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: _skipUsed
+                              ? Colors.white.withOpacity(0.5)
+                              : Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
