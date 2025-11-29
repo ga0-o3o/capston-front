@@ -30,8 +30,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
 
   final TextEditingController _answerController = TextEditingController();
 
-  static const int _totalQuestions = 10; // ✅ 총 문제 수 고정 (10문제)
-  int _correctCount = 0; // ✅ 내가 맞춘 문제 수
+  static const int _totalQuestions = 10; // 총 문제 수
+  int _correctCount = 0; // 내가 맞춘 문제 수
 
   // ---------- 플레이어 점수 ----------
   Map<String, int> _playerScores = {};
@@ -55,7 +55,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   // ---------- 색상 ----------
   static const Color _bgColor = Color(0xFFF6F0E9);
   static const Color _primary = Color(0xFF213654);
-  static const Color _keyDefault = Colors.white;
   static const Color _keyCorrect = Color(0xFF4CAF50);
 
   @override
@@ -65,61 +64,45 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   }
 
   Future<void> _initGame() async {
-    // 방 참가
     widget.socket.joinRoom(widget.roomId, widget.userId);
 
-    // ❗️중요: 방 참가 후 즉시 game_ready 전송
-    // (match_page에서 이미 game_start_speed를 받았기 때문)
-    print('🎮 방 참가 완료 → game_ready 즉시 전송');
     widget.socket.sendGameReady(widget.roomId, userId: widget.userId);
 
-    // ========================================
-    // 서버 → 클라이언트 이벤트 수신
-    // ========================================
     _socketSub = widget.socket.messages.listen((msg) {
       final event = msg['event'];
       print('📩 [PlayPage] 이벤트: $event');
 
       switch (event) {
-        // 1) game_start_speed - 게임 시작
         case 'game_start_speed':
           _onGameStart(msg);
           break;
 
-        // 2) word_serve - 문제 제공
         case 'word_serve':
           _onWordServe(msg);
           break;
 
-        // 3) correct_answer - 정답 처리
         case 'correct_answer':
           _onCorrect(msg);
           break;
 
-        // 4) wrong_answer - 오답 처리
         case 'wrong_answer':
           _onWrong(msg);
           break;
 
-        // 5) game_complete - 게임 종료
         case 'game_complete':
           _onGameOver(msg);
           break;
-
-        default:
-          print('⚠️ 알 수 없는 이벤트: $event');
       }
     });
   }
 
   // -------------------------------------------------
-  // 1) 게임 시작 이벤트
+  // 게임 시작
   // -------------------------------------------------
   void _onGameStart(Map msg) {
-    print('🎮 game_start_speed 수신');
-
     final data = msg['data'] ?? {};
-    final players = (data['players'] as List?)?.map((e) => e.toString()).toList() ?? [];
+    final players =
+        (data['players'] as List?)?.map((e) => e.toString()).toList() ?? [];
 
     setState(() {
       _gameStarted = true;
@@ -137,7 +120,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   }
 
   // -------------------------------------------------
-  // 2) 서버에서 문제 전달
+  // 문제 제공
   // -------------------------------------------------
   void _onWordServe(Map msg) {
     final data = msg['data'] ?? {};
@@ -157,22 +140,18 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   }
 
   // -------------------------------------------------
-  // 3) 정답 처리
+  // 정답 처리
   // -------------------------------------------------
   void _onCorrect(Map msg) {
     final data = msg['data'] ?? {};
     final solver = data['solver']?.toString() ?? '';
-    final word = data['word']?.toString() ?? '';
-    final wordKr = data['wordKr']?.toString() ?? '';
 
-    // 점수 증가
     setState(() {
       _playerScores[solver] = (_playerScores[solver] ?? 0) + 1;
       _waitingForWord = true;
     });
 
     if (solver == widget.loginId) {
-      // ✅ 내가 맞춤 → 네모 칸 채우기
       _showGuessEffect(GuessResultType.hadIt);
 
       setState(() {
@@ -180,9 +159,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
         _statusMessage = '🎉 정답! ($_correctCount/$_totalQuestions)';
       });
 
-      // ✅ 10문제를 다 맞추면 승리!
       if (_correctCount >= _totalQuestions) {
-        print('🏆 10문제 완료! game_over 전송');
         _gameOver = true;
         _gameTimer?.cancel();
 
@@ -192,7 +169,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
           score: _correctCount,
         );
 
-        // 승리 메시지 표시
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
             _showGameOverDialog(widget.loginId, _correctCount);
@@ -210,12 +186,9 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   }
 
   // -------------------------------------------------
-  // 4) 오답 처리
+  // 오답 처리
   // -------------------------------------------------
   void _onWrong(Map msg) {
-    final data = msg['data'] ?? {};
-    final word = data['word']?.toString() ?? '';
-
     setState(() {
       _statusMessage = '❌ 오답입니다. 다시 시도하세요!';
       _isSubmitting = false;
@@ -224,9 +197,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     _answerController.clear();
   }
 
-  // -------------------------------------------------
-  // 5) 게임 종료
-  // -------------------------------------------------
   void _onGameOver(Map msg) {
     if (_gameOver) return;
     _gameOver = true;
@@ -397,6 +367,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   }
 
   // ---------- UI 구성 함수들 ----------
+
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -417,10 +388,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
               const Spacer(),
               if (_gameStarted)
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: _remainingSeconds > 10 ? Colors.green : Colors.red,
                     borderRadius: BorderRadius.circular(20),
@@ -496,6 +465,9 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     );
   }
 
+  // ======================================================
+  // 🔥 여기서 Skip 버튼을 추가했습니다.
+  // ======================================================
   Widget _buildComputer() {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -511,6 +483,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                 borderRadius: BorderRadius.circular(36),
               ),
             ),
+
+            // 🔹 단어 박스 + Skip 버튼
             Container(
               width: double.infinity,
               height: 180,
@@ -519,19 +493,52 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                 borderRadius: BorderRadius.circular(30),
                 border: Border.all(color: _primary, width: 18),
               ),
-              child: Center(
-                child: Text(
-                  _currentWordKr,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: _waitingForWord ? 20 : 32,
-                    fontWeight:
-                        _waitingForWord ? FontWeight.w500 : FontWeight.bold,
-                    color: _waitingForWord
-                        ? Colors.grey[700]
-                        : const Color(0xFF3E2A1C),
+              child: Stack(
+                children: [
+                  Center(
+                    child: Text(
+                      _currentWordKr,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: _waitingForWord ? 20 : 32,
+                        fontWeight: _waitingForWord
+                            ? FontWeight.w500
+                            : FontWeight.bold,
+                        color: _waitingForWord
+                            ? Colors.grey[700]
+                            : const Color(0xFF3E2A1C),
+                      ),
+                    ),
                   ),
-                ),
+
+                  // 🔥 Skip 버튼 추가
+                  Positioned(
+                    right: 16,
+                    bottom: 16,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // ⚠ 기능은 나중에 추가 예정
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        minimumSize: const Size(60, 32),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Skip",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -539,7 +546,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
 
         const SizedBox(height: 12),
 
-        // ✅ 10개 고정 네모 칸 (맞춘 문제 수 표시)
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
