@@ -4,86 +4,74 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:web_socket_channel/status.dart' as status;
 
-// ✅ 중앙 URL 관리 import
 import '../config/url_config.dart';
 
+/// Speed Game 전용 WebSocket 서비스
+/// 서버(Spring Boot) 이벤트 규칙에 100% 맞춤
 class GuessSocketService {
   WebSocketChannel? _channel;
   bool _closed = false;
 
-  /// (레거시 호환) 단일 콜백 — 가능하면 쓰지 말고 messages 스트림을 구독하세요.
   Function(Map<String, dynamic>)? onMessage;
 
-  /// ✅ 여러 위젯이 동시에 구독 가능한 브로드캐스트 스트림
   final _controller = StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get messages => _controller.stream;
 
   GuessSocketService();
 
-  // ✅ WebSocket 연결
+  // ========================================
+  // WebSocket 연결
+  // ========================================
   void connect() {
-    // ✅ Speed Game 전용 ngrok WebSocket URL 사용 (/ws/speed)
     final wsUrl = UrlConfig.springBootSpeedWebSocketUrl;
     print('🔗 [Speed] WebSocket 연결 시도 → $wsUrl');
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      print('✅ [Speed] WebSocket 채널 생성 완료 (ngrok 연결 성공)');
+      print('✅ WebSocket 채널 생성 완료');
 
       _channel!.stream.listen(
         (message) {
           print('📩 [Speed] 서버 메시지 수신: $message');
 
-          Map<String, dynamic>? data;
+          Map<String, dynamic> data;
+
           try {
             final decoded = jsonDecode(message);
-            if (decoded is Map<String, dynamic>) {
-              data = decoded;
-            } else {
-              data = {'event': 'raw', 'data': decoded};
-            }
+            data = decoded is Map<String, dynamic>
+                ? decoded
+                : {'event': 'raw', 'data': decoded};
           } catch (e) {
-            print('⚠️ [Speed] jsonDecode 실패 → $e');
             data = {'event': 'decode_error', 'raw': message.toString()};
           }
 
-          if (data != null) {
+          if (!_controller.isClosed) {
             onMessage?.call(data);
-            if (!_controller.isClosed) {
-              _controller.add(data);
-            }
+            _controller.add(data);
           }
         },
-        onDone: () {
-          print('❌ [Speed] WebSocket 연결 종료됨');
-        },
-        onError: (error) {
-          print('⚠️ [Speed] WebSocket 오류 발생: $error');
-          print('⚠️ [Speed] 현재 WebSocket URL = $wsUrl');
-        },
-        cancelOnError: false,
+        onDone: () => print('❌ WebSocket 연결 종료'),
+        onError: (err) => print('⚠️ WebSocket 오류: $err'),
       );
     } catch (e) {
-      print('🚨 [Speed] WebSocket 예외 발생: $e');
-      print('🚨 [Speed] 현재 WebSocket URL = $wsUrl');
+      print('🚨 WebSocket 예외: $e');
     }
   }
 
-  // ✅ 안전 전송 헬퍼
-  void _send(Map<String, dynamic> payload) {
-    final json = jsonEncode(payload);
-    _channel?.sink.add(json);
-    print('📤 [Speed] 전송: $json');
+  void _send(Map<String, dynamic> data) {
+    if (_channel == null) return;
+    final jsonString = jsonEncode(data);
+    _channel!.sink.add(jsonString);
+    print('📤 [SEND] $jsonString');
   }
 
-  // ====== API ======
+  // ========================================
+  // 클라이언트 → 서버 이벤트
+  // ========================================
 
-  /// 매칭 요청 (Speed Game 전용)
+  /// 1) 매칭 요청
+  /// 서버 이벤트: "match_request_speed"
   Future<void> requestMatch(String loginId, {bool manualStart = true}) async {
-    if (_channel == null) {
-      print('⚠️ [Speed] WebSocket이 아직 연결되지 않음');
-      return;
-    }
     _send({
       'event': 'match_request_speed',
       'loginId': loginId,
@@ -91,9 +79,9 @@ class GuessSocketService {
     });
   }
 
-  /// 방 참가 (단어 불러오기)
+  /// 2) 방 입장
+  /// 서버 이벤트: "join_room_speed"
   void joinRoom(String roomId, String userId) {
-    if (_channel == null) return;
     _send({
       'event': 'join_room_speed',
       'roomId': roomId,
@@ -101,107 +89,85 @@ class GuessSocketService {
     });
   }
 
-  /// 보드 준비 완료
-  void sendBoardReady(String roomId, {String? userId}) {
-    if (_channel == null) return;
+  /// 3) 게임 준비 완료
+  /// 서버 이벤트: "game_ready"
+  /// game_start_speed 수신 후 즉시 전송해야 함
+  void sendGameReady(String roomId, {String? userId}) {
     _send({
-      'event': 'board_ready_speed',
+      'event': 'game_ready',
       'roomId': roomId,
       if (userId != null) 'userId': userId,
     });
   }
 
-  /// 나가기/매칭 취소
-  void sendBack({
-    String? loginId,
-    String? roomId,
-    String? userId,
-    String? reason,
-  }) {
-    if (_channel == null) {
-      print('⚠️ [Speed] sendBack: 채널 미연결');
-      return;
-    }
-    _send({
-      'event': 'send_back_speed',
-      if (loginId != null && loginId.isNotEmpty) 'loginId': loginId,
-      if (roomId != null && roomId.isNotEmpty) 'roomId': roomId,
-      if (userId != null && userId.isNotEmpty) 'userId': userId,
-      if (reason != null && reason.isNotEmpty) 'reason': reason,
-    });
-  }
-
-  /// 답안 제출
+  /// 4) 정답 제출
+  /// 서버 이벤트: "submit_answer"
   void sendAnswer({
     required String roomId,
     required String loginId,
     required String word,
-    required String answer,
+    required String wordKr,
   }) {
-    if (_channel == null) return;
     _send({
-      'event': 'speed_answer',
+      'event': 'submit_answer',
       'roomId': roomId,
       'loginId': loginId,
       'word': word,
-      'answer': answer,
+      'wordKr': wordKr,
     });
   }
 
-  /// 게임 종료 (승리 선언)
-  void sendWin({
+  /// 5) 게임 종료 요청
+  /// 서버 이벤트: "game_over"
+  void sendGameOver({
     required String roomId,
     required String loginId,
     int score = 0,
   }) {
-    if (_channel == null) return;
     _send({
-      'event': 'speed_win',
+      'event': 'game_over',
       'roomId': roomId,
       'loginId': loginId,
       'score': score,
     });
   }
 
-  /// 새 문제 단어 요청
-  void requestNewQuestion(String roomId) {
-    if (_channel == null) return;
+  /// 6) 매칭 취소 / 뒤로가기
+  /// 서버 이벤트: "matching_exit"
+  void sendMatchingExit({
+    String? loginId,
+    String? roomId,
+    String? userId,
+    String? reason,
+  }) {
     _send({
-      'event': 'speed_new_question',
-      'roomId': roomId,
+      'event': 'matching_exit',
+      if (loginId != null) 'loginId': loginId,
+      if (roomId != null) 'roomId': roomId,
+      if (userId != null) 'userId': userId,
+      if (reason != null) 'reason': reason,
     });
   }
 
-  // ====== 종료/정리 ======
+  // ========================================
+  // 연결 종료
+  // ========================================
   void disconnect() {
-    if (_closed) {
-      print('⚠️ [Speed] 이미 소켓 종료됨. 중복 disconnect 무시');
-      return;
-    }
+    if (_closed) return;
     _closed = true;
+
     try {
       if (_channel != null) {
-        if (kIsWeb) {
-          _channel!.sink.close(status.normalClosure);
-        } else {
-          _channel!.sink.close(status.goingAway);
-        }
-        print('🔌 [Speed] WebSocket 연결 종료 요청 전송');
+        _channel!.sink
+            .close(kIsWeb ? status.normalClosure : status.goingAway);
       }
-    } catch (e) {
-      print('⚠️ [Speed] disconnect 중 오류: $e');
-    } finally {
-      _channel = null;
-      // 스트림은 보통 앱 생명주기 끝에서 닫음. 여기선 닫지 않음.
-      // 필요시 별도 dispose 추가.
-    }
+    } catch (_) {}
+
+    _channel = null;
   }
 
-  /// 앱 종료 등에서 명시적으로 완전 정리하고 싶다면 호출
   void dispose() {
-    try {
-      if (!_controller.isClosed) _controller.close();
-    } catch (_) {}
+    if (!_controller.isClosed) _controller.close();
     disconnect();
   }
 }

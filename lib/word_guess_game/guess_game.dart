@@ -100,7 +100,7 @@ class _GuessGamePageState extends State<GuessGamePage> {
           });
 
           // 보드 준비 완료 전송
-          widget.socket!.sendBoardReady(widget.roomId!, userId: widget.userId);
+          widget.socket!.sendGameReady(widget.roomId!, userId: widget.userId);
         } else if (event == 'game_start_speed') {
           // ✅ 게임 시작
           final data = msg['data'] as Map<String, dynamic>?;
@@ -287,7 +287,7 @@ class _GuessGamePageState extends State<GuessGamePage> {
 
     // 승리 선언 (현재 점수 전송)
     if (widget.socket != null && widget.roomId != null && _loginId.isNotEmpty) {
-      widget.socket!.sendWin(
+      widget.socket!.sendGameOver(
         roomId: widget.roomId!,
         loginId: _loginId,
         score: _myScore,
@@ -414,7 +414,7 @@ class _GuessGamePageState extends State<GuessGamePage> {
         roomId: widget.roomId!,
         loginId: _loginId,
         word: _currentWord,
-        answer: answer,
+        wordKr: answer,
       );
 
       setState(() {

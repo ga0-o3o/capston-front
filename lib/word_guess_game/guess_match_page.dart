@@ -4,6 +4,8 @@ import 'speed_game_play.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gif_view/gif_view.dart';
 
+/// Speed Game 매칭 페이지
+/// 서버(Spring Boot) 이벤트 규칙에 100% 맞춤
 class GuessMatchPage extends StatefulWidget {
   const GuessMatchPage({super.key});
 
@@ -18,90 +20,101 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
   bool _backSent = false;
 
   String _loginId = '';
-  bool _manualStart = true; // 수동 시작 모드 (3명 모이면 자동 시작)
+  bool _manualStart = true;
   bool _inQueue = false;
   int _waitingCount = 0;
 
-  // 매칭 완료 후 대기 변수들
   String? _pendingRoomId;
   String? _pendingUserId;
-  bool _navigated = false; // 중복 네비게이션 방지
+  bool _navigated = false;
 
-  int _roomTotal = 3; // Speed Game은 3명
-
+  int _roomTotal = 3;
   bool _matchPressed = false;
-
   bool _matched = false;
 
   @override
   void initState() {
     super.initState();
-    // GuessSocketService가 UrlConfig에서 자동으로 URL을 가져옵니다
+
     _socket = GuessSocketService();
     _socket.connect();
 
     _socket.onMessage = (msg) {
       if (!mounted) return;
+
       final event = msg['event'];
+      print('📩 [MatchPage] 이벤트: $event');
 
+      // ========================================
+      // 서버 → 클라이언트 이벤트 처리
+      // ========================================
+
+      // 대기 인원 수 (커스텀 이벤트)
       if (event == 'waiting') {
-        if (!mounted) return;
-
-        final cnt = (msg['count'] ?? 0) as int? ?? 0;
-
+        final cnt = (msg['count'] ?? 0);
         setState(() {
           _waitingCount = cnt;
-
-          // ✅ 이미 매칭 성공했으면 status 건드리지 않기
           if (_matched) return;
-
           _status = _inQueue ? '매칭 대기 중...' : '대기 중...';
         });
-      } else if (event == 'match_success_speed') {
-        final roomId = msg['roomId']?.toString() ?? '';
-        final myUserId = (msg['myUserId'] ??
-                (_loginId.isNotEmpty
-                    ? _loginId
-                    : 'guest-${DateTime.now().millisecondsSinceEpoch}'))
-            .toString();
+      }
 
-        if (!mounted) return;
+      // 1) match_success_speed - 매칭 성공
+      else if (event == 'match_success_speed') {
+        final roomId = msg['roomId']?.toString() ?? '';
+        final myUserId = msg['myUserId']?.toString() ??
+            (_loginId.isNotEmpty ? _loginId : 'guest-${DateTime.now().millisecondsSinceEpoch}');
+
         setState(() {
           _pendingRoomId = roomId;
           _pendingUserId = myUserId;
-          _roomTotal = (msg['total'] ?? 3) as int;
-          _matched = true; // ✅ 매칭 성공 표시
+          _roomTotal = (msg['total'] ?? 3);
+          _matched = true;
+          _status = '매칭 성공! 게임이 곧 시작됩니다.';
         });
-      } else if (event == 'game_start_speed') {
-        // 3명 모임 → 자동 게임 시작
+      }
+
+      // 2) game_start_speed - 게임 시작
+      else if (event == 'game_start_speed') {
         final roomId = _pendingRoomId ?? msg['roomId']?.toString() ?? '';
-        final myUserId = _pendingUserId ??
-            (_loginId.isNotEmpty
-                ? _loginId
-                : 'guest-${DateTime.now().millisecondsSinceEpoch}');
+        final myUserId = _pendingUserId ?? _loginId;
 
-        if (!mounted) return;
-
-        // 🎯 입장 직전에 한 번 더 상태 문구 보여주기
         setState(() {
-          _status = '✅ 매칭 완료! 자동으로 게임이 시작됩니다.';
+          _status = '✔ 매칭 완료! 게임이 시작됩니다...';
         });
 
-        // ✅ 0.6초 정도 딜레이 후 게임 입장 (문구 눈에 보이게)
-        Future.delayed(const Duration(milliseconds: 3000), () {
+        Future.delayed(const Duration(milliseconds: 1200), () {
           if (!mounted) return;
           _goToGameOnce(roomId, myUserId);
         });
       }
+
+      // 3) match_cancelled - 매칭 취소됨
+      else if (event == 'match_cancelled') {
+        if (mounted) {
+          setState(() {
+            _status = '매칭이 취소되었습니다.';
+            _inQueue = false;
+            _matched = false;
+            _matchPressed = false;
+            _connecting = false;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('매칭이 취소되었습니다.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
     };
   }
 
+  /// 게임 페이지로 이동 (중복 방지)
   void _goToGameOnce(String roomId, String userId) {
     if (_navigated) return;
     _navigated = true;
-    if (mounted) {
-      setState(() => _status = '🎯 게임 시작!');
-    }
 
     Navigator.push(
       context,
@@ -109,47 +122,44 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
         builder: (_) => SpeedGamePlayPage(
           roomId: roomId,
           userId: userId,
+          loginId: _loginId,
           socket: _socket,
         ),
       ),
     ).then((_) {
-      // 게임 페이지에서 뒤로 오면 다시 매칭 가능 상태로 초기화
       if (!mounted) return;
       setState(() {
         _navigated = false;
         _pendingRoomId = null;
         _pendingUserId = null;
-        _status = '대기 중...';
         _inQueue = false;
+        _matched = false;
+        _matchPressed = false;
+        _status = '대기 중...';
       });
     });
   }
 
+  /// 매칭 시작 버튼
   void _startMatch() async {
-    if (!mounted) return;
-
     setState(() {
       _connecting = true;
       _matchPressed = true;
     });
 
     final prefs = await SharedPreferences.getInstance();
-    final loginId = prefs.getString('user_id') ?? '';
-    _loginId = loginId;
+    _loginId = prefs.getString('user_id') ?? '';
 
-    if (loginId.isEmpty) {
-      print('⚠️ [Speed] 로그인 정보 없음. 로그인 후 이용해주세요.');
-      if (!mounted) return;
+    if (_loginId.isEmpty) {
       setState(() {
-        _status = '로그인 정보가 없습니다.';
         _connecting = false;
         _matchPressed = false;
+        _status = '로그인 정보가 필요합니다.';
       });
       return;
     }
 
-    await _socket.requestMatch(loginId, manualStart: _manualStart);
-    if (!mounted) return;
+    await _socket.requestMatch(_loginId);
     setState(() {
       _status = '매칭 대기 중...';
       _inQueue = true;
@@ -157,20 +167,16 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
     });
   }
 
+  /// 뒤로가기 버튼 (matching_exit 전송)
   Future<void> _sendBackAndExit() async {
     if (_backSent) return;
     _backSent = true;
 
-    final loginId = _loginId;
-    final roomId = _pendingRoomId;
-    final userId = _pendingUserId;
-    final reason = roomId == null ? 'leave_queue' : 'leave_room';
-
-    _socket.sendBack(
-      loginId: loginId.isNotEmpty ? loginId : null,
-      roomId: roomId,
-      userId: userId,
-      reason: reason,
+    _socket.sendMatchingExit(
+      loginId: _loginId,
+      roomId: _pendingRoomId,
+      userId: _pendingUserId,
+      reason: 'leave',
     );
 
     _socket.disconnect();
@@ -183,6 +189,9 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
     super.dispose();
   }
 
+  // ========================================
+  // UI (디자인 절대 변경 금지)
+  // ========================================
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -201,13 +210,11 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                 children: [
                   const SizedBox(height: 10),
 
-                  // ✅ Row overflow 수정: Flexible로 감싸기
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.flash_on, size: 32, color: Colors.black),
                       const SizedBox(width: 8),
-                      // ✅ FIX: const 제거 (Flexible child는 const 불가)
                       Flexible(
                         child: Text(
                           'Speed Game Matching!',
@@ -235,7 +242,6 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                           frameRate: 10,
                           autoPlay: true,
                           loop: true,
-                          fit: BoxFit.contain,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -253,15 +259,13 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
 
                   const SizedBox(height: 10),
 
-                  // 버튼 영역
                   Column(
                     children: [
                       SizedBox(
                         width: 250,
                         child: ElevatedButton(
-                          onPressed: (_connecting || _matchPressed)
-                              ? null
-                              : _startMatch,
+                          onPressed:
+                              (_connecting || _matchPressed) ? null : _startMatch,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4E6E99),
                             foregroundColor: Colors.white,
@@ -269,7 +273,6 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            elevation: 2,
                           ),
                           child: Text(
                             _connecting ? '연결 중...' : '매칭 시작',
@@ -280,7 +283,9 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 10),
+
                       SizedBox(
                         width: 250,
                         child: OutlinedButton(
