@@ -30,8 +30,11 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
 
   final TextEditingController _answerController = TextEditingController();
 
-  static const int _totalQuestions = 10; // 총 문제 수
-  int _correctCount = 0; // 내가 맞춘 문제 수
+  static const int _totalQuestions = 10;
+  int _correctCount = 0;
+
+  // ---------- 중복 정답 방지 ----------
+  String _lastSolvedWord = '';   // ★ 추가됨
 
   // ---------- 플레이어 점수 ----------
   Map<String, int> _playerScores = {};
@@ -76,19 +79,15 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
         case 'game_start_speed':
           _onGameStart(msg);
           break;
-
         case 'word_serve':
           _onWordServe(msg);
           break;
-
         case 'correct_answer':
           _onCorrect(msg);
           break;
-
         case 'wrong_answer':
           _onWrong(msg);
           break;
-
         case 'game_complete':
           _onGameOver(msg);
           break;
@@ -145,6 +144,16 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   void _onCorrect(Map msg) {
     final data = msg['data'] ?? {};
     final solver = data['solver']?.toString() ?? '';
+    final word = data['word']?.toString() ?? '';
+
+    // 🔥 중복 방지: 내가 이미 처리한 정답이면 무시
+    if (solver == widget.loginId) {
+      if (_lastSolvedWord == word) {
+        print("⏳ 중복 정답 이벤트 무시됨: $word");
+        return;
+      }
+      _lastSolvedWord = word;
+    }
 
     setState(() {
       _playerScores[solver] = (_playerScores[solver] ?? 0) + 1;
@@ -342,10 +351,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
         child: Column(
           children: [
             const SizedBox(height: 16),
-
             _buildHeader(),
             const SizedBox(height: 24),
-
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -358,15 +365,12 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                 ),
               ),
             ),
-
             _buildFooterMessage(),
           ],
         ),
       ),
     );
   }
-
-  // ---------- UI 구성 함수들 ----------
 
   Widget _buildHeader() {
     return Padding(
@@ -466,7 +470,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   }
 
   // ======================================================
-  // 🔥 여기서 Skip 버튼을 추가했습니다.
+  // 🔥 Skip 버튼이 포함된 문제 박스 UI
   // ======================================================
   Widget _buildComputer() {
     return Column(
@@ -484,7 +488,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
               ),
             ),
 
-            // 🔹 단어 박스 + Skip 버튼
             Container(
               width: double.infinity,
               height: 180,
@@ -517,7 +520,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                     bottom: 16,
                     child: ElevatedButton(
                       onPressed: () {
-                        // ⚠ 기능은 나중에 추가 예정
+                        // 기능은 나중에 추가 예정
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _primary,
