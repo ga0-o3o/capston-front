@@ -39,7 +39,7 @@ class _WordLoadingPageState extends State<WordLoadingPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             GifView.asset(
-              'images/mailbox_send.gif',
+              'assets/images/background/mailbox_send.gif',
               width: 400,
               height: 400,
               frameRate: 12,

@@ -328,8 +328,8 @@ class _WordCreatePageState extends State<WordCreatePage> {
             Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage("images/background.png"),
-                  fit: BoxFit.cover,
+                  image: AssetImage("assets/images/background/background.png"),
+                  fit: BoxFit.contain,
                 ),
               ),
               child: Padding(

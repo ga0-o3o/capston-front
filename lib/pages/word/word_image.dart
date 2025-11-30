@@ -44,7 +44,7 @@ class _WordImagePageState extends State<WordImagePage> {
   Map<String, Set<String>> _selectedMeanings = {};
 
   bool _loading = false; // 뜻 조회 / 저장 시 버튼 비활성용 정도로만 사용
-  String _backgroundImage = "images/letter_open.png";
+  String _backgroundImage = "assets/images/background/letter_open.png";
 
   // ✉️ 애니메이션 & OCR 대기 이미지
   bool _showLetterAnim = false;
@@ -134,7 +134,7 @@ class _WordImagePageState extends State<WordImagePage> {
     setState(() {
       _pendingBytes = bytes;
       _pendingFilename = filename;
-      _backgroundImage = "images/mailbox.png"; // 📮 배경 변경
+      _backgroundImage = "assets/images/background/mailbox.png"; // 📮 배경 변경
       _showLetterAnim = true; // ✉️ letter.png 애니 시작
     });
   }
@@ -194,7 +194,7 @@ class _WordImagePageState extends State<WordImagePage> {
                   setState(() {
                     _wordsToAdd = words.map(_normalize).toList();
                     _step = 1;
-                    _backgroundImage = "images/word_list.png";
+                    _backgroundImage = "assets/images/background/word_list.png";
                   });
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -360,7 +360,9 @@ class _WordImagePageState extends State<WordImagePage> {
         children: [
           // ✅ 배경만 확대
           Transform.scale(
-            scale: _backgroundImage == "images/word_list.png" ? 1.1 : 1.4,
+            scale: _backgroundImage == "assets/images/background/word_list.png"
+                ? 1.1
+                : 1.4,
             child: Container(
               decoration: BoxDecoration(
                 image: DecorationImage(
@@ -500,7 +502,7 @@ class _WordImagePageState extends State<WordImagePage> {
                   );
                 },
                 child: Image.asset(
-                  'images/letter.png',
+                  'assets/images/background/letter.png',
                   width: 260,
                 ),
               ),
@@ -510,8 +512,8 @@ class _WordImagePageState extends State<WordImagePage> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding:
-                  EdgeInsets.only(bottom: (_step == 1 || _step == 2) ? 30 : 80),
+              padding: EdgeInsets.only(
+                  bottom: (_step == 1 || _step == 2) ? 30 : 100),
               child: (_step == 1 || _step == 2)
                   ? Row(
                       mainAxisAlignment: MainAxisAlignment.center,

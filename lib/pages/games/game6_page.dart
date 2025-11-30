@@ -613,7 +613,7 @@ class _Game6PageState extends State<Game6Page> {
                         color: Colors.black.withOpacity(0.7),
                         alignment: Alignment.center,
                         child: const Text(
-                          "30초마다 올라가는 속도가 빨라집니다!",
+                          "30초마다 올라가는 \n속도가 빨라집니다!",
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 25,

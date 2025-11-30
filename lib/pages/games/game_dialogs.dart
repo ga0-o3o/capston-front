@@ -12,8 +12,8 @@ Future<void> showPauseDialog({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 350,
-        height: 350,
+        width: 330,
+        height: 330,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog1.png'),
@@ -103,8 +103,8 @@ Future<void> showGameOverDialog_game6({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 350,
-        height: 350,
+        width: 330,
+        height: 330,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog2.png'),
@@ -172,8 +172,8 @@ Future<void> showGameOverDialog_game4({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 350,
-        height: 350,
+        width: 330,
+        height: 330,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog2.png'),
@@ -241,8 +241,8 @@ Future<void> showGameOverDialog_game2({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 350,
-        height: 350,
+        width: 330,
+        height: 330,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog2.png'),
@@ -306,8 +306,8 @@ Future<void> showGameOverDialog_game3({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 350,
-        height: 350,
+        width: 330,
+        height: 330,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog2.png'),

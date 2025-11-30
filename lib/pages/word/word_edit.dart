@@ -98,7 +98,7 @@ class _WordEditPageState extends State<WordEditPage> {
           // --- 배경 ---
           Positioned.fill(
             child: Image.asset(
-              'assets/images/edit_background.png',
+              'assets/images/background/edit_background.png',
               fit: BoxFit.cover,
             ),
           ),
