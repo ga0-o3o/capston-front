@@ -286,19 +286,7 @@ class _ChatingPageState extends State<ChatingPage> {
                 '채팅 목록',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
-            ),
-            ListTile(
-              title: const Text('홍길동'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              title: const Text('김철수'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              title: const Text('이영희'),
-              onTap: () => Navigator.pop(context),
-            ),
+            )
           ],
         ),
       ),
