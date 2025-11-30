@@ -1,7 +1,9 @@
 // lib/config/url_config.dart
-import 'dart:io';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:html' as html show window;
+
+// 웹 환경에서만 dart:html import
+import 'package:universal_html/html.dart' as html;
 
 class UrlConfig {
   // ========================================================================
@@ -21,15 +23,15 @@ class UrlConfig {
   // ========================================================================
 
   static bool get _isLocalhost {
-    if (!kIsWeb) return true;
+    if (!kIsWeb) return false;
 
     try {
       final origin = html.window.location.origin;
-      return origin.contains('localhost') ||
-          origin.contains('127.0.0.1') ||
-          origin.contains('0.0.0.0');
+      return origin?.contains('localhost') == true ||
+          origin?.contains('127.0.0.1') == true ||
+          origin?.contains('0.0.0.0') == true;
     } catch (e) {
-      return true;
+      return false;
     }
   }
 

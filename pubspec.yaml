@@ -17,6 +17,7 @@ dependencies:
   jwt_decoder: ^2.0.1
   http: ^1.2.0
   dio: ^5.5.0
+  universal_html: ^2.2.4
 
   # Storage & game engine
   shared_preferences: ^2.2.2
