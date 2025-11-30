@@ -191,10 +191,62 @@ class _ChatingPageState extends State<ChatingPage> {
   }
 
   Future<void> _loadMessages() async {
+    // ✅ 서버에서 최근 10개 대화 로드 시도
+    try {
+      await _loadMessagesFromServer();
+    } catch (e) {
+      debugPrint('[CHAT_LOAD] ⚠️ 서버 로드 실패, 로컬 캐시 시도: $e');
+      // 서버 실패 시 로컬 캐시 로드
+      await _loadMessagesFromLocal();
+    }
+  }
+
+  // ✅ 서버에서 최근 10개 대화 로드
+  Future<void> _loadMessagesFromServer() async {
+    try {
+      final logs = await ApiService.getChatLogs();
+
+      if (logs.isEmpty) {
+        debugPrint('[CHAT_LOAD] ℹ️ 이전 대화 없음');
+        return;
+      }
+
+      setState(() {
+        _messages.clear();
+        for (var log in logs) {
+          // 사용자 메시지 추가
+          _messages.add(ChatMessage(
+            text: log['userChat'] ?? '',
+            isUser: true,
+          ));
+
+          // AI 응답 추가
+          _messages.add(ChatMessage(
+            text: log['aiChat'] ?? '',
+            isUser: false,
+          ));
+        }
+      });
+
+      // SharedPreferences에도 저장
+      await _saveMessages();
+
+      debugPrint('[CHAT_LOAD] ✅ 서버에서 ${logs.length}개 대화 로드');
+    } catch (e) {
+      debugPrint('[CHAT_LOAD] ❌ 서버 로드 실패: $e');
+      rethrow;
+    }
+  }
+
+  // 로컬 캐시에서 로드 (폴백)
+  Future<void> _loadMessagesFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_chatStorageKey);
 
-    if (jsonString == null) return;
+    if (jsonString == null) {
+      debugPrint('[CHAT_LOAD] ℹ️ 로컬 캐시 없음');
+      return;
+    }
 
     try {
       final List<dynamic> decoded = jsonDecode(jsonString);
@@ -206,9 +258,10 @@ class _ChatingPageState extends State<ChatingPage> {
         _messages.clear();
         _messages.addAll(loaded);
       });
+
+      debugPrint('[CHAT_LOAD] ✅ 로컬에서 ${loaded.length}개 메시지 로드');
     } catch (e) {
-      // 파싱 실패하면 그냥 무시
-      debugPrint('채팅 불러오기 오류: $e');
+      debugPrint('[CHAT_LOAD] ❌ 로컬 로드 실패: $e');
     }
   }
 

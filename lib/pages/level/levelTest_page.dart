@@ -1,9 +1,10 @@
+// lib/pages/level/level_api.dart 의 API 사용
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// ✅ level_api.dart import 추가
+// level_api import
 import 'level_api.dart';
 
 class LevelTestPage extends StatefulWidget {
@@ -14,26 +15,22 @@ class LevelTestPage extends StatefulWidget {
 }
 
 class _LevelTestPageState extends State<LevelTestPage> {
-  // ==========================================================================
-  // 상태 변수 (State Variables)
-  // ==========================================================================
+  // -----------------------------------------------------------
+  // State Variables
+  // -----------------------------------------------------------
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
 
-  // ✅ 서버 dialog_num만 사용 (로컬 turn 증가 없음)
-  int _serverDialogNum = 0; // 서버에서 받은 dialog_num만 저장
+  int _serverDialogNum = 0;
   String _userRank = "Beginner";
 
   bool _isLoading = false;
   bool _isSending = false;
 
-  // ❌ 제거: 하드코딩된 baseUrl
-  // FastAPI URL은 level_api.dart에서 ApiService.fastApiUrl을 사용합니다
-
-  // ==========================================================================
-  // 초기화 (Initialization)
-  // ==========================================================================
+  // -----------------------------------------------------------
+  // init & dispose
+  // -----------------------------------------------------------
   @override
   void initState() {
     super.initState();
@@ -47,39 +44,21 @@ class _LevelTestPageState extends State<LevelTestPage> {
     super.dispose();
   }
 
-  // ==========================================================================
-  // 메시지 불러오기/저장 (Load/Save Messages)
-  // ==========================================================================
+  // -----------------------------------------------------------
+  // Load Messages (server → local fallback)
+  // -----------------------------------------------------------
   Future<void> _loadMessages() async {
     setState(() => _isLoading = true);
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      _serverDialogNum = prefs.getInt('server_dialog_num') ?? 0;
+      _userRank = prefs.getString('user_rank') ?? 'Beginner';
 
-      // ✅ 서버 dialog_num 불러오기 (user_rank 키로 통일)
-      final savedDialogNum = prefs.getInt('server_dialog_num') ?? 0;
-      final savedUserRank = prefs.getString('user_rank') ?? 'Beginner';
-      final savedMessagesJson = prefs.getString('level_test_messages');
+      // ⭐ 서버에서 10개 로드
+      await _loadMessagesFromServer();
 
-      if (savedMessagesJson != null) {
-        final List<dynamic> decoded = jsonDecode(savedMessagesJson);
-        setState(() {
-          _serverDialogNum = savedDialogNum;
-          _userRank = savedUserRank;
-          _messages.clear();
-          _messages
-              .addAll(decoded.map((m) => ChatMessage.fromJson(m)).toList());
-        });
-
-        print(
-            '[LOAD] Loaded ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_userRank');
-      } else {
-        setState(() {
-          _serverDialogNum = 0;
-          _userRank = savedUserRank;
-        });
-        print('[LOAD] No saved messages');
-      }
+      print('[LOAD] Loaded ${_messages.length} messages');
     } catch (e) {
       print('[ERROR] Failed to load messages: $e');
     } finally {
@@ -88,34 +67,108 @@ class _LevelTestPageState extends State<LevelTestPage> {
     }
   }
 
+  // -----------------------------------------------------------
+  // ⭐⭐⭐ 서버에서 최근 10개 대화 받아오기 (최종 리팩토링본)
+  // -----------------------------------------------------------
+  Future<void> _loadMessagesFromServer() async {
+    try {
+      print('[SERVER_LOAD] Fetching logs from API...');
+
+      // GET /api/test/logs → 항상 10개 반환
+      final logs = await LevelTestApi.getRecentLogs();
+
+      if (!mounted) return;
+
+      setState(() {
+        _messages.clear();
+
+        for (var log in logs) {
+          final createdAt = DateTime.tryParse(
+                log['created_at'] ?? DateTime.now().toIso8601String(),
+              ) ??
+              DateTime.now();
+
+          // 유저 메시지
+          if ((log['user_question'] ?? '').toString().trim().isNotEmpty) {
+            _messages.add(
+              ChatMessage(
+                text: log['user_question'],
+                isUser: true,
+                timestamp: createdAt,
+              ),
+            );
+          }
+
+          // AI 메시지
+          if ((log['ai_response'] ?? '').toString().trim().isNotEmpty) {
+            _messages.add(
+              ChatMessage(
+                text: log['ai_response'],
+                isUser: false,
+                timestamp: createdAt,
+              ),
+            );
+          }
+
+          // dialog_num 업데이트
+          _serverDialogNum = log['dialog_num'] ?? _serverDialogNum;
+        }
+      });
+
+      await _saveMessages();
+      print('[SERVER_LOAD] ✅ Loaded ${_messages.length} messages');
+
+    } catch (e) {
+      print('[SERVER_LOAD] ⚠️ Failed to fetch logs: $e');
+      await _loadMessagesFromLocal();
+    }
+  }
+
+  // -----------------------------------------------------------
+  // Local fallback
+  // -----------------------------------------------------------
+  Future<void> _loadMessagesFromLocal() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedMessagesJson = prefs.getString('level_test_messages');
+
+      if (savedMessagesJson != null) {
+        final List<dynamic> decoded = jsonDecode(savedMessagesJson);
+        setState(() {
+          _messages.clear();
+          _messages.addAll(decoded.map((m) => ChatMessage.fromJson(m)).toList());
+        });
+        print('[LOCAL_LOAD] Loaded ${_messages.length} messages');
+      }
+    } catch (e) {
+      print('[LOCAL_LOAD] Failed to load local: $e');
+    }
+  }
+
   Future<void> _saveMessages() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final messagesJson =
-          jsonEncode(_messages.map((m) => m.toJson()).toList());
+      final messagesJson = jsonEncode(_messages.map((m) => m.toJson()).toList());
 
-      // ✅ 서버 dialog_num 저장 (user_rank 키로 통일)
       await prefs.setString('level_test_messages', messagesJson);
       await prefs.setInt('server_dialog_num', _serverDialogNum);
       await prefs.setString('user_rank', _userRank);
 
-      print(
-          '[SAVE] Saved ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_userRank');
+      print('[SAVE] Saved ${_messages.length} messages');
     } catch (e) {
-      print('[ERROR] Failed to save messages: $e');
+      print('[SAVE] ERROR: $e');
     }
   }
 
-  // ==========================================================================
-  // 메시지 전송 (Send Message)
-  // ==========================================================================
+  // -----------------------------------------------------------
+  // Send Message
+  // -----------------------------------------------------------
   Future<void> _sendMessage() async {
     if (_controller.text.trim().isEmpty || _isSending) return;
 
     final userText = _controller.text.trim();
     _controller.clear();
 
-    // ✅ 100턴 완료 체크 (서버 dialog_num 기준)
     if (_serverDialogNum >= 100) {
       _showCompletionDialog();
       return;
@@ -130,10 +183,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
     setState(() {
       _messages.add(userMessage);
       _isSending = true;
-      // ✅ 로컬 turn 증가 제거 - 서버에서만 관리
-      // _currentTurn++; <- 삭제됨
     });
-
     _scrollToBottom();
 
     try {
@@ -147,18 +197,15 @@ class _LevelTestPageState extends State<LevelTestPage> {
       );
 
       if (mounted) {
-        // 🎯 랭크 변경 감지를 위해 이전 랭크 저장
         final previousRank = _userRank;
 
         setState(() {
           _messages.add(aiMessage);
-          // ✅ 서버의 dialog_num만 사용
           _serverDialogNum = response.dialogNum;
           _userRank = response.currentLevel;
           _isSending = false;
         });
 
-        // 🎉 랭크 변경 시 피드백 표시
         if (response.levelChanged && response.evaluatedLevel.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -169,49 +216,33 @@ class _LevelTestPageState extends State<LevelTestPage> {
                   Expanded(
                     child: Text(
                       'Level Updated: $previousRank → ${response.evaluatedLevel}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
               backgroundColor: const Color(0xFF4E6E99),
               duration: const Duration(seconds: 3),
-              behavior: SnackBarBehavior.floating,
             ),
           );
         }
-
-        print(
-            '[LEVEL TEST] Response received - Server Dialog Num ${response.dialogNum}/100');
       }
 
       await _saveMessages();
       _scrollToBottom();
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
-      print('[ERROR] Send message failed: $e');
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send message: ${e.toString()}')),
-        );
-      }
+    } catch (e) {
+      if (mounted) setState(() => _isSending = false);
+      print('[ERROR] Send message failed: $e');
     }
   }
 
-  // ==========================================================================
-  // Level Test API 호출 (Call Level Test API)
-  // ==========================================================================
+  // -----------------------------------------------------------
+  // Call Level Test API
+  // -----------------------------------------------------------
   Future<LevelTestResponse> _callLevelTestAPI(String message) async {
-    // ✅ level_api.dart의 sendAnswer 메서드 사용
     try {
       final response = await LevelTestApi.sendAnswer(message);
-
       return LevelTestResponse(
         message: response.llmReply,
         dialogNum: response.dialogNum,
@@ -221,14 +252,14 @@ class _LevelTestPageState extends State<LevelTestPage> {
         levelDisplay: response.levelDisplay,
       );
     } catch (e) {
-      print('[LEVEL_TEST] ❌ API call failed: $e');
+      print('[LEVEL_TEST] API failed: $e');
       rethrow;
     }
   }
 
-  // ==========================================================================
-  // UI 헬퍼 함수 (UI Helper Functions)
-  // ==========================================================================
+  // -----------------------------------------------------------
+  // UI Helpers
+  // -----------------------------------------------------------
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -252,19 +283,11 @@ class _LevelTestPageState extends State<LevelTestPage> {
           children: [
             const Icon(Icons.celebration, size: 64, color: Colors.amber),
             const SizedBox(height: 16),
-            Text(
-              'You have completed all 100 turns!',
-              style: TextStyle(fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
+            Text('You have completed all 100 turns!'),
             const SizedBox(height: 8),
             Text(
               'Your Final Level: $_userRank',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF4E6E99),
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -272,9 +295,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
           TextButton(
             onPressed: () async {
               await _restartTest();
-              if (mounted) {
-                Navigator.pop(context);
-              }
+              if (mounted) Navigator.pop(context);
             },
             child: const Text('Start New Test'),
           ),
@@ -291,32 +312,104 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   Future<void> _restartTest() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('level_test_messages');
-      await prefs.remove('server_dialog_num');
-      await prefs.remove('user_rank');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('level_test_messages');
+    await prefs.remove('server_dialog_num');
+    await prefs.remove('user_rank');
 
-      setState(() {
-        _messages.clear();
-        _serverDialogNum = 0;
-        _userRank = 'Beginner';
-      });
+    setState(() {
+      _messages.clear();
+      _serverDialogNum = 0;
+      _userRank = 'Beginner';
+    });
 
-      print('[RESTART] Test restarted');
-    } catch (e) {
-      print('[ERROR] Failed to restart test: $e');
-    }
+    print('[RESTART] Test restarted');
+  }
+
+  // -----------------------------------------------------------
+  // Build UI
+  // -----------------------------------------------------------
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF6F0E9),
+      body: Column(
+        children: [
+          _buildHeader(),
+          _buildTopInfo(),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildMessageList(),
+          ),
+          _buildInputArea(),
+        ],
+      ),
+    );
+  }
+
+  // -----------------------------------------------------------
+  // Widgets
+  // -----------------------------------------------------------
+
+  Widget _buildTopInfo() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: const BoxDecoration(color: Colors.white),
+      child: Wrap(
+        spacing: 10,
+        children: [
+          const Icon(Icons.stars, color: Colors.amber),
+          Text('Level: $_userRank'),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F4F8),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('Dialog $_serverDialogNum/100'),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFF3D4C63),
+      child: SafeArea(
+        child: SizedBox(
+          height: 70,
+          child: Stack(
+            children: [
+              Center(
+                child: Text(
+                  'LevelTest',
+                  style: GoogleFonts.pacifico(fontSize: 30, color: Colors.white),
+                ),
+              ),
+              Positioned(
+                right: 6,
+                top: 15,
+                child: IconButton(
+                  icon: const Icon(Icons.restart_alt, color: Colors.white),
+                  onPressed: _showRestartConfirmDialog,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _showRestartConfirmDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Restart Level Test?'),
-        content: const Text(
-          'This will delete all current progress and start a new test.\n\nAre you sure?',
-        ),
+      builder: (_) => AlertDialog(
+        title: const Text('Restart Test?'),
+        content: const Text('Delete all progress and start over?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -327,7 +420,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
               Navigator.pop(context);
               await _restartTest();
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Restart'),
           ),
         ],
@@ -335,175 +427,12 @@ class _LevelTestPageState extends State<LevelTestPage> {
     );
   }
 
-  // ==========================================================================
-  // UI 빌드 (Build UI)
-  // ==========================================================================
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF6F0E9),
-      body: Column(
-        children: [
-          _buildHeader(),
-          // ========================================
-          // 상단 정보 표시 (Top Info Display)
-          // ========================================
-          _buildTopInfo(),
-
-          // ========================================
-          // 채팅 메시지 영역 (Chat Messages Area)
-          // ========================================
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildMessageList(),
-          ),
-
-          // ========================================
-          // 입력 영역 (Input Area)
-          // ========================================
-          _buildInputArea(),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================================================
-  // 위젯 빌더 (Widget Builders)
-  // ==========================================================================
-
-  /// 상단 정보 표시 (레벨, dialog_num)
-  Widget _buildTopInfo() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 10,
-        runSpacing: 8,
-        children: [
-          const Icon(Icons.stars, color: Colors.amber, size: 24),
-          Text(
-            'Level: $_userRank',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF4E6E99),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8F4F8),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Dialog $_serverDialogNum/100',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF4E6E99),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 상단 커스텀 헤더 (AppBar 대신)
-  Widget _buildHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        color: Color(0xFF3D4C63),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: SizedBox(
-          height: 70,
-          child: Stack(
-            children: [
-              // ⭐ 중앙 LevelTest 텍스트
-              Align(
-                alignment: Alignment.center,
-                child: Text(
-                  'LevelTest',
-                  style: GoogleFonts.pacifico(
-                    fontSize: 30,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-
-              // ⭐ 완전히 오른쪽 끝 아이콘
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 6), // 더 끝으로 가게
-                  child: SizedBox(
-                    height: 40,
-                    width: 40,
-                    child: Center(
-                      child: IconButton(
-                        padding: EdgeInsets.zero, // 불필요한 내부 padding 제거
-                        icon: const Icon(
-                          Icons.restart_alt,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                        onPressed: _showRestartConfirmDialog,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 메시지 목록
   Widget _buildMessageList() {
     if (_messages.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.chat_bubble_outline,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Start a conversation to begin\nyour level test!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
+      return const Center(
+        child: Text(
+          'Start a conversation to begin your level test!',
+          textAlign: TextAlign.center,
         ),
       );
     }
@@ -512,140 +441,77 @@ class _LevelTestPageState extends State<LevelTestPage> {
       controller: _scrollController,
       padding: const EdgeInsets.all(16),
       itemCount: _messages.length,
-      itemBuilder: (context, index) {
-        final message = _messages[index];
-        return _buildMessageBubble(message);
-      },
+      itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
     );
   }
 
-  /// 메시지 말풍선
-  Widget _buildMessageBubble(ChatMessage message) {
-    if (message.isUser) {
+  Widget _buildMessageBubble(ChatMessage m) {
+    if (m.isUser) {
       return Align(
         alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.7,
-          ),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: const Color(0xFF4E6E99),
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
           ),
-          child: Text(
-            message.text,
-            style: const TextStyle(
-              fontSize: 15,
-              color: Colors.white,
-            ),
-          ),
+          child: Text(m.text, style: const TextStyle(color: Colors.white)),
         ),
       );
     }
 
-    // AI 메시지면 프로필 + 말풍선
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 👤 프로필 사진
-          ClipOval(
-            child: Image.asset(
-              'assets/images/hanbok.png', // ← 네 이미지 경로에 맞게 수정
-              width: 40,
-              height: 40,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // 💬 말풍선
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.65,
-            ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipOval(
+          child: Image.asset('assets/images/hanbok.png',
+              width: 40, height: 40, fit: BoxFit.cover),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  message.text,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    color: Colors.black87,
-                  ),
-                ),
-
-                // 레벨 표시 있을 때만 추가
-                if (message.levelDisplay != null &&
-                    message.levelDisplay!.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F4F8),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                Text(m.text),
+                if (m.levelDisplay != null && m.levelDisplay!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
                     child: Text(
-                      message.levelDisplay!,
+                      m.levelDisplay!,
                       style: const TextStyle(
                         fontSize: 12,
                         color: Color(0xFF4E6E99),
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                ],
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// 입력 영역
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
+      decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(
         child: Row(
           children: [
             Expanded(
               child: TextField(
                 controller: _controller,
+                enabled: !_isSending,
                 decoration: InputDecoration(
                   hintText: 'Type your message...',
                   filled: true,
@@ -654,19 +520,14 @@ class _LevelTestPageState extends State<LevelTestPage> {
                     borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
                   ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
                 ),
-                enabled: !_isSending,
                 onSubmitted: (_) => _sendMessage(),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF4E6E99),
+              decoration: const BoxDecoration(
+                color: Color(0xFF4E6E99),
                 shape: BoxShape.circle,
               ),
               child: IconButton(
@@ -676,8 +537,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
                         ),
                       )
                     : const Icon(Icons.send, color: Colors.white),
@@ -691,11 +551,10 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 }
 
-// ==========================================================================
-// 데이터 클래스 (Data Classes)
-// ==========================================================================
+// -----------------------------------------------------------
+// Data Classes
+// -----------------------------------------------------------
 
-/// 채팅 메시지
 class ChatMessage {
   final String text;
   final bool isUser;
@@ -709,14 +568,12 @@ class ChatMessage {
     this.levelDisplay,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
-      'text': text,
-      'isUser': isUser,
-      'timestamp': timestamp.toIso8601String(),
-      'levelDisplay': levelDisplay,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'isUser': isUser,
+        'timestamp': timestamp.toIso8601String(),
+        'levelDisplay': levelDisplay,
+      };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
@@ -728,7 +585,6 @@ class ChatMessage {
   }
 }
 
-/// 레벨 테스트 API 응답
 class LevelTestResponse {
   final String message;
   final int dialogNum;
@@ -745,15 +601,4 @@ class LevelTestResponse {
     required this.evaluatedLevel,
     required this.levelDisplay,
   });
-
-  factory LevelTestResponse.fromJson(Map<String, dynamic> json) {
-    return LevelTestResponse(
-      message: json['llm_reply'] ?? '',
-      dialogNum: json['dialog_num'] ?? 0,
-      currentLevel: json['current_level'] ?? 'Beginner',
-      levelChanged: json['level_changed'] ?? false,
-      evaluatedLevel: json['evaluated_level'] ?? '',
-      levelDisplay: json['level_display'] ?? '',
-    );
-  }
 }

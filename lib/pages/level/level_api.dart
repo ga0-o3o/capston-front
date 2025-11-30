@@ -110,7 +110,49 @@ class LevelTestApi {
     }
   }
 
-  /// 3. Send user answer and get next question
+  /// 3. Get recent test logs
+  /// GET ${SERVER_URL}/api/test/logs
+  /// Response: { "logs": [...] }
+  static Future<List<Map<String, dynamic>>> getRecentLogs({int? levelTestNum}) async {
+    try {
+      final token = await _getJwtToken();
+      var uri = Uri.parse('$baseUrl/api/test/logs');
+
+      if (levelTestNum != null) {
+        uri = uri.replace(queryParameters: {'level_test_num': levelTestNum.toString()});
+      }
+
+      print('[API] Getting recent logs from: $uri');
+
+      final response = await http
+          .get(uri, headers: _headersWithAuth(token))
+          .timeout(const Duration(seconds: 10));
+
+      print('[API] Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final logs = (data['logs'] as List<dynamic>)
+            .map((log) => log as Map<String, dynamic>)
+            .toList();
+        print('[API] Loaded ${logs.length} logs');
+        return logs;
+      } else {
+        throw Exception('Failed to get logs: ${response.statusCode}');
+      }
+    } on SocketException {
+      throw Exception('Network connection error');
+    } on HttpException {
+      throw Exception('HTTP communication error');
+    } on FormatException {
+      throw Exception('Cannot parse server response');
+    } catch (e) {
+      print('[ERROR] Unexpected error: $e');
+      throw Exception('Unexpected error: $e');
+    }
+  }
+
+  /// 4. Send user answer and get next question
   /// POST ${SERVER_URL}/api/test
   /// Request: { "message": "..." }
   /// Response: { "response": "...", "isFinished": false }
