@@ -10,6 +10,8 @@ import 'chating_page.dart';
 import 'review/review_page.dart';
 import '../widgets/study_accuracy_chart.dart';
 
+import 'package:flutter/services.dart';
+
 class MainMenuPage extends StatefulWidget {
   final String userName;
   final int initialIndex; // 초기 탭 인덱스 (0: 홈, 1: 단어장, 2: 게임, 3: 레벨 테스트, 4: 채팅)
@@ -41,6 +43,8 @@ class _MainMenuPageState extends State<MainMenuPage> {
     super.initState();
     _currentIndex = widget.initialIndex; // 초기 탭 설정
     _loadSelectedCharacter();
+    // 전체 화면 모드 + 하단 홈버튼 숨기기 (스와이프 시 잠시 나타남)
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
   Future<void> _loadSelectedCharacter() async {

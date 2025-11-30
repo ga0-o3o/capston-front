@@ -161,7 +161,7 @@ class _WordEditPageState extends State<WordEditPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 130),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
@@ -205,7 +205,7 @@ class _WordEditPageState extends State<WordEditPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 50),
                 ],
               ),
             ),

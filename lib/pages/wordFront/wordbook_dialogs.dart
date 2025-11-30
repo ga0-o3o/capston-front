@@ -10,8 +10,8 @@ Future<String?> showWordbookNameDialog(BuildContext context,
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 350,
-        height: 350,
+        width: 330,
+        height: 330,
         padding: const EdgeInsets.all(16),
         decoration: const BoxDecoration(
           image: DecorationImage(
@@ -91,8 +91,8 @@ Future<bool> showDeleteWordbookDialog(
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 350,
-        height: 350,
+        width: 330,
+        height: 330,
         padding: const EdgeInsets.all(16),
         decoration: const BoxDecoration(
           image: DecorationImage(
