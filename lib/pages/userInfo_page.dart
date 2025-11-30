@@ -60,6 +60,7 @@ class _UserInfoPageState extends State<UserInfoPage> {
   void initState() {
     super.initState();
     _loadUserInfo();
+    _syncRankFromServer(); // 🔄 서버에서 최신 랭크 동기화
   }
 
   // SharedPreferences에서 사용자 정보 불러오기
@@ -82,6 +83,66 @@ class _UserInfoPageState extends State<UserInfoPage> {
         unlockedCharacters.map((e) => e.toString()).toList(),
       );
     });
+  }
+
+  // 🔄 서버에서 최신 랭크 동기화
+  Future<void> _syncRankFromServer() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+      final userId = prefs.getString('user_id');
+
+      if (token == null || userId == null || userId.isEmpty) {
+        print('[SYNC] No token or userId, skipping server sync');
+        return;
+      }
+
+      print('[SYNC] Fetching latest rank from server for user: $userId');
+
+      final uri = Uri.parse(
+          'https://semiconical-shela-loftily.ngrok-free.dev/api/v1/users/$userId');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final latestRank = data['rankTitle'] ?? 'Beginner';
+
+        print('[SYNC] ✅ Latest rank from server: $latestRank');
+
+        // 랭크가 변경되었는지 확인
+        if (latestRank != userRank) {
+          print('[SYNC] 🔄 Rank changed: $userRank → $latestRank');
+
+          setState(() {
+            userRank = latestRank;
+            // 랭크 기반으로 캐릭터 잠금 해제 업데이트
+            unlockedCharacters = rankUnlocks[userRank]?.toSet() ?? {0};
+          });
+
+          // SharedPreferences에 저장
+          await prefs.setString('user_rank', latestRank);
+          await prefs.setStringList(
+            'unlocked_characters',
+            unlockedCharacters.map((e) => e.toString()).toList(),
+          );
+        } else {
+          print('[SYNC] ℹ️ Rank unchanged: $userRank');
+        }
+      } else {
+        print('[SYNC] ❌ Failed to fetch rank: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('[SYNC] ⚠️ Error syncing rank from server: $e');
+      // 서버 동기화 실패 시 로컬 데이터 사용 (에러를 사용자에게 보여주지 않음)
+    }
   }
 
   // 닉네임 변경

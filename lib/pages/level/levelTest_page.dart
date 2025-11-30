@@ -56,7 +56,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // ✅ 서버 dialog_num 불러오기
+      // ✅ 서버 dialog_num 불러오기 (user_rank 키로 통일)
       final savedDialogNum = prefs.getInt('server_dialog_num') ?? 0;
       final savedUserRank = prefs.getString('user_rank') ?? 'Beginner';
       final savedMessagesJson = prefs.getString('level_test_messages');
@@ -94,10 +94,10 @@ class _LevelTestPageState extends State<LevelTestPage> {
       final messagesJson =
           jsonEncode(_messages.map((m) => m.toJson()).toList());
 
-      // ✅ 서버 dialog_num 저장
+      // ✅ 서버 dialog_num 저장 (user_rank 키로 통일)
       await prefs.setString('level_test_messages', messagesJson);
       await prefs.setInt('server_dialog_num', _serverDialogNum);
-      await prefs.setString('current_level', _userRank);
+      await prefs.setString('user_rank', _userRank);
 
       print(
           '[SAVE] Saved ${_messages.length} messages, Dialog Num: $_serverDialogNum, Level: $_userRank');
@@ -147,6 +147,9 @@ class _LevelTestPageState extends State<LevelTestPage> {
       );
 
       if (mounted) {
+        // 🎯 랭크 변경 감지를 위해 이전 랭크 저장
+        final previousRank = _userRank;
+
         setState(() {
           _messages.add(aiMessage);
           // ✅ 서버의 dialog_num만 사용
@@ -154,6 +157,32 @@ class _LevelTestPageState extends State<LevelTestPage> {
           _userRank = response.currentLevel;
           _isSending = false;
         });
+
+        // 🎉 랭크 변경 시 피드백 표시
+        if (response.levelChanged && response.evaluatedLevel.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.stars, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Level Updated: $previousRank → ${response.evaluatedLevel}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF4E6E99),
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
 
         print(
             '[LEVEL TEST] Response received - Server Dialog Num ${response.dialogNum}/100');
