@@ -532,7 +532,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
           // 👤 프로필 사진
           ClipOval(
             child: Image.asset(
-              'assets/images/hanbok/ai.png', // ← 네 이미지 경로에 맞게 수정
+              'assets/images/hanbok.png', // ← 네 이미지 경로에 맞게 수정
               width: 40,
               height: 40,
               fit: BoxFit.cover,
