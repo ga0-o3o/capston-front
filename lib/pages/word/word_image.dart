@@ -405,7 +405,7 @@ class _WordImagePageState extends State<WordImagePage> {
                 else if (_step == 1)
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(40, 60, 40, 80),
+                      padding: const EdgeInsets.fromLTRB(30, 70, 30, 100),
                       child: ListView.builder(
                         itemCount: _wordsToAdd.length,
                         itemBuilder: (_, i) => ListTile(
@@ -513,7 +513,7 @@ class _WordImagePageState extends State<WordImagePage> {
             alignment: Alignment.bottomCenter,
             child: Padding(
               padding: EdgeInsets.only(
-                  bottom: (_step == 1 || _step == 2) ? 30 : 100),
+                  bottom: (_step == 1 || _step == 2) ? 50 : 130),
               child: (_step == 1 || _step == 2)
                   ? Row(
                       mainAxisAlignment: MainAxisAlignment.center,

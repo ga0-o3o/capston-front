@@ -99,10 +99,11 @@ class _WordEditPageState extends State<WordEditPage> {
           Positioned.fill(
             child: Image.asset(
               'assets/images/background/edit_background.png',
-              fit: BoxFit.cover,
+              fit: BoxFit.contain,
             ),
           ),
           Scaffold(
+            resizeToAvoidBottomInset: false,
             backgroundColor: Colors.transparent,
             body: Padding(
               padding:
@@ -110,7 +111,7 @@ class _WordEditPageState extends State<WordEditPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 50),
+                  const SizedBox(height: 100),
                   Text(
                     '${widget.wordItem.word} 수정',
                     style: const TextStyle(
@@ -160,7 +161,7 @@ class _WordEditPageState extends State<WordEditPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 130),
                   Row(
                     children: [
                       Expanded(

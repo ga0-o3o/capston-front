@@ -338,11 +338,11 @@ class _WordCreatePageState extends State<WordCreatePage> {
                   children: [
                     // --- 영단어 입력창 ---
                     Padding(
-                      padding: const EdgeInsets.only(top: 55),
+                      padding: const EdgeInsets.only(top: 100),
                       child: Align(
                         alignment: const Alignment(-0.4, 0),
                         child: SizedBox(
-                          width: 280,
+                          width: 230,
                           child: TextField(
                             controller: _wordController,
                             decoration: InputDecoration(
@@ -434,7 +434,7 @@ class _WordCreatePageState extends State<WordCreatePage> {
                                   return Align(
                                     alignment: const Alignment(-0.4, 0),
                                     child: SizedBox(
-                                      width: 300,
+                                      width: 220,
                                       child: Card(
                                         color: const Color.fromRGBO(0, 0, 0, 0),
                                         margin: const EdgeInsets.symmetric(
@@ -527,7 +527,7 @@ class _WordCreatePageState extends State<WordCreatePage> {
                     Align(
                       alignment: const Alignment(-0.1, 0),
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 60),
+                        padding: const EdgeInsets.only(bottom: 100),
                         child: ElevatedButton(
                           onPressed: () => Navigator.of(context).pop(),
                           style: ElevatedButton.styleFrom(
