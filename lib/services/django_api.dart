@@ -8,9 +8,9 @@ import '../models/definition_item.dart';
 import '../models/word_item.dart';
 
 class DjangoApi {
-  // FastAPI OCR 서버 주소 (웹에서도 접근 가능하도록 localhost 사용)
+  // FastAPI OCR 서버 주소 (웹에서도 접근 가능하도록 ngrok URL 사용)
   static const String _ocrBase =
-      String.fromEnvironment('OCR_BASE', defaultValue: 'http://localhost:8000');
+      String.fromEnvironment('OCR_BASE', defaultValue: 'https://cibarian-unmeditatively-rosalina.ngrok-free.dev');
 
   // Django 서버 주소 (기타 API용)
   static const String _base =

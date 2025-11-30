@@ -11,10 +11,10 @@ class UrlConfig {
   static const String? _springBootNgrokUrl =
       'https://semiconical-shela-loftily.ngrok-free.dev';
 
-  static const String? _fastApiNgrokUrl = null;
+  static const String? _fastApiNgrokUrl =
+      'https://cibarian-unmeditatively-rosalina.ngrok-free.dev';
 
   static const int _springBootLocalPort = 8080;
-  static const int _fastApiLocalPort = 8000;
 
   // ========================================================================
   // 🔹 환경 감지
@@ -86,19 +86,7 @@ class UrlConfig {
   // ========================================================================
 
   static String get fastApiBaseUrl {
-    if (kIsWeb) {
-      if (_isLocalhost) {
-        return 'http://127.0.0.1:$_fastApiLocalPort';
-      } else {
-        return _fastApiNgrokUrl ?? 'http://127.0.0.1:$_fastApiLocalPort';
-      }
-    }
-
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:$_fastApiLocalPort';
-    }
-
-    return 'http://localhost:$_fastApiLocalPort';
+    return _fastApiNgrokUrl ?? 'https://cibarian-unmeditatively-rosalina.ngrok-free.dev';
   }
 
   // ========================================================================
