@@ -376,14 +376,27 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
           actions: [
             Center(
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.of(dialogContext).pop();
 
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const GameMenuPage(),
-                    ),
-                  );
+                  // SharedPreferences에서 userName 가져오기
+                  final prefs = await SharedPreferences.getInstance();
+                  final userName = prefs.getString('user_name') ??
+                                   prefs.getString('user_id') ??
+                                   'User';
+
+                  // 모든 페이지를 닫고 메인 페이지의 "게임" 탭으로 이동
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (_) => MainMenuPage(
+                          userName: userName,
+                          initialIndex: 2, // 2 = 게임 탭
+                        ),
+                      ),
+                      (route) => false, // 모든 이전 페이지 제거
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4E6E99),
@@ -455,14 +468,27 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
           actions: [
             Center(
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.of(dialogContext).pop();
 
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const GameMenuPage(),
-                    ),
-                  );
+                  // SharedPreferences에서 userName 가져오기
+                  final prefs = await SharedPreferences.getInstance();
+                  final userName = prefs.getString('user_name') ??
+                                   prefs.getString('user_id') ??
+                                   'User';
+
+                  // 모든 페이지를 닫고 메인 페이지의 "게임" 탭으로 이동
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (_) => MainMenuPage(
+                          userName: userName,
+                          initialIndex: 2, // 2 = 게임 탭
+                        ),
+                      ),
+                      (route) => false, // 모든 이전 페이지 제거
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4E6E99),
@@ -527,14 +553,27 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
           actions: [
             Center(
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   Navigator.of(dialogContext).pop();
 
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const GameMenuPage(),
-                    ),
-                  );
+                  // SharedPreferences에서 userName 가져오기
+                  final prefs = await SharedPreferences.getInstance();
+                  final userName = prefs.getString('user_name') ??
+                                   prefs.getString('user_id') ??
+                                   'User';
+
+                  // 모든 페이지를 닫고 메인 페이지의 "게임" 탭으로 이동
+                  if (context.mounted) {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (_) => MainMenuPage(
+                          userName: userName,
+                          initialIndex: 2, // 2 = 게임 탭
+                        ),
+                      ),
+                      (route) => false, // 모든 이전 페이지 제거
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4E6E99),
