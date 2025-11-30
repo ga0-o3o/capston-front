@@ -1,11 +1,15 @@
+// (1/3 영역 시작)
+
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'guess_effect.dart';
 import 'guess_socket_service.dart';
-import 'dart:async';
 import '../pages/game_menu_page.dart';
+import '../pages/mainMenuPage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'guess_match_page.dart';
 
-/// Speed Game 플레이 페이지
-/// 서버(Spring Boot) 이벤트 규칙에 100% 맞춤
 class SpeedGamePlayPage extends StatefulWidget {
   final String roomId;
   final String userId;
@@ -25,7 +29,6 @@ class SpeedGamePlayPage extends StatefulWidget {
 }
 
 class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
-  // ---------- 단어와 UI ----------
   String _currentWord = '';
   String _currentWordKr = '게임을 준비하고 있습니다...';
 
@@ -34,21 +37,18 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   static const int _totalQuestions = 10;
   int _correctCount = 0;
 
-  // ---------- 중복 정답 방지 ----------
-  String _lastSolvedWord = '';   // ★ 추가됨
+  String _lastSolvedWord = '';
 
-  // ---------- 플레이어 점수 ----------
   Map<String, int> _playerScores = {};
   List<String> _playerOrder = [];
 
   int get _myScore => _playerScores[widget.loginId] ?? 0;
 
-  // ---------- 게임 상태 ----------
   bool _waitingForWord = true;
   bool _isSubmitting = false;
   bool _gameStarted = false;
   bool _gameOver = false;
-  bool _skipUsed = false; // Skip 버튼 사용 여부
+  bool _skipUsed = false;
 
   int _remainingSeconds = 60;
   Timer? _gameTimer;
@@ -57,7 +57,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
 
   StreamSubscription? _socketSub;
 
-  // ---------- 색상 ----------
   static const Color _bgColor = Color(0xFFF6F0E9);
   static const Color _primary = Color(0xFF213654);
   static const Color _keyCorrect = Color(0xFF4CAF50);
@@ -70,7 +69,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
 
   Future<void> _initGame() async {
     widget.socket.joinRoom(widget.roomId, widget.userId);
-
     widget.socket.sendGameReady(widget.roomId, userId: widget.userId);
 
     _socketSub = widget.socket.messages.listen((msg) {
@@ -90,17 +88,21 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
         case 'wrong_answer':
           _onWrong(msg);
           break;
+        case 'game_end_speed':
+          _onGameEndSpeed(msg);
+          break;
+        case 'game_result':
+          _onGameResult(msg);
+          break;
         case 'game_complete':
-        case 'game_over': // 백엔드에서 game_over 이벤트도 보냄
+        case 'game_over':
+        case 'speed_game_winner':
           _onGameOver(msg);
           break;
       }
     });
   }
 
-  // -------------------------------------------------
-  // 게임 시작
-  // -------------------------------------------------
   void _onGameStart(Map msg) {
     final data = msg['data'] ?? {};
     final players =
@@ -121,29 +123,22 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     _startTimer();
   }
 
-  // -------------------------------------------------
-  // 문제 제공
-  // -------------------------------------------------
   void _onWordServe(Map msg) {
     final data = msg['data'] ?? {};
     final word = data['word']?.toString() ?? '';
-    final lastSolver = data['lastSolver']; // 이전 정답자 (없으면 null)
+    final lastSolver = data['lastSolver'];
     final message = data['message']?.toString() ?? '';
 
     if (word.isEmpty) return;
 
-    // ✅ 이전 단어를 아무도 못 맞춘 경우 (스킵된 경우)
     if (message != 'START' && lastSolver == null) {
       setState(() {
         _statusMessage = '❌ 아무도 못맞춤 - 다음 문제!';
       });
 
-      // 잠깐 메시지 표시 후 다시 입력 대기 상태로
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) {
-          setState(() {
-            _statusMessage = '⚡ 단어를 입력하세요!';
-          });
+          setState(() => _statusMessage = '⚡ 단어를 입력하세요!');
         }
       });
     }
@@ -153,7 +148,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
       _currentWordKr = word;
       _waitingForWord = false;
       _isSubmitting = false;
-      _skipUsed = false; // 새로운 단어가 나올 때마다 Skip 버튼 활성화
+      _skipUsed = false;
+
       if (message == 'START') {
         _statusMessage = '⚡ 게임 시작! 단어를 입력하세요!';
       }
@@ -162,15 +158,11 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     _answerController.clear();
   }
 
-  // -------------------------------------------------
-  // 정답 처리
-  // -------------------------------------------------
   void _onCorrect(Map msg) {
     final data = msg['data'] ?? {};
     final solver = data['solver']?.toString() ?? '';
     final word = data['word']?.toString() ?? '';
 
-    // 🔥 중복 방지: 내가 이미 처리한 정답이면 무시
     if (solver == widget.loginId) {
       if (_lastSolvedWord == word) {
         print("⏳ 중복 정답 이벤트 무시됨: $word");
@@ -203,9 +195,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
         );
 
         Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            _showGameOverDialog(widget.loginId, _correctCount);
-          }
+          if (mounted) _showGameEndDialog(widget.loginId, _correctCount);
         });
       }
     } else {
@@ -218,9 +208,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     _isSubmitting = false;
   }
 
-  // -------------------------------------------------
-  // 오답 처리
-  // -------------------------------------------------
   void _onWrong(Map msg) {
     setState(() {
       _statusMessage = '❌ 오답입니다. 다시 시도하세요!';
@@ -228,6 +215,32 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     });
 
     _answerController.clear();
+  }
+
+// (1/3 영역 끝)
+// (2/3 영역 시작)
+
+  void _onGameEndSpeed(Map msg) {
+    if (_gameOver) return;
+    _gameOver = true;
+
+    _gameTimer?.cancel();
+
+    final data = msg['data'] ?? {};
+    final winner = data['winner']?.toString() ?? '';
+    final finalScores = data['finalScores'] ?? {};
+
+    if (finalScores is Map) {
+      setState(() {
+        _playerScores = finalScores.map(
+          (key, value) => MapEntry(key.toString(), (value ?? 0) as int),
+        );
+      });
+    }
+
+    final int winnerScore = _playerScores[winner] ?? 0;
+
+    _showGameEndDialog(winner, winnerScore);
   }
 
   void _onGameOver(Map msg) {
@@ -240,12 +253,11 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     final winner = data['winner']?.toString() ?? '';
     final score = data['score'] ?? 0;
 
-    // ✅ 전체 플레이어 점수 업데이트 (있는 경우)
     if (data['scores'] != null && data['scores'] is Map) {
       final scores = data['scores'] as Map;
       setState(() {
-        _playerScores = scores.map((key, value) =>
-          MapEntry(key.toString(), (value ?? 0) as int)
+        _playerScores = scores.map(
+          (key, value) => MapEntry(key.toString(), (value ?? 0) as int),
         );
       });
     }
@@ -253,7 +265,20 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     _showGameOverDialog(winner, score);
   }
 
-  // ---------- 타이머 ----------
+  void _onGameResult(Map msg) {
+    if (_gameOver) return;
+    _gameOver = true;
+
+    _gameTimer?.cancel();
+
+    final data = msg['data'] ?? {};
+    final winner = data['winner']?.toString() ?? '';
+
+    final bool iWin = winner == widget.loginId;
+
+    _showGameResultDialog(winner, iWin);
+  }
+
   void _startTimer() {
     _gameTimer?.cancel();
 
@@ -275,9 +300,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     });
   }
 
-  // -------------------------------------------------
-  // 정답 제출
-  // -------------------------------------------------
   void _submitAnswer() {
     if (_waitingForWord || _isSubmitting || _gameOver) return;
 
@@ -301,51 +323,160 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   }
 
   // -------------------------------------------------
-  // 게임 종료 Dialog
+  // You Win / You Lose — 10문제 먼저 맞춘 경우
   // -------------------------------------------------
-  void _showGameOverDialog(String winner, int score) {
+  void _showGameEndDialog(String winner, int winnerScore) {
     if (!mounted) return;
+
+    final bool iWin = winner == widget.loginId;
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('🎉 게임 종료'),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            iWin ? '🎉 You Win!'
+                 : '😢 You Lose!',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: iWin ? Colors.green : Colors.red,
+            ),
+            textAlign: TextAlign.center,
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                winner == widget.loginId
-                    ? '🏆 당신이 승리했습니다!\n점수: $score점'
-                    : '😢 $winner 님이 승리했습니다.\n점수: $score점',
+                iWin
+                    ? '축하합니다! 10문제를 먼저 맞추셨습니다!'
+                    : '$winner 님이 10문제를 먼저 맞추셨습니다.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '승자 점수: $winnerScore점',
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               const Text(
                 '최종 순위',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               ..._buildFinalRanking(),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () {
-                // 1. 다이얼로그 닫기
-                Navigator.of(dialogContext).pop();
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
 
-                // 2. 게임 플레이 페이지 닫기 (SpeedGamePlayPage)
-                Navigator.of(context).pop();
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => const GameMenuPage(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4E6E99),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 48, vertical: 14),
+                ),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            )
+          ],
+        );
+      },
+    );
+  }
 
-                // 3. 매칭 페이지 닫기 (GuessMatchPage) - 게임 메뉴로 돌아감
-                Navigator.of(context).pop();
-              },
-              child: const Text(
-                '게임 메뉴로 돌아가기',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  // -------------------------------------------------
+  // 기타 종료 — 타이머 종료 등
+  // -------------------------------------------------
+  void _showGameOverDialog(String winner, int score) {
+    if (!mounted) return;
+
+    final bool iWin = winner == widget.loginId;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(
+            iWin ? '🎉 You Win!' : '😢 You Lose!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: iWin ? Colors.green : Colors.red,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                iWin
+                    ? '축하합니다! 당신이 승리했습니다!'
+                    : '$winner 님이 승리했습니다.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '점수: $score점',
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '최종 순위',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              ..._buildFinalRanking(),
+            ],
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => const GameMenuPage(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4E6E99),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 48, vertical: 14),
+                ),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           ],
@@ -353,6 +484,81 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
       },
     );
   }
+
+  void _showGameResultDialog(String winner, bool iWin) {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            iWin ? '🎉 You Win!' : '😢 You Lose!',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: iWin ? Colors.green : Colors.red,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                iWin
+                    ? '축하합니다! 당신이 승리했습니다!'
+                    : '$winner 님이 승리했습니다.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '최종 순위',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              ..._buildFinalRanking(),
+            ],
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (_) => const GameMenuPage(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4E6E99),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 48, vertical: 14),
+                ),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            )
+          ],
+        );
+      },
+    );
+  }
+
+// (2/3 영역 끝)
+// (3/3 영역 시작)
 
   List<Widget> _buildFinalRanking() {
     final sorted = _playerScores.entries.toList()
@@ -374,7 +580,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     super.dispose();
   }
 
-  // 정답 효과
   void _showGuessEffect(GuessResultType type) {
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -387,9 +592,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     );
   }
 
-  // ========================================
-  // UI BUILD (디자인 절대 변경 금지)
-  // ========================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -452,7 +654,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                 ),
             ],
           ),
-
           if (_playerOrder.isNotEmpty && _gameStarted)
             Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -516,12 +717,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     );
   }
 
-  // ======================================================
-  // 🔥 Skip 버튼이 포함된 문제 박스 UI
-  // ======================================================
   Widget _buildComputer() {
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
         Stack(
           alignment: Alignment.center,
@@ -534,7 +731,6 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                 borderRadius: BorderRadius.circular(36),
               ),
             ),
-
             Container(
               width: double.infinity,
               height: 180,
@@ -551,37 +747,29 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: _waitingForWord ? 20 : 32,
-                        fontWeight: _waitingForWord
-                            ? FontWeight.w500
-                            : FontWeight.bold,
+                        fontWeight:
+                            _waitingForWord ? FontWeight.w500 : FontWeight.bold,
                         color: _waitingForWord
                             ? Colors.grey[700]
                             : const Color(0xFF3E2A1C),
                       ),
                     ),
                   ),
-
-                  // 🔥 Skip 버튼 추가
                   Positioned(
                     right: 16,
                     bottom: 16,
                     child: ElevatedButton(
-                      onPressed: _skipUsed ? null : () {
-                        // Skip 버튼 클릭 시
-                        setState(() {
-                          _skipUsed = true;
-                        });
-
-                        // 서버에 skip 요청 전송
-                        widget.socket.sendAnswer(
-                          roomId: widget.roomId,
-                          loginId: widget.loginId,
-                          word: "{skip}",
-                          wordKr: "{master_key}",
-                        );
-
-                        print('🔄 [Skip] 스킵 요청 전송됨');
-                      },
+                      onPressed: _skipUsed
+                          ? null
+                          : () {
+                              setState(() => _skipUsed = true);
+                              widget.socket.sendAnswer(
+                                roomId: widget.roomId,
+                                loginId: widget.loginId,
+                                word: "{skip}",
+                                wordKr: "{master_key}",
+                              );
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _skipUsed
                             ? _primary.withOpacity(0.3)
@@ -604,15 +792,13 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                         ),
                       ),
                     ),
-                  ),
+                  )
                 ],
               ),
             ),
           ],
         ),
-
         const SizedBox(height: 12),
-
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -641,7 +827,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
               );
             }),
           ),
-        )
+        ),
       ],
     );
   }
@@ -654,8 +840,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
           enabled: !_waitingForWord && !_isSubmitting && !_gameOver,
           onSubmitted: (_) => _submitAnswer(),
           decoration: InputDecoration(
-            hintText:
-                _waitingForWord ? '다음 문제를 준비 중...' : '영어 단어를 입력하세요',
+            hintText: _waitingForWord ? '다음 문제를 준비 중...' : '영어 단어를 입력하세요',
             filled: true,
             fillColor: _waitingForWord ? Colors.grey[200] : Colors.white,
             border: OutlineInputBorder(
@@ -663,9 +848,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
             ),
           ),
         ),
-
         const SizedBox(height: 16),
-
         SizedBox(
           width: double.infinity,
           height: 48,
@@ -692,3 +875,5 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     );
   }
 }
+
+// (3/3 영역 끝)

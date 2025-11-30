@@ -12,7 +12,13 @@ import '../widgets/study_accuracy_chart.dart';
 
 class MainMenuPage extends StatefulWidget {
   final String userName;
-  const MainMenuPage({Key? key, required this.userName}) : super(key: key);
+  final int initialIndex; // 초기 탭 인덱스 (0: 홈, 1: 단어장, 2: 게임, 3: 레벨 테스트, 4: 채팅)
+
+  const MainMenuPage({
+    Key? key,
+    required this.userName,
+    this.initialIndex = 0, // 기본값은 0 (홈)
+  }) : super(key: key);
 
   @override
   State<MainMenuPage> createState() => _MainMenuPageState();
@@ -20,7 +26,7 @@ class MainMenuPage extends StatefulWidget {
 
 class _MainMenuPageState extends State<MainMenuPage> {
   int _selectedCharacterIndex = 0; // 캐릭터 번호
-  int _currentIndex = 0; // 현재 선택된 탭 인덱스
+  late int _currentIndex; // 현재 선택된 탭 인덱스
 
   final List<Widget> _pages = [
     SizedBox(), // 홈
@@ -33,6 +39,7 @@ class _MainMenuPageState extends State<MainMenuPage> {
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex; // 초기 탭 설정
     _loadSelectedCharacter();
   }
 

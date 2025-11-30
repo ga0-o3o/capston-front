@@ -5,6 +5,8 @@ import 'bingo_quiz.dart';
 import 'dart:math';
 import 'dart:async';
 import 'bingo_effect.dart';
+import '../pages/game_menu_page.dart';
+import '../pages/mainMenuPage.dart';
 
 String _normId(Object? v) => (v ?? '').toString().trim().toLowerCase();
 String _normWord(Object? v) => (v ?? '').toString().trim().toLowerCase();
@@ -1205,29 +1207,44 @@ class _BingoGamePageState extends State<BingoGamePage> {
                 ),
                 const SizedBox(height: 35),
                 ElevatedButton(
-                  onPressed: () {
-                    // 1) 다이얼로그 먼저 닫기
+                  onPressed: () async {
+                    // 1) 다이얼로그 닫기
                     Navigator.of(context).pop();
 
-                    // 2) 다음 프레임(마이크로태스크)에서 2페이지 뒤로 가기
-                    Future.microtask(() {
-                      int popCount = 0;
-                      Navigator.of(context)
-                          .popUntil((route) => popCount++ >= 2);
-                    });
+                    // 2) SharedPreferences에서 userName 가져오기
+                    final prefs = await SharedPreferences.getInstance();
+                    final userName = prefs.getString('user_name') ??
+                                     prefs.getString('user_id') ??
+                                     'User';
+
+                    // 3) 모든 페이지를 닫고 메인 페이지의 "게임" 탭으로 이동
+                    if (context.mounted) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => MainMenuPage(
+                            userName: userName,
+                            initialIndex: 2, // 2 = 게임 탭
+                          ),
+                        ),
+                        (route) => false, // 모든 이전 페이지 제거
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: iWon
                         ? const Color(0xFF4E6E99)
                         : const Color(0xFFFCC8C8),
                     foregroundColor: iWon ? Colors.white : Colors.black,
-                    minimumSize: const Size(120, 40),
+                    minimumSize: const Size(140, 40),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(0),
                       side: const BorderSide(color: Colors.black, width: 2),
                     ),
                   ),
-                  child: const Text('확인'),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
