@@ -446,60 +446,60 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   Widget _buildMessageBubble(ChatMessage m) {
-    if (m.isUser) {
-      return Align(
-        alignment: Alignment.centerRight,
+  if (m.isUser) {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF4E6E99),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Text(m.text, style: const TextStyle(color: Colors.white)),
+      ),
+    );
+  }
+
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      ClipOval(
+        child: Image.asset('assets/images/hanbok.png',
+            width: 40, height: 40, fit: BoxFit.cover),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF4E6E99),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Text(m.text, style: const TextStyle(color: Colors.white)),
-        ),
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipOval(
-          child: Image.asset('assets/images/hanbok.png',
-              width: 40, height: 40, fit: BoxFit.cover),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(m.text),
-                if (m.levelDisplay != null && m.levelDisplay!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      m.levelDisplay!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF4E6E99),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(m.text),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Your Level: $_userRank',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF4E6E99),
+                    fontWeight: FontWeight.bold,
                   ),
-              ],
-            ),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
 
   Widget _buildInputArea() {
     return Container(
