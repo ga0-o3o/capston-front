@@ -31,11 +31,24 @@ class DjangoApi {
     return null;
   }
 
+  // ngrok 우회 헤더 생성
+  static Map<String, String> _buildHeaders({Map<String, String>? additional}) {
+    final headers = <String, String>{
+      'ngrok-skip-browser-warning': '69420',
+      'Ngrok-Skip-Browser-Warning': '69420',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    };
+    if (additional != null) {
+      headers.addAll(additional);
+    }
+    return headers;
+  }
+
   static Future<http.Response> _jsonPost(Uri uri, Object body,
           {int sec = 20}) =>
       http
           .post(uri,
-              headers: {'Content-Type': 'application/json'},
+              headers: _buildHeaders(additional: {'Content-Type': 'application/json'}),
               body: jsonEncode(body))
           .timeout(Duration(seconds: sec));
 
@@ -55,6 +68,7 @@ class DjangoApi {
     // FastAPI OCR 서버로 연결
     final uri = Uri.parse('$_ocrBase$_uploadPath');
     final req = http.MultipartRequest('POST', uri)
+      ..headers.addAll(_buildHeaders())
       ..files.add(http.MultipartFile.fromBytes('file', bytes,
           filename: filename, contentType: mt));
 
@@ -91,7 +105,7 @@ class DjangoApi {
   /// 전체 단어 조회
   static Future<List<WordItem>> fetchWords() async {
     final uri = Uri.parse('$_base$_wordsPath');
-    final res = await http.get(uri).timeout(const Duration(seconds: 15));
+    final res = await http.get(uri, headers: _buildHeaders()).timeout(const Duration(seconds: 15));
     if (res.statusCode != 200) {
       throw Exception('단어 조회 실패: ${res.statusCode} ${res.body}');
     }
@@ -126,7 +140,7 @@ class DjangoApi {
     final uri = Uri.parse('$_base$_wordsPath${it.id!}/');
     final res = await http
         .patch(uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: _buildHeaders(additional: {'Content-Type': 'application/json'}),
             body: jsonEncode({
               'favorite': it.favorite,
               'meaning': it.meaning,
@@ -142,7 +156,7 @@ class DjangoApi {
   /// 단어 삭제
   static Future<void> deleteWord(int id) async {
     final uri = Uri.parse('$_base$_wordsPath$id/');
-    final res = await http.delete(uri).timeout(const Duration(seconds: 10));
+    final res = await http.delete(uri, headers: _buildHeaders()).timeout(const Duration(seconds: 10));
     if (res.statusCode != 200) {
       throw Exception('삭제 실패: ${res.statusCode} ${res.body}');
     }
