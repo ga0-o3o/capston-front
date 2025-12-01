@@ -330,29 +330,38 @@ class WordApi {
   static const String baseUrl =
       "https://semiconical-shela-loftily.ngrok-free.dev";
 
-  static Future<Map<String, dynamic>> checkQuiz(
-      Map<String, dynamic> data) async {
-    final uri = Uri.parse('$baseUrl/api/word/quiz/check');
+  static Future<List<String>> checkQuiz(String word) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token') ?? '';
 
-    final resp = await http.post(
+    if (token.isEmpty) {
+      throw Exception('로그인이 필요합니다.');
+    }
+
+    final uri = Uri.parse("$baseUrl/api/v1/quiz/answers?word=$word");
+
+    final resp = await http.get(
       uri,
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': '69420',
-        'Ngrok-Skip-Browser-Warning': '69420',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Authorization': 'Bearer $token',
+        'ngrok-skip-browser-warning': 'true',
       },
-      body: jsonEncode(data),
     );
 
-    print('📡 checkQuiz status: ${resp.statusCode}');
-    print('📡 checkQuiz body: ${resp.body}');
-    print('📡 checkQuiz url: $uri');
+    print("📡 checkQuiz status: ${resp.statusCode}");
+    print("📡 checkQuiz body: ${resp.body}");
+    print("📡 checkQuiz url: $uri");
 
     if (resp.statusCode != 200) {
-      throw Exception('정답 확인 실패: ${resp.body}');
+      throw Exception("정답 뜻 조회 실패: ${resp.body}");
     }
 
-    return jsonDecode(resp.body);
+    final data = jsonDecode(resp.body);
+
+    // 🔥 핵심: wordKr 리스트를 반드시 List<String>으로 변환해서 반환
+    final List<String> meanings = List<String>.from(data["wordKr"] ?? []);
+
+    return meanings;
   }
 }

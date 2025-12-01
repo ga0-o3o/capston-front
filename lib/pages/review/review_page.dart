@@ -5,6 +5,7 @@ import '../word/word_item.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../word/word_api.dart';
 
 class Issue {
   final String wrongText;
@@ -141,6 +142,20 @@ class _ReviewPageState extends State<ReviewPage> {
     }
   }
 
+  Future<bool> _checkMeaningFromServer(String word, String userInput) async {
+    try {
+      final meanings = await WordApi.checkQuiz(word);
+
+      final normalizedUser = userInput.trim().toLowerCase();
+      final normalizedCorrect = meanings.map((e) => e.toLowerCase()).toList();
+
+      return normalizedCorrect.contains(normalizedUser);
+    } catch (e) {
+      print("❌ 정답 확인 오류: $e");
+      return false;
+    }
+  }
+
   Future<void> _confirmQuiz() async {
     if (_cur == null) return;
 
@@ -151,15 +166,20 @@ class _ReviewPageState extends State<ReviewPage> {
       return;
     }
 
-    final isCorrect = _isMeaningCorrect();
+    // -------------------------------
+    // 🔥 1) 서버에서 정답 뜻 가져와 비교
+    // -------------------------------
+    final isCorrect = await _checkMeaningFromServer(_cur!.word, mean);
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content:
-            Text(isCorrect ? '정답! 🎉' : '오답 😅 정답: ${_cur!.wordKr.join(', ')}'),
+        content: Text(
+          isCorrect ? '정답! 🎉' : '오답 😅 정답: ${_cur!.wordKr.join(', ')}',
+        ),
       ),
     );
 
-    // ✅ 복습일 업데이트
+    // 🔥 복습일 업데이트
     try {
       if (_cur != null &&
           _cur!.groupWordIds != null &&
@@ -167,30 +187,25 @@ class _ReviewPageState extends State<ReviewPage> {
         final updated = await ReviewApi.updateReviewDate(
             _cur!.personalWordbookId, _cur!.groupWordIds!.first);
 
-        if (updated) {
-          print('복습일 업데이트 성공: ${_cur!.word}');
-        } else {
-          print('복습일 업데이트 실패: ${_cur!.word}');
-        }
+        print(updated ? '복습일 업데이트 성공' : '복습일 업데이트 실패');
       }
     } catch (e) {
       print('복습일 업데이트 예외: $e');
     }
 
-    // ✅ 영작 검사
+    // -------------------------------
+    // 🔥 2) 영작 검사
+    // -------------------------------
     final comp = _compCtrl.text.trim();
+
     if (comp.isNotEmpty) {
-      // 단어 포함 체크
       final compositionIssues = _validateComposition(comp, _cur!.word);
 
-      // 4단어 이상 체크
       if (comp.split(RegExp(r'\s+')).length < 4) {
         compositionIssues.add(Issue(comp, '작문은 최소 4단어 이상이어야 합니다.'));
       }
 
-      // 문법 체크
       final grammarIssues = await checkGrammar(comp);
-
       final allIssues = [...compositionIssues, ...grammarIssues];
 
       if (allIssues.isNotEmpty) {
@@ -206,21 +221,18 @@ class _ReviewPageState extends State<ReviewPage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '문법 오류가 있습니다.',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
+                const Text('문법 오류가 있습니다.',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 8),
-                ...allIssues
-                    .map((d) => Text("틀린 부분: '${d.wrongText}' → ${d.message}"))
-                    .toList(),
+                ...allIssues.map(
+                  (d) => Text("틀린 부분: '${d.wrongText}' → ${d.message}"),
+                ),
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
                     onPressed: () {
                       Navigator.pop(context);
-                      // 모달 닫은 후에 다음 문제
                       _nextQuiz();
                     },
                     child: const Text('닫기'),
@@ -230,11 +242,13 @@ class _ReviewPageState extends State<ReviewPage> {
             ),
           ),
         );
-        return; // 모달이 있으면 여기서 return, 다음 문제는 모달 닫을 때 진행
+        return;
       }
     }
 
-    // ✅ 영작이 없거나 오류 없으면 바로 다음 문제
+    // -------------------------------
+    // 🔥 3) 문제 넘어가기
+    // -------------------------------
     _nextQuiz();
   }
 
