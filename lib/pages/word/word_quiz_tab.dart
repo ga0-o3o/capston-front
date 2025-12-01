@@ -12,11 +12,10 @@ class WordQuizTab extends StatefulWidget {
   State<WordQuizTab> createState() => _WordQuizTabState();
 }
 
-// 합쳐진 카드 구조
 class QuizCard {
   final String word;
-  final List<String> meanings; // UI용
-  final Map<String, WordItem> meaningToOriginal; // 뜻 → WordItem
+  final List<String> meanings; // UI 표시용
+  final Map<String, WordItem> meaningToOriginal; // 뜻 → WordItem 매핑
 
   QuizCard({
     required this.word,
@@ -39,7 +38,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
   void initState() {
     super.initState();
 
-    // 단어별로 뜻 묶기
+    // 단어별 그룹핑
     final Map<String, Map<String, WordItem>> wordMap = {};
     for (var w in widget.words) {
       if (!wordMap.containsKey(w.word)) wordMap[w.word] = {};
@@ -51,7 +50,6 @@ class _WordQuizTabState extends State<WordQuizTab> {
     _items = wordMap.entries.map((e) {
       final uiMeanings =
           e.value.values.expand((w) => w.wordKr).toSet().toList();
-
       return QuizCard(
         word: e.key,
         meanings: uiMeanings,
@@ -61,6 +59,9 @@ class _WordQuizTabState extends State<WordQuizTab> {
 
     _nextQuiz();
   }
+
+  String _norm(String s) =>
+      s.replaceAll(RegExp(r'\s+'), ' ').trim().toLowerCase();
 
   void _nextQuiz() {
     if (_items.isEmpty) return;
@@ -87,93 +88,99 @@ class _WordQuizTabState extends State<WordQuizTab> {
     final comp = _compCtrl.text.trim();
 
     // -----------------------------
-    // 1) 서버에 정답 판정 요청
+    // 1) 서버로부터 정답 뜻 리스트 가져오기
     // -----------------------------
-    final result = await WordApi.checkQuiz({
-      "word": _cur!.word,
-      "inputMean": mean,
-      "composition": comp,
-    });
+    final serverMeanings = await WordApi.checkQuiz(_cur!.word);
 
-    final bool isCorrect = result["isCorrect"];
-    final List correctMeanings = result["correctMeanings"];
-    final List grammarIssues = result["grammarIssues"];
+    final normInput = _norm(mean);
+    final correctNormalized = serverMeanings.map((m) => _norm(m)).toList();
 
-    final int personalWordbookId = result["personalWordbookId"];
-    final int wordId = result["wordId"];
+    final bool isCorrect = correctNormalized.contains(normInput);
 
     // -----------------------------
-    // 2) 서버에 기록 저장 요청
+    // 2) personalWordbookId / wordId 찾기
+    // -----------------------------
+    final WordItem recordItem =
+        _cur!.meaningToOriginal.values.first; // 아무 WordItem이나 대표로 사용
+
+    final personalWordbookId = recordItem.personalWordbookId;
+    final wordId = recordItem.personalWordbookWordId;
+
+    // -----------------------------
+    // 3) 기록 저장
     // -----------------------------
     await WordApi.recordQuiz(
       personalWordbookId: personalWordbookId,
       wordId: wordId,
-      isWrong: !isCorrect, // isWrong = true → 오답 저장
+      isWrong: !isCorrect,
     );
 
     if (!mounted) return;
     setState(() => _submitting = false);
 
     // -----------------------------
-    // 3) 정답 / 오답 UI 처리
+    // 4) 정답/오답 표시
     // -----------------------------
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          isCorrect ? '정답! 🎉' : '오답 😅  정답: ${correctMeanings.join(', ')}',
+          isCorrect ? '정답! 🎉' : '오답 😅 정답: ${serverMeanings.join(', ')}',
         ),
       ),
     );
 
     // -----------------------------
-    // 4) 작문 + 문법 결과 표시
+    // 5) 문법 검사 (선택)
     // -----------------------------
-    if (grammarIssues.isNotEmpty) {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
-        ),
-        builder: (_) => Container(
-          color: Colors.white,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('문법 오류가 있습니다.',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700, color: Colors.black)),
-              const SizedBox(height: 8),
-              ...grammarIssues.map((d) => Text(
-                    "틀린 부분: '${d["wrongText"]}' → ${d["message"]}",
-                    style: const TextStyle(color: Colors.black),
-                  )),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4E6E99),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _nextQuiz();
-                  },
-                  child: const Text('닫기',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.white)),
-                ),
-              ),
-            ],
+    if (comp.isNotEmpty) {
+      final grammarIssues = await WordApi.checkGrammar(comp);
+
+      if (grammarIssues.isNotEmpty) {
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
           ),
-        ),
-      );
-      return;
+          builder: (_) => Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('문법 오류가 있습니다.',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700, color: Colors.black)),
+                const SizedBox(height: 8),
+                ...grammarIssues.map((d) => Text(
+                      "틀린 부분: '${d.wrongText}' → ${d.message}",
+                      style: const TextStyle(color: Colors.black),
+                    )),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _nextQuiz();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4E6E99),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child:
+                        const Text('닫기', style: TextStyle(color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        return;
+      }
     }
 
     _nextQuiz();
@@ -197,7 +204,6 @@ class _WordQuizTabState extends State<WordQuizTab> {
             child: Center(
               child: Text(
                 _cur!.word,
-                textAlign: TextAlign.center,
                 style:
                     const TextStyle(fontSize: 56, fontWeight: FontWeight.w800),
               ),
@@ -206,14 +212,8 @@ class _WordQuizTabState extends State<WordQuizTab> {
           TextField(
             controller: _meanCtrl,
             focusNode: _meanFocus,
-            maxLines: 1,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _submitAnswer(),
             decoration: InputDecoration(
               labelText: '뜻(필수)',
-              isDense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               filled: true,
               fillColor: Colors.white,
               border:
@@ -225,8 +225,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
             controller: _compCtrl,
             maxLines: 3,
             decoration: InputDecoration(
-              labelText: '작문 (선택: 단어 포함, 4단어↑ 권장)',
-              hintText: '예) I can easily use this word in a sentence.',
+              labelText: '작문 (선택)',
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -235,21 +234,17 @@ class _WordQuizTabState extends State<WordQuizTab> {
           SizedBox(
             height: 46,
             child: ElevatedButton(
+              onPressed: _submitAnswer,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF4E6E99),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10)),
               ),
-              onPressed: _submitAnswer,
               child: _submitting
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      '확인',
+                  : const Text('확인',
                       style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
-                    ),
+                          color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
