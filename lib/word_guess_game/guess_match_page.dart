@@ -232,6 +232,7 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
         return false;
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true, // 키보드가 나타날 때 화면 자동 조정
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Center(
