@@ -61,18 +61,6 @@ class BeforePage extends StatelessWidget {
             const SizedBox(height: 12),
 
             // ✅ Guess Game 테스트용 버튼 (로컬 테스트)
-            AnimatedButton(
-              text: 'Guess Game (Test)',
-              backgroundColor: const Color(0xFF9FB4A4),
-              foregroundColor: Colors.white,
-              fontSize: 18,
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const GuessGamePage()),
-                );
-              },
-            ),
           ],
         ),
       ),
