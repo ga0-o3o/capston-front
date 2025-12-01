@@ -29,6 +29,8 @@ class SpeedGamePlayPage extends StatefulWidget {
 }
 
 class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
+  final ScrollController _scrollController = ScrollController();
+
   String _currentWord = '';
   String _currentWordKr = '게임을 준비하고 있습니다...';
 
@@ -65,6 +67,26 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   void initState() {
     super.initState();
     _initGame();
+
+    // 키보드 올라오면 자동 스크롤
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollForKeyboard();
+    });
+  }
+
+  void _scrollForKeyboard() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    });
   }
 
   Future<void> _initGame() async {
@@ -156,6 +178,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     });
 
     _answerController.clear();
+    _scrollForKeyboard();
   }
 
   void _onCorrect(Map msg) {
@@ -205,6 +228,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     }
 
     _answerController.clear();
+    _scrollForKeyboard();
     _isSubmitting = false;
   }
 
@@ -215,6 +239,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     });
 
     _answerController.clear();
+    _scrollForKeyboard();
   }
 
 // (1/3 영역 끝)
@@ -232,9 +257,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
 
     if (finalScores is Map) {
       setState(() {
-        _playerScores = finalScores.map(
-          (key, value) => MapEntry(key.toString(), (value ?? 0) as int),
-        );
+        _playerScores =
+            finalScores.map((k, v) => MapEntry(k.toString(), (v ?? 0) as int));
       });
     }
 
@@ -256,9 +280,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
     if (data['scores'] != null && data['scores'] is Map) {
       final scores = data['scores'] as Map;
       setState(() {
-        _playerScores = scores.map(
-          (key, value) => MapEntry(key.toString(), (value ?? 0) as int),
-        );
+        _playerScores =
+            scores.map((k, v) => MapEntry(k.toString(), (v ?? 0) as int));
       });
     }
 
@@ -336,12 +359,10 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
-            iWin ? '🎉 You Win!'
-                 : '😢 You Lose!',
+            iWin ? '🎉 You Win!' : '😢 You Lose!',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -361,8 +382,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
               const SizedBox(height: 10),
               Text(
                 '승자 점수: $winnerScore점',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               const Text(
@@ -379,30 +400,28 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                 onPressed: () async {
                   Navigator.of(dialogContext).pop();
 
-                  // SharedPreferences에서 userName 가져오기
                   final prefs = await SharedPreferences.getInstance();
                   final userName = prefs.getString('user_name') ??
-                                   prefs.getString('user_id') ??
-                                   'User';
+                      prefs.getString('user_id') ??
+                      'User';
 
-                  // 모든 페이지를 닫고 메인 페이지의 "게임" 탭으로 이동
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (_) => MainMenuPage(
                           userName: userName,
-                          initialIndex: 2, // 2 = 게임 탭
+                          initialIndex: 2,
                         ),
                       ),
-                      (route) => false, // 모든 이전 페이지 제거
+                      (route) => false,
                     );
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4E6E99),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 48, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
                 ),
                 child: const Text(
                   'OK',
@@ -453,8 +472,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
               const SizedBox(height: 10),
               Text(
                 '점수: $score점',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               const Text(
@@ -471,30 +490,28 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                 onPressed: () async {
                   Navigator.of(dialogContext).pop();
 
-                  // SharedPreferences에서 userName 가져오기
                   final prefs = await SharedPreferences.getInstance();
                   final userName = prefs.getString('user_name') ??
-                                   prefs.getString('user_id') ??
-                                   'User';
+                      prefs.getString('user_id') ??
+                      'User';
 
-                  // 모든 페이지를 닫고 메인 페이지의 "게임" 탭으로 이동
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (_) => MainMenuPage(
                           userName: userName,
-                          initialIndex: 2, // 2 = 게임 탭
+                          initialIndex: 2,
                         ),
                       ),
-                      (route) => false, // 모든 이전 페이지 제거
+                      (route) => false,
                     );
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4E6E99),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 48, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
                 ),
                 child: const Text(
                   'OK',
@@ -520,9 +537,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
             iWin ? '🎉 You Win!' : '😢 You Lose!',
             style: TextStyle(
@@ -556,30 +572,28 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                 onPressed: () async {
                   Navigator.of(dialogContext).pop();
 
-                  // SharedPreferences에서 userName 가져오기
                   final prefs = await SharedPreferences.getInstance();
                   final userName = prefs.getString('user_name') ??
-                                   prefs.getString('user_id') ??
-                                   'User';
+                      prefs.getString('user_id') ??
+                      'User';
 
-                  // 모든 페이지를 닫고 메인 페이지의 "게임" 탭으로 이동
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(
                         builder: (_) => MainMenuPage(
                           userName: userName,
-                          initialIndex: 2, // 2 = 게임 탭
+                          initialIndex: 2,
                         ),
                       ),
-                      (route) => false, // 모든 이전 페이지 제거
+                      (route) => false,
                     );
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF4E6E99),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 48, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
                 ),
                 child: const Text(
                   'OK',
@@ -614,6 +628,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   @override
   void dispose() {
     _answerController.dispose();
+    _scrollController.dispose();
     _socketSub?.cancel();
     _gameTimer?.cancel();
     super.dispose();
@@ -633,8 +648,10 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
-      resizeToAvoidBottomInset: true, // 키보드가 나타날 때 화면 자동 조정
+      resizeToAvoidBottomInset: true,
       backgroundColor: _bgColor,
       body: SafeArea(
         child: Column(
@@ -644,23 +661,24 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
             const SizedBox(height: 24),
             Expanded(
               child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    left: 24,
-                    right: 24,
-                    bottom: MediaQuery.of(context).viewInsets.bottom + 16, // 키보드 높이 고려
-                  ),
-                  child: Column(
-                    children: [
-                      _buildComputer(),
-                      const SizedBox(height: 32),
-                      _buildAnswerArea(),
-                    ],
-                  ),
+                controller: _scrollController,
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                ),
+                child: Column(
+                  children: [
+                    _buildComputer(),
+                    const SizedBox(height: 32),
+                    _buildAnswerArea(),
+                  ],
                 ),
               ),
             ),
-            _buildFooterMessage(),
+
+            // ⬇ 키보드가 올라오면 footer 자동 숨김
+            if (!keyboardOpen) _buildFooterMessage(),
           ],
         ),
       ),
@@ -690,7 +708,8 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _remainingSeconds > 10 ? Colors.green : Colors.red,
+                    color:
+                        _remainingSeconds > 10 ? Colors.green : Colors.red,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -884,9 +903,11 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
         TextField(
           controller: _answerController,
           enabled: !_waitingForWord && !_isSubmitting && !_gameOver,
+          onTap: _scrollForKeyboard,
           onSubmitted: (_) => _submitAnswer(),
           decoration: InputDecoration(
-            hintText: _waitingForWord ? '다음 문제를 준비 중...' : '영어 단어를 입력하세요',
+            hintText:
+                _waitingForWord ? '다음 문제를 준비 중...' : '영어 단어를 입력하세요',
             filled: true,
             fillColor: _waitingForWord ? Colors.grey[200] : Colors.white,
             border: OutlineInputBorder(
@@ -900,7 +921,9 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
           height: 48,
           child: ElevatedButton(
             onPressed:
-                (_waitingForWord || _isSubmitting || _gameOver) ? null : _submitAnswer,
+                (_waitingForWord || _isSubmitting || _gameOver)
+                    ? null
+                    : _submitAnswer,
             style: ElevatedButton.styleFrom(
               backgroundColor: _primary,
               shape: RoundedRectangleBorder(
