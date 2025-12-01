@@ -431,7 +431,7 @@ class _WordImagePageState extends State<WordImagePage> {
                           return Container(
                             // 🔹 단어 묶음 간 여백 — 위아래 12px 정도로 자연스럽게
                             margin: const EdgeInsets.symmetric(
-                                vertical: 12, horizontal: 10),
+                                vertical: 16, horizontal: 7),
                             padding: const EdgeInsets.symmetric(
                                 vertical: 10, horizontal: 12),
                             decoration: BoxDecoration(
