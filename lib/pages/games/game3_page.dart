@@ -1,7 +1,6 @@
 import 'dart:async' as async;
 import 'dart:math';
 import 'package:flame/game.dart';
-import '../game_menu_page.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -903,10 +902,75 @@ class _Game3PageState extends State<Game3Page> {
 
             const SizedBox(height: 16),
 
-            // 입력창
-            // 입력창 + 제출 버튼
+            // 입력창 + 제출 버튼 + 방향키
             Row(
               children: [
+                // 1️⃣ 방향키
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 1️⃣ 왼쪽
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, size: 20),
+                        color: Colors.black87,
+                        onPressed: () => onMove(Vector2(-1, 0)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
+
+                    // 2️⃣ 중앙 위/아래
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 위
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_upward, size: 20),
+                            color: Colors.black87,
+                            onPressed: () => onMove(Vector2(0, -1)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                        // 아래
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: IconButton(
+                            icon: const Icon(Icons.arrow_downward, size: 20),
+                            color: Colors.black87,
+                            onPressed: () => onMove(Vector2(0, 1)),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // 3️⃣ 오른쪽
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_forward, size: 20),
+                        color: Colors.black87,
+                        onPressed: () => onMove(Vector2(1, 0)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(width: 8), // 방향키와 TextField 사이
+
+                // 2️⃣ 입력창
                 Expanded(
                   child: TextField(
                     controller: controller,
@@ -921,7 +985,9 @@ class _Game3PageState extends State<Game3Page> {
                     },
                   ),
                 ),
-                const SizedBox(width: 8), // TextField와 버튼 사이 여백
+                const SizedBox(width: 8),
+
+                // 3️⃣ 제출 버튼
                 ElevatedButton(
                   onPressed: () {
                     checkAnswer();

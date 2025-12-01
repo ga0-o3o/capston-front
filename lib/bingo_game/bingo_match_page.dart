@@ -65,7 +65,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
           setState(() {
             _pendingRoomId = roomId;
             _pendingUserId = myUserId;
-            _status = '✅ 매칭 완료! "지금 시작"을 모두 누르면 게임이 시작됩니다.';
+            _status = '✅ 매칭 완료! "지금 시작"을 \n모두 누르면 게임이 시작됩니다.';
             _meReady = false;
             _peerReady = false;
             _readyCount = 0;

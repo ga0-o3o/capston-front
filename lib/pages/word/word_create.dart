@@ -16,6 +16,7 @@ class WordCreatePage extends StatefulWidget {
 
 class _WordCreatePageState extends State<WordCreatePage> {
   final _wordController = TextEditingController();
+  final FocusNode _wordFocusNode = FocusNode();
 
   /// 사용자가 입력한 원문 목록
   List<String> _wordsToAdd = [];
@@ -37,6 +38,7 @@ class _WordCreatePageState extends State<WordCreatePage> {
   @override
   void dispose() {
     _wordController.dispose();
+    _wordFocusNode.dispose();
     super.dispose();
   }
 
@@ -241,6 +243,22 @@ class _WordCreatePageState extends State<WordCreatePage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _onSearchSubmit() async {
+    if (_loading) return; // 이미 로딩 중이면 중복 실행 방지
+
+    // 1) 입력값을 리스트에 추가
+    _addWordToList();
+
+    // 2) 서버에서 뜻 가져오기
+    await _fetchMeanings();
+
+    // 3) 포커스 해제 — 키보드 내리고 입력창 선택 해제
+    if (mounted) {
+      FocusScope.of(context).unfocus();
+      // 또는 _wordFocusNode.unfocus();
+    }
+  }
+
   Future<void> _saveToWordbook() async {
     // 선택된 표제어만 payload 구성 (표제어 = 교정된 영단어)
     final selectedData = _selectedMeaningIds.entries
@@ -345,6 +363,7 @@ class _WordCreatePageState extends State<WordCreatePage> {
                           width: 230,
                           child: TextField(
                             controller: _wordController,
+                            focusNode: _wordFocusNode,
                             decoration: InputDecoration(
                               labelText: '영단어 입력',
                               filled: true,
@@ -356,15 +375,16 @@ class _WordCreatePageState extends State<WordCreatePage> {
                               ),
                               suffixIcon: IconButton(
                                 icon: const Icon(Icons.search),
-                                onPressed: () async {
-                                  _addWordToList();
-                                  await _fetchMeanings();
-                                },
+                                onPressed: _loading
+                                    ? null
+                                    : () async {
+                                        await _onSearchSubmit();
+                                      },
                               ),
                             ),
                             onSubmitted: (_) async {
-                              _addWordToList();
-                              await _fetchMeanings();
+                              if (_loading) return;
+                              await _onSearchSubmit();
                             },
                           ),
                         ),

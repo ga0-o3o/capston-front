@@ -12,8 +12,8 @@ Future<void> showPauseDialog({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 330,
-        height: 330,
+        width: 300,
+        height: 300,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog1.png'),
@@ -103,8 +103,8 @@ Future<void> showGameOverDialog_game6({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 330,
-        height: 330,
+        width: 300,
+        height: 300,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog2.png'),
@@ -115,6 +115,7 @@ Future<void> showGameOverDialog_game6({
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 20),
               Text(
                 success ? "게임 성공!" : "게임 종료",
                 style: const TextStyle(
@@ -172,8 +173,8 @@ Future<void> showGameOverDialog_game4({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 330,
-        height: 330,
+        width: 300,
+        height: 300,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog2.png'),
@@ -184,6 +185,7 @@ Future<void> showGameOverDialog_game4({
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 20),
               Text(
                 success ? "게임 성공!" : "게임 종료",
                 style: const TextStyle(
@@ -241,8 +243,8 @@ Future<void> showGameOverDialog_game2({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 330,
-        height: 330,
+        width: 300,
+        height: 300,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog2.png'),
@@ -253,6 +255,7 @@ Future<void> showGameOverDialog_game2({
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 20),
               const Text(
                 "게임 종료",
                 style: TextStyle(
@@ -306,8 +309,8 @@ Future<void> showGameOverDialog_game3({
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 330,
-        height: 330,
+        width: 300,
+        height: 300,
         decoration: const BoxDecoration(
           image: DecorationImage(
             image: AssetImage('assets/images/dialog2.png'),
@@ -318,6 +321,7 @@ Future<void> showGameOverDialog_game3({
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 20),
               const Text(
                 "게임 종료",
                 style: TextStyle(
