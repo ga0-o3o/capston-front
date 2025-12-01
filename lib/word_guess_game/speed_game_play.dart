@@ -634,6 +634,7 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // 키보드가 나타날 때 화면 자동 조정
       backgroundColor: _bgColor,
       body: SafeArea(
         child: Column(
@@ -642,14 +643,20 @@ class _SpeedGamePlayPageState extends State<SpeedGamePlayPage> {
             _buildHeader(),
             const SizedBox(height: 24),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    _buildComputer(),
-                    const SizedBox(height: 32),
-                    _buildAnswerArea(),
-                  ],
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: 24,
+                    right: 24,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 16, // 키보드 높이 고려
+                  ),
+                  child: Column(
+                    children: [
+                      _buildComputer(),
+                      const SizedBox(height: 32),
+                      _buildAnswerArea(),
+                    ],
+                  ),
                 ),
               ),
             ),
