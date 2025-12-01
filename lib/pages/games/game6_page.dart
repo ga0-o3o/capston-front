@@ -468,6 +468,7 @@ class _Game6PageState extends State<Game6Page> {
     }
 
     controller.clear();
+    FocusScope.of(context).unfocus();
     setState(() {});
   }
 

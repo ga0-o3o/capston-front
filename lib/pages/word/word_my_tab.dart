@@ -6,6 +6,9 @@ import 'word_api.dart';
 import 'word_image.dart';
 import 'word_dialogs.dart';
 import '../fake_progress_bar.dart';
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:image_picker/image_picker.dart';
 
 class WordMyTab extends StatefulWidget {
   final int wordbookId;
@@ -231,7 +234,7 @@ class _WordMyTabState extends State<WordMyTab> {
         if (mounted) setState(() => _loading = false);
       }
     } else if (result == 'image') {
-      // 🔹 2차 바텀시트: 카메라 / 파일 업로드 선택
+      // 2차 바텀시트: 카메라 / 파일 업로드 선택
       final source = await showModalBottomSheet<String>(
         context: context,
         backgroundColor: Colors.white,
@@ -254,35 +257,83 @@ class _WordMyTabState extends State<WordMyTab> {
         ),
       );
 
-      // 사용자가 선택 안 하고 닫으면 종료
       if (source == null) return;
 
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: Colors.transparent,
-        builder: (_) => Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: SizedBox(
-            width: 400,
-            height: 600,
-            child: WordImagePage(
-              wordbookId: widget.wordbookId,
-              hsvValues: {'h': 0, 's': 0, 'v': 0},
+      // 플랫폼 판단: 데스크탑은 파일 업로드 UI로 처리, 모바일이면 카메라 직접 실행
+      final isDesktop = kIsWeb ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.macOS;
+
+      if (source == 'camera' && !isDesktop) {
+        // 모바일: 바로 카메라 실행
+        final picker = ImagePicker();
+        final picked = await picker.pickImage(
+            source: ImageSource.camera, imageQuality: 85, maxWidth: 1600);
+        if (picked == null) {
+          // 사용자가 취소함
+          return;
+        }
+        final bytes = await picked.readAsBytes();
+
+        // WordImagePage로 이동: initialBytes 전달 -> 편지 애니메이션 → OCR 자동 실행
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: SizedBox(
+              width: 400,
+              height: 600,
+              child: WordImagePage(
+                wordbookId: widget.wordbookId,
+                hsvValues: {'h': 0, 's': 0, 'v': 0},
+                initialBytes: bytes,
+                initialFilename: picked.name,
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      // 이미지 추가 후 단어 새로고침
-      if (mounted) {
-        setState(() => _loading = true);
-        await _fetchWords(); // 자식에서만 호출
-        widget.onAdd(); // 부모에 알림만
-        if (mounted) setState(() => _loading = false);
+        // 이미지 추가 후 단어 새로고침
+        if (mounted) {
+          setState(() => _loading = true);
+          await _fetchWords();
+          widget.onAdd();
+          if (mounted) setState(() => _loading = false);
+        }
+      } else {
+        // 파일 업로드 혹은 데스크탑에서 이미지 선택 – 기존 코드: WordImagePage 열기
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          barrierColor: Colors.transparent,
+          builder: (_) => Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: SizedBox(
+              width: 400,
+              height: 600,
+              child: WordImagePage(
+                wordbookId: widget.wordbookId,
+                hsvValues: {'h': 0, 's': 0, 'v': 0},
+              ),
+            ),
+          ),
+        );
+
+        // 이미지 추가 후 단어 새로고침
+        if (mounted) {
+          setState(() => _loading = true);
+          await _fetchWords();
+          widget.onAdd();
+          if (mounted) setState(() => _loading = false);
+        }
       }
     }
   }

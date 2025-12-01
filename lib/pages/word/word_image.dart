@@ -22,10 +22,15 @@ class WordImagePage extends StatefulWidget {
   final int wordbookId;
   final Map<String, int> hsvValues;
 
+  final Uint8List? initialBytes;
+  final String? initialFilename;
+
   const WordImagePage({
     Key? key,
     required this.wordbookId,
     required this.hsvValues,
+    this.initialBytes,
+    this.initialFilename,
   }) : super(key: key);
 
   @override
@@ -57,6 +62,19 @@ class _WordImagePageState extends State<WordImagePage> {
   @override
   void initState() {
     super.initState();
+
+    // 만약 생성자로 초기 이미지가 들어왔다면 바로 애니메이션 시작
+    if (widget.initialBytes != null && widget.initialFilename != null) {
+      // 저장 후 애니메이션 보여주기
+      _pendingBytes = widget.initialBytes;
+      _pendingFilename = widget.initialFilename;
+      _backgroundImage = "assets/images/background/mailbox.png";
+      // 약간의 딜레이를 주고 애니메이션 시작하면 UX가 더 자연스러움
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (!mounted) return;
+        setState(() => _showLetterAnim = true);
+      });
+    }
   }
 
   // 이미지 선택 (카메라 / 앨범 / 파일)
@@ -429,11 +447,11 @@ class _WordImagePageState extends State<WordImagePage> {
                           final selectedSet = _selectedMeanings[word]!;
 
                           return Container(
-                            // 🔹 단어 묶음 간 여백 — 위아래 12px 정도로 자연스럽게
+                            // 🔹 단어 묶음 간 여백 - 위에 margin이 단어 칩들 있는 단어 카드 / 밑에 padding이 chip들 사이 간격
                             margin: const EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 7),
+                                vertical: 20, horizontal: 10),
                             padding: const EdgeInsets.symmetric(
-                                vertical: 10, horizontal: 12),
+                                vertical: 20, horizontal: 20),
                             decoration: BoxDecoration(
                               color: Colors.grey.shade200,
                               borderRadius: BorderRadius.circular(8),
