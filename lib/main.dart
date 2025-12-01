@@ -27,6 +27,15 @@ class MyApp extends StatelessWidget {
         // ✅ 앱 전체 Text 위젯 기본 폰트 변경
         textTheme: GoogleFonts.nunitoTextTheme(), // 원하는 폰트로 변경
       ),
+      // ✅ 앱 전체에서 텍스트 크기 고정 및 화면 비율 자동 조정
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaleFactor: 1.0, // 텍스트 크기 고정
+          ),
+          child: child!,
+        );
+      },
       home: const BeforePage(),
     );
   }
