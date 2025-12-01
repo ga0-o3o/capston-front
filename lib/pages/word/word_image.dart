@@ -4,6 +4,7 @@ import 'dart:io' show File;
 
 import 'word_loading.dart';
 import 'word_meaning.dart';
+import 'mean_loading.dart';
 
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
@@ -520,12 +521,24 @@ class _WordImagePageState extends State<WordImagePage> {
                       children: [
                         // 왼쪽: 뜻 조회 / 저장 버튼
                         SizedBox(
-                          width: 140, // ✅ 가로폭 지정
+                          width: 140,
                           child: ElevatedButton(
                             onPressed: _loading
                                 ? null
                                 : (_step == 1
-                                    ? _fetchMeanings
+                                    ? () async {
+                                        // _fetchMeanings를 MeanLoadingPage의 task로 전달
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            fullscreenDialog: true,
+                                            builder: (_) => MeanLoadingPage(
+                                                task: _fetchMeanings),
+                                          ),
+                                        );
+                                        // MeanLoadingPage가 pop된 뒤(=작업 완료) 여기로 돌아옵니다.
+                                        // 필요하면 여기서 추가 동작(예: setState) 수행 가능.
+                                      }
                                     : _saveToWordbook),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFFCC8C8),
@@ -539,6 +552,7 @@ class _WordImagePageState extends State<WordImagePage> {
                             child: Text(_step == 1 ? '뜻 조회' : '저장'),
                           ),
                         ),
+
                         const SizedBox(width: 20), // 버튼 간 간격
                         // 오른쪽: 나가기 버튼
                         SizedBox(
