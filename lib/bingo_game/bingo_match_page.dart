@@ -370,7 +370,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 150),
+                  const SizedBox(height: 80),
                 ],
               ),
             ),

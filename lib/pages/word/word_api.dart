@@ -326,4 +326,28 @@ class WordApi {
       return [Issue('', "문법 검사 오류: $e")];
     }
   }
+
+  static const String baseUrl =
+      "https://semiconical-shela-loftily.ngrok-free.dev";
+
+  static Future<Map<String, dynamic>> checkQuiz(
+      Map<String, dynamic> data) async {
+    final uri = Uri.parse('$baseUrl/api/word/quiz/check');
+
+    final resp = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(data),
+    );
+
+    print('📡 checkQuiz status: ${resp.statusCode}');
+    print('📡 checkQuiz body: ${resp.body}');
+    print('📡 checkQuiz url: $uri');
+
+    if (resp.statusCode != 200) {
+      throw Exception('정답 확인 실패: ${resp.body}');
+    }
+
+    return jsonDecode(resp.body);
+  }
 }

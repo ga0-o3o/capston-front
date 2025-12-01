@@ -5,7 +5,6 @@ import 'bingo_quiz.dart';
 import 'dart:math';
 import 'dart:async';
 import 'bingo_effect.dart';
-import '../pages/game_menu_page.dart';
 import '../pages/mainMenuPage.dart';
 
 String _normId(Object? v) => (v ?? '').toString().trim().toLowerCase();
@@ -389,15 +388,6 @@ class _BingoGamePageState extends State<BingoGamePage> {
     }
   }
 
-  // ⏱️ 턴 타이머 중지
-  void _stopTurnTimer() {
-    _turnTimer?.cancel();
-    setState(() {
-      _remainingSeconds = 0;
-      _turnStartTime = null;
-    });
-  }
-
   // 🎯 타이머 만료 시 자동 제출 로직
   void _autoSubmitOnTimeout() {
     print('⏰ 타이머 만료! 자동 제출 시작');
@@ -457,14 +447,6 @@ class _BingoGamePageState extends State<BingoGamePage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('🎲 순서 확정: ${_order.join(" → ")}')),
     );
-  }
-
-  void _advanceTurnLocal() {
-    if (_order.isEmpty) return;
-    setState(() {
-      _turnIndex = (_turnIndex + 1) % _order.length;
-      _activeUserId = _order[_turnIndex];
-    });
   }
 
   void _handleSocketMessage(Map<String, dynamic> msg) {
@@ -1214,8 +1196,8 @@ class _BingoGamePageState extends State<BingoGamePage> {
                     // 2) SharedPreferences에서 userName 가져오기
                     final prefs = await SharedPreferences.getInstance();
                     final userName = prefs.getString('user_name') ??
-                                     prefs.getString('user_id') ??
-                                     'User';
+                        prefs.getString('user_id') ??
+                        'User';
 
                     // 3) 모든 페이지를 닫고 메인 페이지의 "게임" 탭으로 이동
                     if (context.mounted) {

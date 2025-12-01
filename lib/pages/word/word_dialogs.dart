@@ -8,8 +8,8 @@ Future<bool> showDeleteWordDialog(BuildContext context, String title) async {
     builder: (_) => Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
-        width: 350,
-        height: 350,
+        width: 300,
+        height: 300,
         padding: const EdgeInsets.all(16),
         decoration: const BoxDecoration(
           image: DecorationImage(
@@ -20,6 +20,7 @@ Future<bool> showDeleteWordDialog(BuildContext context, String title) async {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const SizedBox(height: 20),
             Text(
               '"$title" 단어를 \n삭제하시겠습니까?',
               style: const TextStyle(

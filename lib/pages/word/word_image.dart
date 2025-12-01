@@ -1,6 +1,7 @@
 // word_image.dart
 import 'dart:typed_data';
 import 'dart:io' show File;
+import 'dart:math' as math;
 
 import 'word_loading.dart';
 import 'word_meaning.dart';
@@ -446,51 +447,86 @@ class _WordImagePageState extends State<WordImagePage> {
                           final meanings = _wordsWithMeanings[word]!;
                           final selectedSet = _selectedMeanings[word]!;
 
-                          return Container(
-                            // 🔹 단어 묶음 간 여백 - 위에 margin이 단어 칩들 있는 단어 카드 / 밑에 padding이 chip들 사이 간격
-                            margin: const EdgeInsets.symmetric(
-                                vertical: 20, horizontal: 10),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 20, horizontal: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  word,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                          // itemBuilder 안에서 기존 return Container(...) 대신 아래로 교체
+                          return LayoutBuilder(
+                            builder: (context, constraints) {
+                              final screenW = MediaQuery.of(context).size.width;
+
+                              // 화면 양쪽 여유(두루마기 내부 마진 등) — 필요시 조절
+                              const double totalSafeHorizontal = 80.0;
+
+                              // 카드의 폭: 화면 너비 - 여유, 최소/최대 값으로 제한
+                              final double cardWidth = math.min(
+                                  420.0,
+                                  math.max(
+                                      200.0, screenW - totalSafeHorizontal));
+
+                              // 모든 항목이 동일한 너비를 가지도록 SizedBox로 고정
+                              return Center(
+                                child: SizedBox(
+                                  width: math.min(
+                                      500.0, screenW - totalSafeHorizontal),
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(
+                                        vertical: 12, horizontal: 10),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12, horizontal: 20),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          word,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: meanings.map((m) {
+                                            final isSelected =
+                                                selectedSet.contains(m.wordKr);
+                                            return ChoiceChip(
+                                              label: Text(
+                                                m.wordKr,
+                                                style: TextStyle(
+                                                  color: selectedSet
+                                                          .contains(m.wordKr)
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                ),
+                                              ),
+                                              selected: isSelected,
+                                              selectedColor:
+                                                  const Color(0xFF4E6E99),
+                                              backgroundColor:
+                                                  const Color(0xFFF6F0E9),
+                                              onSelected: (v) {
+                                                setState(() {
+                                                  if (v) {
+                                                    selectedSet.add(m.wordKr);
+                                                  } else {
+                                                    selectedSet
+                                                        .remove(m.wordKr);
+                                                  }
+                                                });
+                                              },
+                                            );
+                                          }).toList(),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 6,
-                                  children: meanings.map((m) {
-                                    final isSelected =
-                                        selectedSet.contains(m.wordKr);
-                                    return ChoiceChip(
-                                      label: Text(m.wordKr),
-                                      selected: isSelected,
-                                      selectedColor: const Color(0xFFFCC8C8),
-                                      onSelected: (v) {
-                                        setState(() {
-                                          if (v) {
-                                            selectedSet.add(m.wordKr);
-                                          } else {
-                                            selectedSet.remove(m.wordKr);
-                                          }
-                                        });
-                                      },
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
+                              );
+                            },
                           );
                         },
                       ),
