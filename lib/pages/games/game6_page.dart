@@ -510,6 +510,8 @@ class _Game6PageState extends State<Game6Page> {
 
   void _handleWrong() {
     lives--;
+    _nextQuestion();
+
     if (lives <= 0) {
       gameOver = true;
       _showGameOverDialog();
