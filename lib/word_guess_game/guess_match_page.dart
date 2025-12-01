@@ -285,7 +285,7 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 50),
                   Column(
                     children: [
                       SizedBox(
@@ -338,7 +338,7 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 50),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
