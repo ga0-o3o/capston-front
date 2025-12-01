@@ -310,7 +310,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 30),
 
                   // 버튼 영역
                   Column(
@@ -370,7 +370,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
                     ],
                   ),
 
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 50),
                 ],
               ),
             ),
