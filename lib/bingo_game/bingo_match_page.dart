@@ -261,6 +261,7 @@ class _BingoMatchPageState extends State<BingoMatchPage> {
         return false; // 우리가 직접 pop 처리
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true, // 키보드가 나타날 때 화면 자동 조정
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Center(
