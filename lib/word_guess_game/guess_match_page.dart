@@ -63,7 +63,9 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
       else if (event == 'match_success_speed') {
         final roomId = msg['roomId']?.toString() ?? '';
         final myUserId = msg['myUserId']?.toString() ??
-            (_loginId.isNotEmpty ? _loginId : 'guest-${DateTime.now().millisecondsSinceEpoch}');
+            (_loginId.isNotEmpty
+                ? _loginId
+                : 'guest-${DateTime.now().millisecondsSinceEpoch}');
 
         setState(() {
           _pendingRoomId = roomId;
@@ -239,7 +241,6 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const SizedBox(height: 10),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -259,9 +260,7 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
-
                   Flexible(
                     flex: 4,
                     child: Column(
@@ -286,16 +285,15 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 10),
-
+                  const SizedBox(height: 30),
                   Column(
                     children: [
                       SizedBox(
                         width: 250,
                         child: ElevatedButton(
-                          onPressed:
-                              (_connecting || _matchPressed) ? null : _startMatch,
+                          onPressed: (_connecting || _matchPressed)
+                              ? null
+                              : _startMatch,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF4E6E99),
                             foregroundColor: Colors.white,
@@ -313,9 +311,7 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
                       SizedBox(
                         width: 250,
                         child: OutlinedButton(
@@ -342,8 +338,7 @@ class _GuessMatchPageState extends State<GuessMatchPage> {
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 180),
+                  const SizedBox(height: 50),
                 ],
               ),
             ),
