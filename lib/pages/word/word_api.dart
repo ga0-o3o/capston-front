@@ -336,7 +336,12 @@ class WordApi {
 
     final resp = await http.post(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': '69420',
+        'Ngrok-Skip-Browser-Warning': '69420',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
       body: jsonEncode(data),
     );
 

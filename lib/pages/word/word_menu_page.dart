@@ -51,6 +51,7 @@ class _WordMenuPageState extends State<WordMenuPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // 키보드가 나타날 때 화면 자동 조정
       backgroundColor: const Color(0xFFF6F0E9),
       appBar: AppBar(
         backgroundColor: const Color(0xFF3D4C63),

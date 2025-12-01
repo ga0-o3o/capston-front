@@ -188,22 +188,29 @@ class _WordQuizTabState extends State<WordQuizTab> {
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Center(
-              child: Text(
-                _cur!.word,
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 56, fontWeight: FontWeight.w800),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24, // 키보드 높이 고려
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.3,
+              child: Center(
+                child: Text(
+                  _cur!.word,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 56, fontWeight: FontWeight.w800),
+                ),
               ),
             ),
-          ),
-          TextField(
+            TextField(
             controller: _meanCtrl,
             focusNode: _meanFocus,
             maxLines: 1,
@@ -253,6 +260,7 @@ class _WordQuizTabState extends State<WordQuizTab> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
