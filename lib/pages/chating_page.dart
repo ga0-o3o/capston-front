@@ -324,24 +324,6 @@ class _ChatingPageState extends State<ChatingPage> {
                       ),
                     ),
                   ),
-
-                  // 팟캐스트 생성 버튼
-                  IconButton(
-                    icon: _isPodcastGenerating
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.podcasts,
-                            color: Colors.white, size: 28),
-                    onPressed: _isPodcastGenerating ? null : _generatePodcast,
-                    tooltip: '대화 내용으로 팟캐스트 생성',
-                  ),
-
                   // 오른쪽 햄버거 아이콘
                   Builder(
                     builder: (context) => IconButton(

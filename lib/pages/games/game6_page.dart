@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import '../word/word_item.dart';
 import 'game_api.dart';
 import 'game_dialogs.dart';
+import '../word/word_api.dart';
 
 // ------------------ 날아오는 블록 ------------------
 class FlyingBlock {
@@ -429,11 +430,37 @@ class _Game6PageState extends State<Game6Page> {
     });
   }
 
-  void _nextQuestion() {
+  void _nextQuestion() async {
     if (words.isEmpty) return;
-    currentWord = words[_random.nextInt(words.length)];
-    showKorean = _random.nextBool();
+
+    // 🔥 Map 구조를 새로 복사하여 타입 shape 초기화 (중요!!)
+    currentWord = {...words[_random.nextInt(words.length)]};
+
+    final wordEn = currentWord!["wordEn"];
+
+    showKorean = false;
+
+    try {
+      // 서버에서 한국어 뜻 리스트 가져오기
+      List<String> krList = await WordApi.checkQuiz(wordEn);
+
+      final cleanedList = krList
+          .map((e) => e.trim().toLowerCase().replaceAll(" ", ""))
+          .where((e) => e.isNotEmpty)
+          .toList();
+
+      // 🚀 여기서 더이상 타입 충돌 안 생김!
+      currentWord!["wordKrList"] = cleanedList;
+
+      print("📘 문제 단어: $wordEn");
+      print("📙 받아온 뜻: $cleanedList");
+    } catch (e) {
+      print("❌ 한국어 뜻 조회 실패: $e");
+      currentWord!["wordKrList"] = [];
+    }
+
     questionNumber++;
+    setState(() {});
   }
 
   bool timerStarted = false; // 클래스 필드
@@ -441,30 +468,24 @@ class _Game6PageState extends State<Game6Page> {
   void checkAnswer() {
     if (currentWord == null || gameOver) return;
 
-    final userInput = controller.text.trim().toLowerCase();
+    final input = controller.text.trim().toLowerCase().replaceAll(" ", "");
 
-    if (showKorean) {
-      // 한국어 → 영어 맞추기
-      final correctAnswer = currentWord!["wordEn"].toString().toLowerCase();
-      if (userInput == correctAnswer) {
-        _handleCorrect();
-      } else {
-        _handleWrong();
-      }
+    final List<String> meanings =
+        (currentWord!["wordKrList"] as List?)?.cast<String>() ?? [];
+
+    print("사용자 입력: $input");
+    print("저장된 한국어 뜻 리스트: $meanings");
+
+    bool correct = meanings.any(
+      (m) =>
+          m.toLowerCase().replaceAll(" ", "") == input ||
+          m.toLowerCase().replaceAll(" ", "").contains(input),
+    );
+
+    if (correct) {
+      _handleCorrect();
     } else {
-      // 영어 → 한국어 맞추기
-      final allAnswers = currentWord!["wordKr"]
-          .toString()
-          .split(',')
-          .map((e) => e.trim().toLowerCase())
-          .where((e) => e.isNotEmpty)
-          .toList();
-
-      if (allAnswers.contains(userInput)) {
-        _handleCorrect();
-      } else {
-        _handleWrong();
-      }
+      _handleWrong();
     }
 
     controller.clear();
@@ -489,6 +510,8 @@ class _Game6PageState extends State<Game6Page> {
 
   void _handleWrong() {
     lives--;
+    _nextQuestion();
+
     if (lives <= 0) {
       gameOver = true;
       _showGameOverDialog();
@@ -548,9 +571,7 @@ class _Game6PageState extends State<Game6Page> {
                     child: Center(
                       child: Text(
                         currentWord != null
-                            ? (showKorean
-                                ? currentWord!["wordKr"] ?? " "
-                                : currentWord!["wordEn"] ?? " ")
+                            ? currentWord!["wordEn"] ?? " "
                             : " ",
                         style: const TextStyle(fontSize: 24),
                       ),

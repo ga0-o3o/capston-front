@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'game_api.dart';
 import 'game_dialogs.dart';
 import '../word/word_item.dart';
+import '../word/word_api.dart';
 
 // -------------------- Maze Game --------------------
 class MazeGame extends FlameGame {
@@ -336,7 +337,7 @@ class _Game3PageState extends State<Game3Page> {
   bool showIntro = true;
   bool hasMoved = false;
 
-  int totalTime = 140;
+  int totalTime = 240;
   int lives = 3;
   final Random _random = Random();
 
@@ -592,18 +593,39 @@ class _Game3PageState extends State<Game3Page> {
     }
   }
 
-  void checkAnswer() {
+  void checkAnswer() async {
     if (currentWord == null || game.gameOver) return;
 
-    solvedQuestions++; // 문제 시도 시 증가
+    solvedQuestions++;
 
-    final userAnswer = controller.text.trim().toLowerCase();
-    final correctAnswer = showEnglish
-        ? currentWord!["koreanMeaning"].toString().toLowerCase()
-        : currentWord!["wordEn"].toString().toLowerCase();
+    // 1) 사용자 입력 정리
+    final userAnswer = controller.text.trim().toLowerCase().replaceAll(" ", "");
 
-    // checkAnswer() 내 정답 처리
-    if (userAnswer == correctAnswer) {
+    final wordEn = currentWord!["wordEn"].toString();
+
+    // 2) 서버에서 뜻 전체 불러오기
+    List<String> correctMeanings = [];
+    try {
+      correctMeanings = await WordApi.checkQuiz(wordEn); // ["상","지급판정",...]
+    } catch (e) {
+      print("❌ 서버 정답 뜻 조회 실패: $e");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("정답 뜻을 불러올 수 없습니다.")));
+      return;
+    }
+
+    // 3) 서버에서 받은 모든 뜻을 동일한 방식으로 전처리
+    final cleanedMeanings = correctMeanings
+        .map((m) => m.toLowerCase().replaceAll(" ", ""))
+        .toList();
+
+    // 4) 🎯 정답 여부: 입력이 뜻 중 하나에 포함되면 정답!
+    bool isCorrect = cleanedMeanings.contains(userAnswer);
+
+    // ---------------------------------------------------------
+    // 정답 처리
+    // ---------------------------------------------------------
+    if (isCorrect) {
       setState(() {
         showQuestion = false;
         infoMessage = '정답입니다! 나아갈 방향을 선택하세요.';
@@ -612,10 +634,9 @@ class _Game3PageState extends State<Game3Page> {
         game.canMove = false;
       });
 
-      // ✅ 정답 처리 후 새로운 문제 선택
       _nextQuestion();
 
-      // 방향 선택 1회만
+      // 방향 선택 dialog
       Future.delayed(Duration.zero, () async {
         Vector2? dir = await showDialog<Vector2>(
           context: context,
@@ -634,11 +655,11 @@ class _Game3PageState extends State<Game3Page> {
           setState(() {
             showQuestion = true;
             showInfoMessage = false;
-            showDirectionButtons = false; // 한 번 선택했으므로 버튼 숨기기
+            showDirectionButtons = false;
           });
         } else {
           setState(() {
-            infoMessage = "❌ 3초 안에 선택하지 못하였군요. 문제를 다시 풀어주세요!";
+            infoMessage = "❌ 방향 선택 실패! 다시 문제를 풀어주세요!";
             showInfoMessage = true;
             showQuestion = true;
             game.canMove = false;
@@ -647,7 +668,9 @@ class _Game3PageState extends State<Game3Page> {
         }
       });
     } else {
+      // ---------------------------------------------------------
       // 오답 처리
+      // ---------------------------------------------------------
       lives--;
       game.lives = lives;
 
@@ -663,8 +686,6 @@ class _Game3PageState extends State<Game3Page> {
           infoMessage = '틀렸습니다! 남은 목숨: $lives';
           showInfoMessage = true;
         });
-
-        // 오답 처리 시 새로운 문제 선택
         _nextQuestion();
       }
     }

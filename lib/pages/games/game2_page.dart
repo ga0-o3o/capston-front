@@ -9,6 +9,7 @@ import '../loading_page.dart';
 import 'game_api.dart';
 import 'game_dialogs.dart';
 import '../word/word_item.dart';
+import '../word/word_api.dart';
 
 class Game2Page extends StatefulWidget {
   const Game2Page({Key? key}) : super(key: key);
@@ -20,7 +21,6 @@ class Game2Page extends StatefulWidget {
 class _Game2PageState extends State<Game2Page> {
   List<Map<String, dynamic>> words = [];
   Map<String, dynamic>? currentWord;
-  bool showKorean = true;
 
   final TextEditingController controller = TextEditingController();
   String? userId;
@@ -31,7 +31,7 @@ class _Game2PageState extends State<Game2Page> {
 
   int totalTime = 120;
   int questionNumber = 0;
-  int lives = 3; // 목숨
+  int lives = 3;
   Timer? gameTimer;
   bool gameOver = false;
 
@@ -57,7 +57,7 @@ class _Game2PageState extends State<Game2Page> {
       if (totalTime > 0) {
         setState(() => totalTime--);
       } else {
-        _endGame(); // 시간 종료 시 게임 종료
+        _endGame();
       }
     });
   }
@@ -70,11 +70,11 @@ class _Game2PageState extends State<Game2Page> {
         url,
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer 3HFZSH7A9O05TM0Q0SZRA7CB657WEH7B", // 여기!
+          "Authorization": "Bearer 3HFZSH7A9O05TM0Q0SZRA7CB657WEH7B",
         },
         body: jsonEncode({
           "text": sentence,
-          "session_id": "game_session_1", // 아무 문자열 가능
+          "session_id": "game_session_1",
         }),
       );
 
@@ -88,14 +88,13 @@ class _Game2PageState extends State<Game2Page> {
             (e["end"] as int).clamp(0, sentence.length),
           );
 
-          // replacements 배열에서 첫 번째 추천 수정 가져오기
           final replacement = (e["replacements"] as List?)?.isNotEmpty == true
               ? e["replacements"][0]
               : "Error";
 
           return {
             "wrongText": wrongText,
-            "message": replacement, // 기존 message 대신 추천 수정 표시
+            "message": replacement,
           };
         }).toList();
       } else {
@@ -117,11 +116,11 @@ class _Game2PageState extends State<Game2Page> {
 
     List<Map<String, String>> grammarDetails = [];
 
-    // 제시어 포함 여부 확인
     if (!submitted.toLowerCase().contains(answer.toLowerCase())) {
       setState(() {
         lives--;
         lastScore = 0;
+
         submittedAnswers.insert(0, {
           "word": answer,
           "meaning": meaning,
@@ -130,30 +129,30 @@ class _Game2PageState extends State<Game2Page> {
           "grammarDetails": [],
           "score": lastScore,
         });
+
         _nextQuestion();
       });
 
       if (lives <= 0) _endGame();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("틀렸습니다! 제시어가 포함되어 있지 않습니다. 목숨 -1")),
+        const SnackBar(
+          content: Text("틀렸습니다! 제시어가 포함되어 있지 않습니다. 목숨 -1"),
+        ),
       );
 
       controller.clear();
       return;
     }
 
-    // 문법 체크
     grammarDetails = await checkGrammar(submitted);
 
     int score = 0;
 
     if (grammarDetails.isEmpty) {
-      // 문법 오류 없을 때만 점수 부여
-      score = submitted.split(RegExp(r'\s+')).length; // 띄어쓰기 기준 단어 수
+      score = submitted.split(RegExp(r'\s+')).length;
       totalScore += score;
     } else {
-      // 문법 오류 있을 경우 목숨 감소
       setState(() => lives--);
       if (lives <= 0) _endGame();
     }
@@ -168,20 +167,22 @@ class _Game2PageState extends State<Game2Page> {
         "grammarDetails": grammarDetails,
         "score": lastScore,
       });
+
       _nextQuestion();
     });
 
-    // 피드백 메시지
     if (grammarDetails.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("정답! 문법도 OK, 점수: $lastScore")), // 띄어쓰기 기준 점수 표시
+        SnackBar(content: Text("정답! 문법도 OK, 점수: $lastScore")),
       );
     } else {
       if (lives > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text(
-                  "문법 오류 ${grammarDetails.length}개 발견! 목숨 -1, 점수: $lastScore")),
+            content: Text(
+              "문법 오류 ${grammarDetails.length}개! 목숨 -1, 점수: $lastScore",
+            ),
+          ),
         );
       }
     }
@@ -202,22 +203,20 @@ class _Game2PageState extends State<Game2Page> {
       totalScore: totalScoreCalc,
       remainingLives: lives,
       totalSubmitted: totalSubmitted,
-      onConfirm: () {
-        Navigator.pop(context); // 게임 화면 종료
-      },
+      onConfirm: () => Navigator.pop(context),
     );
   }
 
   void _pauseGame() {
-    gameTimer?.cancel(); // 타이머 일시정지
+    gameTimer?.cancel();
 
     showPauseDialog(
       context: context,
       onResume: () {
-        _startTimer(); // 타이머 그대로 재개
+        _startTimer();
       },
       onExit: () {
-        Navigator.pop(context); // 게임 화면 종료
+        Navigator.pop(context);
       },
     );
   }
@@ -246,21 +245,21 @@ class _Game2PageState extends State<Game2Page> {
 
     List<WordItem> allWords = [];
     try {
-      // GameApi.fetchAllWords를 사용
       allWords = await GameApi.fetchAllWords(storedUserId);
     } catch (e) {
       print("전체 단어 가져오기 예외: $e");
     }
 
     setState(() {
-      // WordItem -> Map<String,dynamic> 변환
       words = allWords
           .map((w) => {
                 "wordEn": w.word,
                 "koreanMeaning": w.wordKr.join(", "),
               })
           .toList();
+
       if (words.isNotEmpty) _nextQuestion();
+
       isLoading = false;
     });
   }
@@ -268,15 +267,12 @@ class _Game2PageState extends State<Game2Page> {
   void _nextQuestion() {
     if (words.isEmpty) return;
     currentWord = words[_random.nextInt(words.length)];
-    showKorean = _random.nextBool();
     questionNumber++;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const LoadingPage();
-    }
+    if (isLoading) return const LoadingPage();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
@@ -315,7 +311,9 @@ class _Game2PageState extends State<Game2Page> {
                           ? '제시어: ${currentWord!["wordEn"]}'
                           : "단어 없음",
                       style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold),
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   Align(
@@ -332,17 +330,34 @@ class _Game2PageState extends State<Game2Page> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('점수: $totalScore',
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  '점수: $totalScore',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+
+                // 🔥 서버에서 모든 뜻을 가져오는 힌트 버튼
                 ElevatedButton(
-                  onPressed: () {
-                    if (currentWord != null) {
-                      final hint = currentWord!["koreanMeaning"] ?? "뜻 없음";
+                  onPressed: () async {
+                    if (currentWord == null) return;
+
+                    try {
+                      final wordEn = currentWord!["wordEn"];
+                      final meanings = await WordApi.checkQuiz(wordEn);
+                      final hint = meanings.join(", ");
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text("힌트: $hint"),
                           duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("뜻을 불러오지 못했습니다."),
                         ),
                       );
                     }
@@ -356,6 +371,8 @@ class _Game2PageState extends State<Game2Page> {
               ],
             ),
             const SizedBox(height: 16),
+
+            // 입력 영역
             Column(
               children: [
                 TextField(
@@ -382,26 +399,31 @@ class _Game2PageState extends State<Game2Page> {
                     ),
                     child: const Text(
                       "제출",
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
+
             const SizedBox(height: 16),
+
+            // 제출 기록
             Expanded(
               child: ListView.builder(
                 itemCount: submittedAnswers.length,
                 itemBuilder: (context, index) {
                   final item = submittedAnswers[index];
 
-                  /// ✅ grammarErrors > 0 인 경우 클릭 시 다이얼로그
                   return InkWell(
                     onTap: () {
                       if (item["grammarErrors"] > 0) {
                         final details =
                             item["grammarDetails"] as List<Map<String, String>>;
+
                         showDialog(
                           context: context,
                           builder: (_) => AlertDialog(
@@ -418,7 +440,7 @@ class _Game2PageState extends State<Game2Page> {
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
                                 child: const Text("닫기"),
-                              )
+                              ),
                             ],
                           ),
                         );
@@ -436,17 +458,24 @@ class _Game2PageState extends State<Game2Page> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('제시어: ${item["word"]}',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            '제시어: ${item["word"]}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Text('뜻: ${item["meaning"]}'),
                           Text('답: ${item["submitted"]}'),
                           Text('문법 오류: ${item["grammarErrors"]}개'),
                           if (item["grammarErrors"] > 0)
-                            const Text("(클릭하면 상세 오류 확인)",
-                                style: TextStyle(
-                                    fontSize: 12, color: Colors.grey)),
+                            const Text(
+                              "(클릭하면 상세 오류 확인)",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                            ),
                         ],
                       ),
                     ),
