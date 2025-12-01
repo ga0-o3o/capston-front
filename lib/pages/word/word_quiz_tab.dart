@@ -195,19 +195,6 @@ class _WordQuizTabState extends State<WordQuizTab> {
       );
     }
 
-<<<<<<< HEAD
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: Center(
-              child: Text(
-                _cur!.word,
-                style:
-                    const TextStyle(fontSize: 56, fontWeight: FontWeight.w800),
-=======
     return SingleChildScrollView(
       child: Padding(
         padding: EdgeInsets.only(
@@ -228,7 +215,6 @@ class _WordQuizTabState extends State<WordQuizTab> {
                   style: const TextStyle(
                       fontSize: 56, fontWeight: FontWeight.w800),
                 ),
->>>>>>> 6f5da5361a234f979c0b8e48c7f9f652ab8ebd2a
               ),
             ),
             TextField(

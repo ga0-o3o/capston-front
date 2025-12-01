@@ -334,28 +334,8 @@ class WordApi {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
 
-<<<<<<< HEAD
     if (token.isEmpty) {
       throw Exception('로그인이 필요합니다.');
-=======
-    final resp = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': '69420',
-        'Ngrok-Skip-Browser-Warning': '69420',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      },
-      body: jsonEncode(data),
-    );
-
-    print('📡 checkQuiz status: ${resp.statusCode}');
-    print('📡 checkQuiz body: ${resp.body}');
-    print('📡 checkQuiz url: $uri');
-
-    if (resp.statusCode != 200) {
-      throw Exception('정답 확인 실패: ${resp.body}');
->>>>>>> 6f5da5361a234f979c0b8e48c7f9f652ab8ebd2a
     }
 
     final uri = Uri.parse("$baseUrl/api/v1/quiz/answers?word=$word");
