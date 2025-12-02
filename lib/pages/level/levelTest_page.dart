@@ -267,14 +267,13 @@ class _LevelTestPageState extends State<LevelTestPage> {
   // -----------------------------------------------------------
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+      if (!_scrollController.hasClients) return;
+
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
     });
   }
 
@@ -450,20 +449,19 @@ class _LevelTestPageState extends State<LevelTestPage> {
       );
     }
 
-    return ListView.builder(
-      controller: _scrollController,
-      reverse: true, // ★★ 이것만 추가하면 키보드 올라올 때 마지막 메시지가 위로 밀리지 않음
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      itemCount: _messages.length,
-      itemBuilder: (_, i) {
-        // reverse:true 했으니 index 반대로
-        final msg = _messages[_messages.length - 1 - i];
-        return _buildMessageBubble(msg);
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        return ListView.builder(
+          controller: _scrollController,
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: 120, // ← 네비바 + 입력창 높이 보정
+          ),
+          itemCount: _messages.length,
+          itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
+        );
       },
     );
   }
@@ -525,49 +523,55 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
   Widget _buildInputArea() {
     return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(color: Colors.white),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _controller,
-                enabled: !_isSending,
-                decoration: InputDecoration(
-                  hintText: '영어로 메시지를 입력하세요...',
-                  filled: true,
-                  fillColor: const Color(0xFFF6F0E9),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(color: Colors.white),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    enabled: !_isSending,
+                    decoration: InputDecoration(
+                      hintText: '영어로 메시지를 입력하세요...',
+                      filled: true,
+                      fillColor: const Color(0xFFF6F0E9),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
-                onSubmitted: (_) => _sendMessage(),
-              ),
+                const SizedBox(width: 10),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF4E6E99),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: _isSending
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.send, color: Colors.white),
+                    onPressed: _isSending ? null : _sendMessage,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 10),
-            Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF4E6E99),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: _isSending
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.send, color: Colors.white),
-                onPressed: _isSending ? null : _sendMessage,
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20), // ← 네비바와의 간격
+        ],
       ),
     );
   }
