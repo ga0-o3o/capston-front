@@ -377,11 +377,21 @@ class _WordDigitalDocPageState extends State<WordDigitalDocPage> {
 
               if (response.statusCode == 200) {
                 final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+
+                // ✅ 디버깅: FastAPI 응답 전체 출력
+                print('[Highlight] 📦 FastAPI 전체 응답: $decoded');
+
                 if (decoded is Map && decoded['words'] is List) {
                   final words = List<String>.from(decoded['words']);
 
+                  // ✅ 디버깅: 추출된 단어 개수 출력
+                  print('[Highlight] 🔤 FastAPI가 반환한 단어 개수: ${words.length}');
+                  print('[Highlight] 📝 단어 리스트: $words');
+
                   setState(() {
                     _wordsToAdd = words.map(_normalize).toList();
+                    print('[Highlight] ✅ _wordsToAdd에 저장된 단어 개수: ${_wordsToAdd.length}');
+                    print('[Highlight] 📋 _wordsToAdd 내용: $_wordsToAdd');
                     _step = 2;
                   });
                 } else {
@@ -413,6 +423,11 @@ class _WordDigitalDocPageState extends State<WordDigitalDocPage> {
   /// 단어 뜻 조회
   Future<void> _fetchMeanings() async {
     if (_wordsToAdd.isEmpty) return;
+
+    // ✅ 디버깅: Spring에 전송하기 전 단어 개수 확인
+    print('[Spring 전송] 📤 전송할 단어 개수: ${_wordsToAdd.length}');
+    print('[Spring 전송] 📝 전송할 단어 리스트: $_wordsToAdd');
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? '';
     setState(() => _loading = true);
@@ -420,6 +435,10 @@ class _WordDigitalDocPageState extends State<WordDigitalDocPage> {
     final url = Uri.parse(
       'https://semiconical-shela-loftily.ngrok-free.dev/api/words/save-from-api',
     );
+
+    final requestBody = jsonEncode({'wordsEn': _wordsToAdd});
+    print('[Spring 전송] 📦 Request Body: $requestBody');
+    print('[Spring 전송] 📏 Body 크기: ${requestBody.length} bytes');
 
     try {
       final response = await http.post(
@@ -429,16 +448,23 @@ class _WordDigitalDocPageState extends State<WordDigitalDocPage> {
           'ngrok-skip-browser-warning': 'true',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'wordsEn': _wordsToAdd}),
+        body: requestBody,
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final decoded = jsonDecode(response.body);
+
+        // ✅ 디버깅: Spring 응답 출력
+        print('[Spring 응답] 📥 응답 전체: $decoded');
+
         final List results = decoded is List
             ? decoded
             : (decoded is Map && decoded['results'] is List
                 ? decoded['results']
                 : []);
+
+        // ✅ 디버깅: results 배열 크기 출력
+        print('[Spring 응답] 🔢 results 배열 크기: ${results.length}');
 
         final Map<String, List<WordMeaning>> newMeanings = {};
         for (final item in results) {
@@ -462,6 +488,10 @@ class _WordDigitalDocPageState extends State<WordDigitalDocPage> {
           }
           if (list.isNotEmpty) newMeanings[canonical] = list;
         }
+
+        // ✅ 디버깅: 최종 뜻 조회 결과
+        print('[Spring 응답] ✅ 뜻 조회 성공한 단어 개수: ${newMeanings.length}');
+        print('[Spring 응답] 📚 조회된 단어: ${newMeanings.keys.toList()}');
 
         setState(() {
           _wordsWithMeanings = newMeanings;
