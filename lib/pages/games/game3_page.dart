@@ -353,6 +353,8 @@ class _Game3PageState extends State<Game3Page> {
 
   bool isLoading = true;
 
+  bool showNoWordsOverlay = false;
+
   @override
   void initState() {
     super.initState();
@@ -432,7 +434,7 @@ class _Game3PageState extends State<Game3Page> {
       List<WordItem> wordItems = await GameApi.fetchAllWords(storedUserId);
       print("총 ${wordItems.length}개의 단어 조회 완료");
 
-      // 게임에서 사용할 Map 형태로 변환
+      // 게임에서 사용될 형태로 맵핑
       List<Map<String, dynamic>> allWords = wordItems.map((w) {
         return {
           "wordEn": w.word,
@@ -440,6 +442,22 @@ class _Game3PageState extends State<Game3Page> {
         };
       }).toList();
 
+      // 🔥 단어가 없으면 오버레이 띄우기
+      if (allWords.isEmpty) {
+        setState(() {
+          showNoWordsOverlay = true;
+          isLoading = false;
+        });
+
+        // 3초 뒤 뒤로가기
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) Navigator.pop(context);
+        });
+
+        return;
+      }
+
+      // 단어가 있을 때는 정상 로드
       setState(() {
         words = allWords;
         if (words.isNotEmpty) _nextQuestion();
@@ -912,6 +930,39 @@ class _Game3PageState extends State<Game3Page> {
                                   textAlign: TextAlign.center,
                                 ),
                               ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // 🔥 단어 없음 오버레이 (전체 화면 반투명 + 중앙 안내문)
+                  if (showNoWordsOverlay)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.white.withOpacity(0.85), // 전체 화면 흰색 반투명
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            margin: const EdgeInsets.symmetric(horizontal: 24),
+                            decoration: BoxDecoration(
+                              color: Colors.white, // 안내문 박스는 불투명 흰색
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 12,
+                                  spreadRadius: 2,
+                                ),
+                              ],
+                            ),
+                            child: const Text(
+                              "단어장에 단어가 있지 않습니다.\n단어를 추가하여서 게임을 진행해주세요.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
                             ),
                           ),
                         ),

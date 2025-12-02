@@ -258,9 +258,63 @@ class _Game2PageState extends State<Game2Page> {
               })
           .toList();
 
-      if (words.isNotEmpty) _nextQuestion();
+      // 🔥 단어 비어있으면 오버레이 표시 + 3초 후 뒤로가기
+      if (words.isEmpty) {
+        isLoading = false;
+        Future.delayed(Duration.zero, () {
+          _showNoWordsOverlay();
+        });
+        return;
+      }
 
+      _nextQuestion();
       isLoading = false;
+    });
+  }
+
+  void _showNoWordsOverlay() {
+    OverlayState? overlayState = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Positioned.fill(
+        child: Container(
+          color: Colors.white.withOpacity(0.85), // 🔥 흰색 반투명
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    spreadRadius: 3,
+                  ),
+                ],
+              ),
+              child: const Text(
+                "단어장에 단어가 있지 않습니다.\n단어를 추가하여서 게임을 진행해주세요.",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlayState.insert(overlayEntry);
+
+    // ⏳ 3초 후 자동 종료 + 뒤로가기
+    Future.delayed(const Duration(seconds: 3), () {
+      overlayEntry.remove();
+      if (mounted) Navigator.pop(context);
     });
   }
 
