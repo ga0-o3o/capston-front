@@ -117,7 +117,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
       await _saveMessages();
       print('[SERVER_LOAD] ✅ Loaded ${_messages.length} messages');
-
     } catch (e) {
       print('[SERVER_LOAD] ⚠️ Failed to fetch logs: $e');
       await _loadMessagesFromLocal();
@@ -136,7 +135,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
         final List<dynamic> decoded = jsonDecode(savedMessagesJson);
         setState(() {
           _messages.clear();
-          _messages.addAll(decoded.map((m) => ChatMessage.fromJson(m)).toList());
+          _messages
+              .addAll(decoded.map((m) => ChatMessage.fromJson(m)).toList());
         });
         print('[LOCAL_LOAD] Loaded ${_messages.length} messages');
       }
@@ -148,7 +148,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
   Future<void> _saveMessages() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final messagesJson = jsonEncode(_messages.map((m) => m.toJson()).toList());
+      final messagesJson =
+          jsonEncode(_messages.map((m) => m.toJson()).toList());
 
       await prefs.setString('level_test_messages', messagesJson);
       await prefs.setInt('server_dialog_num', _serverDialogNum);
@@ -216,7 +217,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
                   Expanded(
                     child: Text(
                       'Level Updated: $previousRank → ${response.evaluatedLevel}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -230,7 +232,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
       await _saveMessages();
       _scrollToBottom();
-
     } catch (e) {
       if (mounted) setState(() => _isSending = false);
       print('[ERROR] Send message failed: $e');
@@ -386,7 +387,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
               Center(
                 child: Text(
                   'LevelTest',
-                  style: GoogleFonts.pacifico(fontSize: 30, color: Colors.white),
+                  style:
+                      GoogleFonts.pacifico(fontSize: 30, color: Colors.white),
                 ),
               ),
               Positioned(
@@ -446,60 +448,59 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   Widget _buildMessageBubble(ChatMessage m) {
-  if (m.isUser) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF4E6E99),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Text(m.text, style: const TextStyle(color: Colors.white)),
-      ),
-    );
-  }
-
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      ClipOval(
-        child: Image.asset('assets/images/hanbok.png',
-            width: 40, height: 40, fit: BoxFit.cover),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
+    if (m.isUser) {
+      return Align(
+        alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: const Color(0xFF4E6E99),
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(m.text),
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  'Your Level: $_userRank',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF4E6E99),
-                    fontWeight: FontWeight.bold,
+          child: Text(m.text, style: const TextStyle(color: Colors.white)),
+        ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipOval(
+          child: Image.asset('assets/images/hanbok.png',
+              width: 40, height: 40, fit: BoxFit.cover),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(m.text),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Your Level: $_userRank',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF4E6E99),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
-
+      ],
+    );
+  }
 
   Widget _buildInputArea() {
     return Container(
@@ -513,7 +514,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
                 controller: _controller,
                 enabled: !_isSending,
                 decoration: InputDecoration(
-                  hintText: 'Type your message...',
+                  hintText: '영어로 메시지를 입력하세요...',
                   filled: true,
                   fillColor: const Color(0xFFF6F0E9),
                   border: OutlineInputBorder(

@@ -279,7 +279,7 @@ class _WordMyTabState extends State<WordMyTab> {
               controller: _searchCtrl,
               onTap: () => setState(() => _isSearching = true),
               decoration: InputDecoration(
-                hintText: '단어 검색',
+                hintText: '등록된 단어 검색',
                 filled: true,
                 fillColor:
                     _isSearching ? const Color(0xFF3D4C63) : Colors.white,
