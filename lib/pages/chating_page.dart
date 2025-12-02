@@ -359,7 +359,13 @@ class _ChatingPageState extends State<ChatingPage> {
                     child: Padding(
                       padding: const EdgeInsets.all(10),
                       child: ListView.builder(
-                        reverse: true, // 새로운 메시지가 아래가 아닌 위로
+                        reverse: true,
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                          left: 10,
+                          right: 10,
+                          top: 10,
+                        ),
                         itemCount: _messages.length,
                         itemBuilder: (context, index) {
                           final message =

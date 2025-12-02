@@ -340,7 +340,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFFF6F0E9),
       body: Column(
         children: [
@@ -449,7 +448,12 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       itemCount: _messages.length,
       itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
     );
