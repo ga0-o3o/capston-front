@@ -268,6 +268,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (mounted) _scrollToBottom();
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -339,6 +340,9 @@ class _LevelTestPageState extends State<LevelTestPage> {
   // -----------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToBottom();
+    });
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF6F0E9),
@@ -453,7 +457,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
         left: 16,
         right: 16,
         top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 80,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 80, // 키보드 공간 확보
       ),
       itemCount: _messages.length,
       itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
