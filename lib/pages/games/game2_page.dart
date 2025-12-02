@@ -434,7 +434,7 @@ class _Game2PageState extends State<Game2Page> {
                   maxLines: null,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
-                    labelText: "정답 입력",
+                    labelText: "영작하시오.",
                   ),
                   onSubmitted: (_) => checkAnswer(),
                 ),

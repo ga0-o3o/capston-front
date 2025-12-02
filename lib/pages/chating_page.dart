@@ -5,6 +5,8 @@ import 'package:english_study/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:audioplayers/audioplayers.dart';
 
+import 'menual_page.dart';
+
 class ChatingPage extends StatefulWidget {
   const ChatingPage({Key? key}) : super(key: key);
 
@@ -54,6 +56,7 @@ class _ChatingPageState extends State<ChatingPage> {
   final AudioPlayer _audioPlayer = AudioPlayer(); // 오디오 플레이어
 
   static const String _chatStorageKey = 'chat_messages';
+  bool _manualMode = false;
 
   @override
   void initState() {
@@ -65,15 +68,78 @@ class _ChatingPageState extends State<ChatingPage> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
+    // ================================
+    // 메뉴얼 모드 상태 관리 변수
+    // ================================
+    // 페이지에 아래 변수 추가해줘야 함:
+    // bool _manualMode = false;
+
+    // -------------------------------
+    // 1) 메뉴얼 종료 요청
+    // -------------------------------
+    if (_manualMode && text.toLowerCase() == "quit") {
+      setState(() {
+        _manualMode = false;
+        _messages.add(ChatMessage(
+          text: "메뉴얼 모드를 종료합니다.",
+          isUser: false,
+        ));
+      });
+      _messageController.clear();
+      return;
+    }
+
+    // -------------------------------
+    // 2) 메뉴얼 모드에서 번호 입력 처리
+    // -------------------------------
+    if (_manualMode) {
+      final number = int.tryParse(text);
+      if (number != null && ManualData.manualDetail.containsKey(number)) {
+        setState(() {
+          _messages.add(ChatMessage(
+            text: ManualData.manualDetail[number]!,
+            isUser: false,
+          ));
+        });
+      } else {
+        setState(() {
+          _messages.add(ChatMessage(
+            text: "올바른 번호를 입력하세요.\n종료하려면 'quit' 입력",
+            isUser: false,
+          ));
+        });
+      }
+      _messageController.clear();
+      return;
+    }
+
+    // -------------------------------
+    // 3) 한국어 입력이면 메뉴얼 출력
+    // -------------------------------
+    final koreanReg = RegExp(r'[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]');
+    if (koreanReg.hasMatch(text)) {
+      setState(() {
+        _manualMode = true;
+        _messages.add(ChatMessage(
+          text: ManualData.menuList,
+          isUser: false,
+        ));
+      });
+      _messageController.clear();
+      return;
+    }
+
+    // ==================================================
+    // 🚀🚀 여기는 영어 입력 시에만 동작 (AI로 전송)
+    // ==================================================
+
     setState(() {
       _messages.add(ChatMessage(text: text, isUser: true));
       _isLoading = true;
     });
     _messageController.clear();
 
-    // ✅ 추가: API 호출 전 토큰 로드 확인
     try {
-      // ✅ 토큰이 로드되었는지 먼저 확인
       final tokenLoaded = await ApiService.ensureTokenLoaded();
       if (!tokenLoaded) {
         throw Exception('로그인이 필요합니다. 토큰을 찾을 수 없습니다.');
