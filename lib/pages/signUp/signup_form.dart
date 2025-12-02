@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../login/login_page.dart';
 import 'signup_service.dart';
 import 'animated_button.dart';
+import 'package:flutter/services.dart';
 
 class SignupForm extends StatefulWidget {
   const SignupForm({super.key});
@@ -145,7 +145,12 @@ class _SignupFormState extends State<SignupForm> {
                 const SizedBox(height: 20),
                 TextField(
                   controller: _idController,
-                  decoration: const InputDecoration(labelText: "아이디"),
+                  decoration:
+                      const InputDecoration(labelText: "아이디(특수문자는 불가능!)"),
+                  inputFormatters: [
+                    // 영문 + 숫자만 허용
+                    FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
