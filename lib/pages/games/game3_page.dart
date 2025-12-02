@@ -909,7 +909,7 @@ class _Game3PageState extends State<Game3Page> {
                               children: const [
                                 Text(
                                   "미로를 탈출합시다!\n빨간 지점까지 이동하세요!\n"
-                                  "미로를 선택하면 캐릭터를 움직일 수 있습니다.\n"
+                                  "미로를 선택하면 캐릭터를\n움직일 수 있습니다.\n"
                                   "갈림길마다 문제를 풀고 \n방향을 선택하세요!\n"
                                   "방향 선택을 3초 안에 결정하지 않으면 \n다시 문제를 풀어야 합니다.",
                                   style: TextStyle(
@@ -956,7 +956,7 @@ class _Game3PageState extends State<Game3Page> {
                               ],
                             ),
                             child: const Text(
-                              "단어장에 단어가 있지 않습니다.\n단어를 추가하여서 게임을 진행해주세요.",
+                              "단어장에 단어가 있지 않습니다.\n단어를 추가하여서\n게임을 진행해주세요.",
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 20,
