@@ -4,6 +4,7 @@ import 'word_create.dart';
 import 'word_edit.dart';
 import 'word_api.dart';
 import 'word_image.dart';
+import 'word_digital_doc.dart';
 import 'word_dialogs.dart';
 import '../fake_progress_bar.dart';
 
@@ -198,6 +199,11 @@ class _WordMyTabState extends State<WordMyTab> {
               title: const Text('이미지로 추가 (형광펜 인식)'),
               onTap: () => Navigator.pop(context, 'image'),
             ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf),
+              title: const Text('디지털 문서 이미지로 추가 (형광펜 인식)'),
+              onTap: () => Navigator.pop(context, 'pdf'),
+            ),
           ],
         ),
       ),
@@ -256,6 +262,36 @@ class _WordMyTabState extends State<WordMyTab> {
       );
 
       // 이미지 추가 후 단어 새로고침
+      if (mounted) {
+        setState(() => _loading = true);
+        await _fetchWords();
+        widget.onAdd();
+        if (mounted) setState(() => _loading = false);
+      }
+    }
+
+    // ③ PDF/디지털 문서로 추가 → 픽셀 색상 선택 UI로 이동
+    if (result == 'pdf') {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: Colors.transparent,
+        builder: (_) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            width: 400,
+            height: 600,
+            child: WordDigitalDocPage(
+              wordbookId: widget.wordbookId,
+            ),
+          ),
+        ),
+      );
+
+      // 디지털 문서 추가 후 단어 새로고침
       if (mounted) {
         setState(() => _loading = true);
         await _fetchWords();
