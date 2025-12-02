@@ -64,6 +64,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
     } finally {
       if (!mounted) return;
       setState(() => _isLoading = false);
+
       _scrollToBottom();
     }
   }
@@ -210,6 +211,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
           _userRank = response.currentLevel;
           _isSending = false;
         });
+        _scrollToBottom();
 
         if (response.levelChanged && response.evaluatedLevel.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -338,9 +340,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
   // -----------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _scrollToBottom();
-    });
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF6F0E9),
