@@ -2,7 +2,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -48,12 +47,13 @@ class ApiService {
         return false;
       }
 
-      if (expiry > 0 &&
-          DateTime.now().millisecondsSinceEpoch > expiry) {
-        print('[API_SERVICE] ⚠️ Token may be expired (token_expiry passed), but backend will validate.');
+      if (expiry > 0 && DateTime.now().millisecondsSinceEpoch > expiry) {
+        print(
+            '[API_SERVICE] ⚠️ Token may be expired (token_expiry passed), but backend will validate.');
       }
 
-      print('[API_SERVICE] ✅ Token loaded (prefix): ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+      print(
+          '[API_SERVICE] ✅ Token loaded (prefix): ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
       return true;
     } catch (e) {
       print('[API_SERVICE] ❌ Error loading token: $e');
@@ -82,7 +82,8 @@ class ApiService {
             continue;
           }
           print('[API_SERVICE] ❌ No JWT token found after $retries attempts');
-          print('[API_SERVICE] All SharedPreferences keys: ${prefs.getKeys().toList()}');
+          print(
+              '[API_SERVICE] All SharedPreferences keys: ${prefs.getKeys().toList()}');
           return null;
         }
 
@@ -90,10 +91,12 @@ class ApiService {
         if (expiry != null &&
             expiry > 0 &&
             DateTime.now().millisecondsSinceEpoch > expiry) {
-          print('[API_SERVICE] ⚠️ token_expiry passed, but token will be sent to backend. Backend will validate.');
+          print(
+              '[API_SERVICE] ⚠️ token_expiry passed, but token will be sent to backend. Backend will validate.');
         }
 
-        print('[API_SERVICE] ✅ JWT token acquired (attempt $attempt): ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+        print(
+            '[API_SERVICE] ✅ JWT token acquired (attempt $attempt): ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
         return token;
       } catch (e) {
         print('[API_SERVICE] ❌ Error getting token (attempt $attempt): $e');
@@ -175,7 +178,8 @@ class ApiService {
       final token = useAuth ? await _getJwtToken() : null;
 
       if (useAuth && (token == null || token.isEmpty)) {
-        print('[API_SERVICE] ❌ ERROR: Authentication required but no token found!');
+        print(
+            '[API_SERVICE] ❌ ERROR: Authentication required but no token found!');
         throw Exception('No auth token found. Please login first.');
       }
 
@@ -200,7 +204,8 @@ class ApiService {
       print('[API_SERVICE] Response status: ${res.statusCode}');
 
       if (res.statusCode == 401) {
-        print('[API_SERVICE] ❌ 401 Unauthorized - Token may be invalid or expired');
+        print(
+            '[API_SERVICE] ❌ 401 Unauthorized - Token may be invalid or expired');
         throw Exception('인증이 만료되었습니다. 다시 로그인해주세요.');
       }
 
@@ -288,13 +293,16 @@ class ApiService {
 
   /// 🔹 채팅 로그 가져오기
   /// GET /api/chat/logs
-  static Future<List<Map<String, dynamic>>> getChatLogs({int? chatOrder}) async {
+  static Future<List<Map<String, dynamic>>> getChatLogs(
+      {int? chatOrder}) async {
     try {
-      final url = fastApiUrl;
+      final url = UrlConfig.fastApiChatPodcastBaseUrl;
+
       var uri = Uri.parse('$url/api/chat/logs');
 
       if (chatOrder != null) {
-        uri = uri.replace(queryParameters: {'chat_order': chatOrder.toString()});
+        uri =
+            uri.replace(queryParameters: {'chat_order': chatOrder.toString()});
       }
 
       print('[API_SERVICE] 🔍 Getting chat logs from: $uri');
@@ -331,7 +339,8 @@ class ApiService {
     required String message,
     bool initialChat = false,
   }) async {
-    final url = fastApiUrl;
+    final url = UrlConfig.fastApiChatPodcastBaseUrl;
+
     final uri = Uri.parse('$url/api/chat');
 
     print('');
@@ -367,7 +376,8 @@ class ApiService {
   static Future<PodcastResponse> generatePodcastFromConversation({
     required String conversationHistory,
   }) async {
-    final url = fastApiUrl;
+    final url = UrlConfig.fastApiChatPodcastBaseUrl;
+
     final uri = Uri.parse('$url/api/podcast/generate');
 
     print('[API_SERVICE] 🎙️ Generating podcast from conversation (FastAPI)');
