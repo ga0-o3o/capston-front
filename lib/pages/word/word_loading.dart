@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'word_api.dart';
+import 'package:gif_view/gif_view.dart';
 
 class WordLoadingPage extends StatefulWidget {
   final Future<void> Function() task;
@@ -20,27 +21,40 @@ class _WordLoadingPageState extends State<WordLoadingPage> {
   String? selectedKr;
   Set<String> matched = {};
 
-  bool loadingNext = false; // 새 문제 로딩 중인지 체크
+  bool loadingNext = false;
+  bool alreadyPopped = false; // pop 중복 방지
+
+  List<String> _krList = [];
 
   @override
   void initState() {
     super.initState();
-    _initialize();
+    _startProcess();
   }
 
-  Future<void> _initialize() async {
+  /// 🔥 로딩 시작 + task 실행 + 종료 처리
+  Future<void> _startProcess() async {
+    // 랜덤 단어 첫 로딩
     await _fetchRandomWords();
 
-    // 로딩 작업 실행
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        await widget.task();
-      } finally {
-        if (mounted) Navigator.of(context).pop();
-      }
-    });
+    // OCR 등 실제 작업 실행
+    try {
+      await widget.task(); // <-- task가 끝나는 순간 로딩 종료
+    } finally {
+      _safePop(); // <-- 단 한 번만 pop
+    }
   }
 
+  /// 🔥 pop 안전 처리 (중복 pop 방지)
+  void _safePop() {
+    if (!mounted) return;
+    if (alreadyPopped) return;
+    alreadyPopped = true;
+
+    Navigator.of(context).pop();
+  }
+
+  /// 랜덤 단어 가져오기 (1회 + 전부 맞추면 다시 요청)
   Future<void> _fetchRandomWords() async {
     final result = await WordApi.fetchRandomWords();
     if (!mounted) return;
@@ -51,20 +65,27 @@ class _WordLoadingPageState extends State<WordLoadingPage> {
       selectedKr = null;
       matched.clear();
       loadingNext = false;
+
+      _krList = result.values.toList();
+      _krList.shuffle();
     });
   }
 
+  // -----------------------------
+  //     매칭 게임 로직
+  // -----------------------------
   void _selectEn(String en) {
     if (matched.contains(en)) return;
+
     setState(() => selectedEn = en);
 
     if (selectedKr != null) _checkMatch();
   }
 
   void _selectKr(String kr) {
-    if (matched.contains(words!.entries.firstWhere((e) => e.value == kr).key)) {
-      return;
-    }
+    final enMatched = words!.entries.firstWhere((e) => e.value == kr).key;
+
+    if (matched.contains(enMatched)) return;
 
     setState(() => selectedKr = kr);
 
@@ -75,23 +96,24 @@ class _WordLoadingPageState extends State<WordLoadingPage> {
     final correctKr = words![selectedEn];
 
     if (correctKr == selectedKr) {
-      // 정답 처리
+      // 정답
       setState(() {
         matched.add(selectedEn!);
         selectedEn = null;
         selectedKr = null;
       });
 
-      // 🔥 모든 문제 맞췄으면 다음 문제 로딩
+      // 전부 맞추면 다음 랜덤 세트
       if (matched.length == words!.length && !loadingNext) {
         loadingNext = true;
 
         Future.delayed(const Duration(milliseconds: 600), () {
+          if (!mounted) return;
           _fetchRandomWords();
         });
       }
     } else {
-      // 오답 처리
+      // 오답 → 0.5초 후 선택 해제
       Future.delayed(const Duration(milliseconds: 500), () {
         if (!mounted) return;
         setState(() {
@@ -102,16 +124,30 @@ class _WordLoadingPageState extends State<WordLoadingPage> {
     }
   }
 
+  // -----------------------------
+  //     UI
+  // -----------------------------
   @override
   Widget build(BuildContext context) {
     if (words == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: const Color(0xFFF6F0E9),
+        body: Center(
+          child: GifView.asset(
+            'assets/images/background/mailbox_send.gif',
+            width: 430,
+            height: 430,
+            frameRate: 12,
+            autoPlay: true,
+            loop: true,
+            fit: BoxFit.contain,
+          ),
+        ),
       );
     }
 
     final enList = words!.keys.toList();
-    final krList = words!.values.toList()..shuffle();
+    final krList = _krList;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F0E9),
@@ -120,7 +156,7 @@ class _WordLoadingPageState extends State<WordLoadingPage> {
           children: [
             const SizedBox(height: 20),
             const Text(
-              '로딩 중... 단어 매칭 게임!',
+              '단어 추출 중...',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
@@ -130,46 +166,45 @@ class _WordLoadingPageState extends State<WordLoadingPage> {
             ),
             const SizedBox(height: 20),
             Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // 왼쪽 영어
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: enList.map((en) {
-                      final isMatched = matched.contains(en);
-                      final isSelected = selectedEn == en;
+              child: SingleChildScrollView(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 왼쪽 영어 리스트
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: enList.map((en) {
+                        return _buildWordBox(
+                          text: en,
+                          selected: selectedEn == en,
+                          matched: matched.contains(en),
+                          onTap: () => _selectEn(en),
+                        );
+                      }).toList(),
+                    ),
 
-                      return _buildWordBox(
-                        text: en,
-                        selected: isSelected,
-                        matched: isMatched,
-                        onTap: () => _selectEn(en),
-                      );
-                    }).toList(),
-                  ),
+                    const SizedBox(width: 40),
 
-                  const SizedBox(width: 40),
+                    // 오른쪽 한국어 리스트
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: krList.map((kr) {
+                        final enKey =
+                            words!.entries.firstWhere((e) => e.value == kr).key;
 
-                  // 오른쪽 한국어
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: krList.map((kr) {
-                      final enMatched =
-                          words!.entries.firstWhere((e) => e.value == kr).key;
-
-                      final isMatched = matched.contains(enMatched);
-                      final isSelected = selectedKr == kr;
-
-                      return _buildWordBox(
-                        text: kr,
-                        selected: isSelected,
-                        matched: isMatched,
-                        onTap: () => _selectKr(kr),
-                      );
-                    }).toList(),
-                  ),
-                ],
+                        return _buildWordBox(
+                          text: kr,
+                          selected: selectedKr == kr,
+                          matched: matched.contains(enKey),
+                          onTap: () => _selectKr(kr),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
