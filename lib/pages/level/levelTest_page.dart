@@ -64,7 +64,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
     } finally {
       if (!mounted) return;
       setState(() => _isLoading = false);
-
       _scrollToBottom();
     }
   }
@@ -211,7 +210,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
           _userRank = response.currentLevel;
           _isSending = false;
         });
-        _scrollToBottom();
 
         if (response.levelChanged && response.evaluatedLevel.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -269,13 +267,14 @@ class _LevelTestPageState extends State<LevelTestPage> {
   // -----------------------------------------------------------
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
+      if (!mounted) return;
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
@@ -341,7 +340,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF6F0E9),
       body: Column(
         children: [
@@ -448,18 +446,11 @@ class _LevelTestPageState extends State<LevelTestPage> {
       );
     }
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: ListView.builder(
-        controller: _scrollController,
-        itemCount: _messages.length,
-        itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
-      ),
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.all(16),
+      itemCount: _messages.length,
+      itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
     );
   }
 
@@ -519,9 +510,10 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   Widget _buildInputArea() {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(color: Colors.white),
+      child: SafeArea(
         child: Row(
           children: [
             Expanded(
@@ -532,12 +524,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
                   hintText: '영어로 메시지를 입력하세요...',
                   filled: true,
                   fillColor: const Color(0xFFF6F0E9),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(24),
                     borderSide: BorderSide.none,
                   ),
                 ),
