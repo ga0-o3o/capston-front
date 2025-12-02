@@ -58399,7 +58399,7 @@ case 1:return A.t(q,r)}})
 return A.u($async$oo,r)},
 I(a){var s=this,r=null,q=t.p,p=A.b0(r,A.hG(!0,A.bS(A.dr(B.aJ,A.a([A.bK(A.ac("LevelTest",r,r,r,r,A.aZ7().$2$color$fontSize(B.h,30),r,r),r,r),A.rW(r,A.h1(r,r,B.Pf,r,r,s.gauF(),r,r,r),r,r,r,6,15,r)],q),B.p,B.ac),70,r),B.Y,!0),B.o,B.c9,r,r,r,r,r,r,r,r,r,1/0),o=A.ac("Level: "+s.w,r,r,r,r,r,r,r),n=A.aw(12)
 n=A.b0(r,A.m6(B.bY,A.a([B.rR,o,A.b0(r,A.ac("Dialog "+s.r+"/100",r,r,r,r,r,r,r),B.o,r,r,new A.bl(B.K4,r,r,n,r,r,B.D),r,r,r,r,B.qN,r,r,r)],q),B.cg,0,10),B.o,r,r,B.p8,r,r,r,r,B.qI,r,r,r)
-return A.dS(r,B.aL,A.aT(A.a([p,n,A.d6(s.x?B.l1:s.ag2(),1),s.ag_()],q),B.m,B.q,B.t),r,r,r,r,r)},
+return A.dS(r,B.aL,A.aT(A.a([p,n,A.d6(s.x?B.l1:s.ag2(),1),s.ag_()],q),B.m,B.q,B.t),r,r,r,r,!0)},
 auG(){var s=this.c
 s.toString
 A.eo(null,!0,new A.aMX(this),s,t.z)},
@@ -58408,7 +58408,7 @@ if(q.length===0)return B.Ir
 s=r.c
 s.toString
 s=A.bL(s,null,t.w).w
-return A.A8(r.e,new A.aMG(r),q.length,new A.af(16,16,16,s.f.d+20),!1)},
+return A.A8(r.e,new A.aMG(r),q.length,new A.af(16,16,16,s.f.d+80),!1)},
 ag1(a){var s,r,q,p=null
 if(a.b){s=A.aw(16)
 return new A.cB(B.dn,p,p,A.b0(p,A.ac(a.a,p,p,p,p,B.nZ,p,p),B.o,p,p,new A.bl(B.v,p,p,s,p,p,B.D),p,p,p,B.qB,B.dt,p,p,p),p)}s=A.b51(A.hz("assets/images/hanbok.png",B.eD,40,40))
@@ -58419,7 +58419,7 @@ ag_(){var s,r,q=this,p=null,o=q.y
 o=A.d6(A.fu(q.d,A.ly(p,new A.eu(4,A.aw(24),B.u),p,p,p,p,p,p,!0,p,p,p,p,p,p,B.aL,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p,"\uc601\uc5b4\ub85c \uba54\uc2dc\uc9c0\ub97c \uc785\ub825\ud558\uc138\uc694...",p,p,p,p,p,p,p,p,p,!0,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p),!o,p,p,p,p,p,1,p,!1,p,new A.aMF(q),p,p,p),1)
 s=q.y
 r=s?B.a_m:B.rO
-return A.b0(p,A.hG(!0,A.c1(A.a([o,B.hT,A.b0(p,A.h1(p,p,r,p,p,s?p:q.gaoV(),p,p,p),B.o,p,p,B.GG,p,p,p,p,p,p,p,p)],t.p),B.m,B.q,B.t,0),B.Y,!0),B.o,p,p,B.p8,p,p,p,p,B.an,p,p,p)}}
+return A.hG(!0,A.b0(p,A.c1(A.a([o,B.hT,A.b0(p,A.h1(p,p,r,p,p,s?p:q.gaoV(),p,p,p),B.o,p,p,B.GG,p,p,p,p,p,p,p,p)],t.p),B.m,B.q,B.t,0),B.o,p,p,B.p8,p,p,p,p,B.an,p,p,p),B.Y,!0)}}
 A.aMK.prototype={
 $0(){return this.a.x=!0},
 $S:0}
