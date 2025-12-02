@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // 단어장 추가/수정용 다이얼로그
 Future<String?> showWordbookNameDialog(BuildContext context,
@@ -34,7 +35,11 @@ Future<String?> showWordbookNameDialog(BuildContext context,
             const SizedBox(height: 16),
             TextField(
               controller: controller,
+              maxLength: 12,
+              maxLengthEnforcement:
+                  MaxLengthEnforcement.enforced, // ★ 실제로 입력 차단
               decoration: const InputDecoration(
+                counterText: "",
                 labelText: '단어장 이름',
                 filled: true,
                 fillColor: Colors.white70,
@@ -57,8 +62,29 @@ Future<String?> showWordbookNameDialog(BuildContext context,
                   ),
                   child: const Text('취소'),
                 ),
+
+                // ✅ 검증 포함된 "추가/수정" 버튼 (딱 하나만)
                 ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
+                  onPressed: () {
+                    final text = controller.text.trim();
+
+                    if (text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("단어장 이름을 입력해주세요.")),
+                      );
+                      return;
+                    }
+
+                    if (text.length > 12) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text("단어장 이름은 12자 이내로 입력해주세요.")),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(context, true); // ← 검증 통과 후 OK
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4E6E99),
                     foregroundColor: Colors.white,
