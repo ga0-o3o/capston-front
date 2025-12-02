@@ -340,6 +340,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFFF6F0E9),
       body: Column(
         children: [
