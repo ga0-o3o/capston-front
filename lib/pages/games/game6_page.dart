@@ -296,6 +296,8 @@ class _Game6PageState extends State<Game6Page> {
   bool showStartMessage = true; // 1번 안내문
   bool showSpeedUpMessage = false; // 2번 안내문
 
+  bool showNoWordsOverlay = false; // 단어 없을 경우 안내문
+
   @override
   void initState() {
     super.initState();
@@ -395,7 +397,19 @@ class _Game6PageState extends State<Game6Page> {
         isLoading = false;
       });
 
-      if (words.isNotEmpty) _nextQuestion(); // ⚡ setState 바깥에서 호출
+      if (allWords.isEmpty) {
+        setState(() {
+          showNoWordsOverlay = true;
+          isLoading = false;
+        });
+
+        // 3초 후 자동 종료
+        Future.delayed(const Duration(seconds: 3), () {
+          if (mounted) Navigator.pop(context);
+        });
+
+        return;
+      }
     } catch (e) {
       print("❌ 단어 조회 실패: $e");
       setState(() => isLoading = false);
@@ -645,6 +659,40 @@ class _Game6PageState extends State<Game6Page> {
                         ),
                       ),
                     ],
+                    // 🔥 단어 없음 오버레이 (전체 화면 덮기)
+                    if (showNoWordsOverlay)
+                      Positioned.fill(
+                        child: Container(
+                          color: Colors.white.withOpacity(0.85), // 전체 화면 흰색 반투명
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              margin:
+                                  const EdgeInsets.symmetric(horizontal: 24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 12,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: const Text(
+                                "단어장에 단어가 없습니다.\n단어를 추가한 후\n게임을 진행해주세요.",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),

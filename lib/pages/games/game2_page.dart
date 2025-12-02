@@ -295,7 +295,7 @@ class _Game2PageState extends State<Game2Page> {
                 ],
               ),
               child: const Text(
-                "단어장에 단어가 있지 않습니다.\n단어를 추가하여서 게임을 진행해주세요.",
+                "단어장에 단어가 있지 않습니다.\n단어를 추가하여서\n게임을 진행해주세요.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
