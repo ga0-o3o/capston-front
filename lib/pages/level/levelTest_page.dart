@@ -448,20 +448,18 @@ class _LevelTestPageState extends State<LevelTestPage> {
       );
     }
 
-    return LayoutBuilder(
-      builder: (_, constraints) {
-        return ListView.builder(
-          controller: _scrollController,
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: 120, // ← 네비바 + 입력창 높이 보정
-          ),
-          itemCount: _messages.length,
-          itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
-        );
-      },
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: ListView.builder(
+        controller: _scrollController,
+        itemCount: _messages.length,
+        itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
+      ),
     );
   }
 
@@ -522,55 +520,52 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
   Widget _buildInputArea() {
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(color: Colors.white),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    enabled: !_isSending,
-                    decoration: InputDecoration(
-                      hintText: '영어로 메시지를 입력하세요...',
-                      filled: true,
-                      fillColor: const Color(0xFFF6F0E9),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                enabled: !_isSending,
+                decoration: InputDecoration(
+                  hintText: '영어로 메시지를 입력하세요...',
+                  filled: true,
+                  fillColor: const Color(0xFFF6F0E9),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(25),
+                    borderSide: BorderSide.none,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF4E6E99),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: _isSending
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(Colors.white),
-                            ),
-                          )
-                        : const Icon(Icons.send, color: Colors.white),
-                    onPressed: _isSending ? null : _sendMessage,
-                  ),
-                ),
-              ],
+                onSubmitted: (_) => _sendMessage(),
+              ),
             ),
-          ),
-          const SizedBox(height: 20), // ← 네비바와의 간격
-        ],
+            const SizedBox(width: 10),
+            Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF4E6E99),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: _isSending
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.send, color: Colors.white),
+                onPressed: _isSending ? null : _sendMessage,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
