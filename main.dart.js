@@ -56202,7 +56202,7 @@ return A.u($async$tZ,r)},
 I(a){var s,r,q=this,p=null,o=A.bP(a,p,t.w).w,n=t.p,m=A.aX(A.a([B.MU],n),B.n,B.q,B.t),l=A.rT(p,new A.aW(B.NE,A.c5(A.a([A.h0(p,p,B.Ps,p,p,new A.aH6(q),p,p,p),A.d9(A.bV(A.ac("HiLight",p,p,p,p,A.aYK().$2$color$fontSize(B.h,30),p,p),p,p),1),new A.f2(new A.aH7(),p)],n),B.n,B.cJ,B.t,0),p),p,p,0,0,40,p),k=A.a([B.bs,A.d9(new A.aW(B.Nz,A.A7(p,new A.aH8(q),q.e.length,p,!0),p),1)],n)
 if(q.f)k.push(B.Wz)
 s=q.f
-s=A.d9(new A.fj(B.Gy,A.ft(q.d,A.lx(p,new A.et(4,A.az(25),B.u),p,B.NH,p,p,p,p,!0,p,p,p,p,p,p,B.h,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p,"\uba54\uc2dc\uc9c0\ub97c \uc785\ub825\ud558\uc138\uc694...",p,p,p,p,p,p,p,p,p,!0,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p),!s,p,B.k5,5,1,!1,p,p,p,p,B.nS),p),1)
+s=A.d9(new A.fj(B.Gy,A.ft(q.d,A.lx(p,new A.et(4,A.az(25),B.u),p,B.NH,p,p,p,p,!0,p,p,p,p,p,p,B.h,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p,"\uc601\uc5b4\ub85c \uba54\uc2dc\uc9c0\ub97c \uc785\ub825\ud558\uc138\uc694...",p,p,p,p,p,p,p,p,p,!0,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p),!s,p,B.k5,5,1,!1,p,p,p,p,B.nS),p),1)
 r=q.f?p:q.gatX()
 k.push(new A.aW(B.lF,A.c5(A.a([s,B.ct,A.cb(!1,B.rI,p,p,p,p,p,p,r,p,A.c3(p,p,B.v,p,p,p,p,p,p,p,p,p,B.qD,p,new A.b0(A.az(25),B.u),p,p,p,p,p))],n),B.n,B.q,B.t,0),p))
 return A.dV(p,B.c8,A.dr(B.aJ,A.a([l,new A.cy(B.ey,p,p,A.b6(p,A.aX(k,B.n,B.q,B.t),B.o,p,p,B.GG,p,o.a.b*0.75,p,p,p,p,p,p),p)],n),B.p,B.ac),p,new A.Uj(B.h,m,p),p,p,p)}}
@@ -58252,7 +58252,7 @@ r=A.az(16)
 q=t.p
 return A.c5(A.a([s,B.hQ,A.d9(A.b6(p,A.aX(A.a([A.ac(a.a,p,p,p,p,p,p,p),new A.aW(B.Nx,A.ac("Your Level: "+this.w,p,p,p,p,B.nV,p,p),p)],q),B.ar,B.q,B.t),B.o,p,p,new A.bq(B.h,p,p,r,p,p,B.G),p,p,p,B.qv,B.ds,p,p,p),1)],q),B.ar,B.q,B.t,0)},
 afU(){var s,r,q=this,p=null,o=q.y
-o=A.d9(A.ft(q.d,A.lx(p,new A.et(4,A.az(24),B.u),p,p,p,p,p,p,!0,p,p,p,p,p,p,B.aR,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p,"Type your message...",p,p,p,p,p,p,p,p,p,!0,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p),!o,p,p,1,p,!1,p,new A.aMu(q),p,p,p),1)
+o=A.d9(A.ft(q.d,A.lx(p,new A.et(4,A.az(24),B.u),p,p,p,p,p,p,!0,p,p,p,p,p,p,B.aR,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p,"\uc601\uc5b4\ub85c \uba54\uc2dc\uc9c0\ub97c \uc785\ub825\ud558\uc138\uc694...",p,p,p,p,p,p,p,p,p,!0,!0,p,p,p,p,p,p,p,p,p,p,p,p,p,p),!o,p,p,1,p,!1,p,new A.aMu(q),p,p,p),1)
 s=q.y
 r=s?B.a_j:B.rI
 return A.b6(p,A.hG(!0,A.c5(A.a([o,B.hQ,A.b6(p,A.h0(p,p,r,p,p,s?p:q.gaoR(),p,p,p),B.o,p,p,B.GB,p,p,p,p,p,p,p,p)],t.p),B.n,B.q,B.t,0),B.W,!0),B.o,p,p,B.p5,p,p,p,p,B.an,p,p,p)}}
@@ -60550,7 +60550,7 @@ return A.u($async$ot,r)},
 I(a){var s,r=this,q=null,p=r.w,o=p.a.a.length===0?r.d:r.e,n=r.x,m=n?B.c8:B.h,l=A.da(q,q,n?B.a8:B.d7,q,q,q,q,q,q,q,q,q,q,q,q,q,q,!0,q,q,q,q,q,q,q,q)
 n=r.x
 s=A.j1(B.mq,n?B.h:B.d7,q,q)
-s=A.lx(q,new A.et(4,A.az(16),B.u),q,q,q,q,q,q,!0,q,q,q,q,q,q,m,!0,q,q,q,q,q,q,q,q,q,q,q,q,q,l,"\ub2e8\uc5b4 \uac80\uc0c9",q,q,q,q,q,q,q,q,q,!0,!0,q,s,q,q,q,q,q,q,q,q,q,q,q,q)
+s=A.lx(q,new A.et(4,A.az(16),B.u),q,q,q,q,q,q,!0,q,q,q,q,q,q,m,!0,q,q,q,q,q,q,q,q,q,q,q,q,q,l,"\ub4f1\ub85d\ub41c \ub2e8\uc5b4 \uac80\uc0c9",q,q,q,q,q,q,q,q,q,!0,!0,q,s,q,q,q,q,q,q,q,q,q,q,q,q)
 p=A.ft(p,s,q,q,q,1,q,!1,q,q,new A.aWe(r),A.da(q,q,n?B.h:B.j,q,q,q,q,q,q,q,q,q,q,q,q,q,q,!0,q,q,q,q,q,q,q,q),q)
 if(r.f)n=B.Ii
 else{n=o.length
