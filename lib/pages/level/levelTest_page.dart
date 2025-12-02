@@ -62,6 +62,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
     } catch (e) {
       print('[ERROR] Failed to load messages: $e');
     } finally {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       _scrollToBottom();
     }
@@ -133,6 +134,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
       if (savedMessagesJson != null) {
         final List<dynamic> decoded = jsonDecode(savedMessagesJson);
+        if (!mounted) return;
         setState(() {
           _messages.clear();
           _messages
@@ -180,6 +182,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
       isUser: true,
       timestamp: DateTime.now(),
     );
+
+    if (!mounted) return;
 
     setState(() {
       _messages.add(userMessage);
@@ -263,6 +267,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
   // -----------------------------------------------------------
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -317,6 +322,8 @@ class _LevelTestPageState extends State<LevelTestPage> {
     await prefs.remove('level_test_messages');
     await prefs.remove('server_dialog_num');
     await prefs.remove('user_rank');
+
+    if (!mounted) return;
 
     setState(() {
       _messages.clear();

@@ -304,6 +304,7 @@ class _Game6PageState extends State<Game6Page> {
 
     game = Game6();
     game.onGameOut = () {
+      if (!mounted) return;
       setState(() {
         gameOver = true;
         _showGameOverDialog();
@@ -314,6 +315,7 @@ class _Game6PageState extends State<Game6Page> {
 
     // 1번 안내문 5초
     Future.delayed(const Duration(seconds: 5), () {
+      if (!mounted) return;
       setState(() {
         showStartMessage = false;
         showSpeedUpMessage = true; // 2번 안내문 시작
@@ -321,6 +323,7 @@ class _Game6PageState extends State<Game6Page> {
 
       // 2번 안내문 3초 후 사라짐
       Future.delayed(const Duration(seconds: 3), () {
+        if (!mounted) return;
         setState(() {
           showSpeedUpMessage = false;
         });
@@ -392,12 +395,14 @@ class _Game6PageState extends State<Game6Page> {
         };
       }).toList();
 
+      if (!mounted) return;
       setState(() {
         words = allWords;
         isLoading = false;
       });
 
       if (allWords.isEmpty) {
+        if (!mounted) return;
         setState(() {
           showNoWordsOverlay = true;
           isLoading = false;
@@ -440,6 +445,10 @@ class _Game6PageState extends State<Game6Page> {
         _showGameOverDialog(success: success);
       }
 
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       setState(() {});
     });
   }
