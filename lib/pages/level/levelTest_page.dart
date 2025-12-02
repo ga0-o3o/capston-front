@@ -268,7 +268,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (mounted) _scrollToBottom();
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -453,14 +452,19 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
     return ListView.builder(
       controller: _scrollController,
+      reverse: true, // ★★ 이것만 추가하면 키보드 올라올 때 마지막 메시지가 위로 밀리지 않음
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
         top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 80, // 키보드 공간 확보
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       itemCount: _messages.length,
-      itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
+      itemBuilder: (_, i) {
+        // reverse:true 했으니 index 반대로
+        final msg = _messages[_messages.length - 1 - i];
+        return _buildMessageBubble(msg);
+      },
     );
   }
 
