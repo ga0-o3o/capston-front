@@ -340,6 +340,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF6F0E9),
       body: Column(
         children: [
@@ -452,7 +453,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
         left: 16,
         right: 16,
         top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 80,
       ),
       itemCount: _messages.length,
       itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
@@ -515,10 +516,10 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   Widget _buildInputArea() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(color: Colors.white),
-      child: SafeArea(
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(color: Colors.white),
         child: Row(
           children: [
             Expanded(
