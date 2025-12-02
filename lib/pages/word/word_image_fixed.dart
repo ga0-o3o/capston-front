@@ -15,6 +15,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:http_parser/http_parser.dart';
 
 // ✅ 중앙 URL 관리 import
 import '../../config/url_config.dart';
@@ -120,9 +121,8 @@ class _WordImagePageState extends State<WordImagePage> {
     if (selection == null) return;
 
     if (selection == 'camera' || selection == 'gallery') {
-      await _pickImageMobile(selection == 'camera'
-          ? ImageSource.camera
-          : ImageSource.gallery);
+      await _pickImageMobile(
+          selection == 'camera' ? ImageSource.camera : ImageSource.gallery);
     } else if (selection == 'pdf') {
       await _pickPdfMobile();
     }
@@ -132,7 +132,14 @@ class _WordImagePageState extends State<WordImagePage> {
   Future<void> _pickFileDesktop() async {
     final res = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf'], // ✅ PDF 추가
+      allowedExtensions: [
+        'png',
+        'jpg',
+        'jpeg',
+        'gif',
+        'webp',
+        'pdf'
+      ], // ✅ PDF 추가
       allowMultiple: false,
       withData: true,
     );
@@ -140,8 +147,8 @@ class _WordImagePageState extends State<WordImagePage> {
     if (res == null || res.files.isEmpty) return;
 
     final f = res.files.single;
-    final bytes = f.bytes ??
-        (f.path != null ? await File(f.path!).readAsBytes() : null);
+    final bytes =
+        f.bytes ?? (f.path != null ? await File(f.path!).readAsBytes() : null);
 
     if (bytes == null) {
       if (!mounted) return;
@@ -188,8 +195,8 @@ class _WordImagePageState extends State<WordImagePage> {
     if (res == null || res.files.isEmpty) return;
 
     final f = res.files.single;
-    final bytes = f.bytes ??
-        (f.path != null ? await File(f.path!).readAsBytes() : null);
+    final bytes =
+        f.bytes ?? (f.path != null ? await File(f.path!).readAsBytes() : null);
 
     if (bytes == null) {
       if (!mounted) return;
@@ -300,16 +307,15 @@ class _WordImagePageState extends State<WordImagePage> {
                     'file', // ✅ 서버가 요구하는 필드명: 'file'
                     bytes,
                     filename: filename,
-                    contentType: http.MediaType.parse(contentType),
+                    contentType: MediaType.parse(contentType),
                   ),
                 );
 
               print('[OCR] 🚀 Uploading...');
 
               // ✅ 타임아웃 5분 (PDF 처리 시간 고려)
-              final streamed = await request
-                  .send()
-                  .timeout(const Duration(minutes: 5));
+              final streamed =
+                  await request.send().timeout(const Duration(minutes: 5));
               final response = await http.Response.fromStream(streamed);
 
               print('[OCR] 📥 Response: ${response.statusCode}');
@@ -328,8 +334,7 @@ class _WordImagePageState extends State<WordImagePage> {
                     print('[OCR] 📖 PDF Pages: ${decoded['pages']}');
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content:
-                            Text('PDF ${decoded['pages']}페이지 처리 완료'),
+                        content: Text('PDF ${decoded['pages']}페이지 처리 완료'),
                       ),
                     );
                   }
@@ -337,8 +342,7 @@ class _WordImagePageState extends State<WordImagePage> {
                   setState(() {
                     _wordsToAdd = words.map(_normalize).toList();
                     _step = 1;
-                    _backgroundImage =
-                        "assets/images/background/word_list.png";
+                    _backgroundImage = "assets/images/background/word_list.png";
                   });
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -645,7 +649,8 @@ class _WordImagePageState extends State<WordImagePage> {
                                                   if (v) {
                                                     selectedSet.add(m.wordKr);
                                                   } else {
-                                                    selectedSet.remove(m.wordKr);
+                                                    selectedSet
+                                                        .remove(m.wordKr);
                                                   }
                                                 });
                                               },
