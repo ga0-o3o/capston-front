@@ -10,11 +10,17 @@ class UrlConfig {
   // 🔹 ngrok URL 설정 (배포 환경)
   // ========================================================================
 
+  // ✅ Spring Boot
   static const String? _springBootNgrokUrl =
       'https://semiconical-shela-loftily.ngrok-free.dev';
 
+  // ❗ 기존 FastAPI (OCR, 레벨테스트)
   static const String? _fastApiNgrokUrl =
       'https://cibarian-unmeditatively-rosalina.ngrok-free.dev';
+
+  // ⭐ 신규: FastAPI (채팅 + 팟캐스트 전용)
+  static const String _fastApiChatPodcastNgrokUrl =
+      'https://dexter-unimitable-deloras.ngrok-free.dev';
 
   static const int _springBootLocalPort = 8080;
 
@@ -56,12 +62,11 @@ class UrlConfig {
   }
 
   // ========================================================================
-  // 🔹 Bingo WebSocket URL (ws://host/ws/match)
+  // 🔹 Bingo WebSocket URL
   // ========================================================================
 
   static String get springBootWebSocketUrl {
-    // ✅ Bingo Game은 항상 ngrok URL 사용 (다른 PC 간 매칭을 위해)
-    final base = _springBootNgrokUrl ?? 'https://semiconical-shela-loftily.ngrok-free.dev';
+    final base = _springBootNgrokUrl!;
     if (base.startsWith('https://')) {
       return base.replaceFirst('https://', 'wss://') + '/ws/match';
     } else {
@@ -70,12 +75,11 @@ class UrlConfig {
   }
 
   // ========================================================================
-  // 🔹 Speed WebSocket URL (ws://host/ws/speed)
+  // 🔹 Speed WebSocket URL
   // ========================================================================
 
   static String get springBootSpeedWebSocketUrl {
-    // ✅ Speed Game은 항상 ngrok URL 사용 (다른 PC 간 매칭을 위해)
-    final base = _springBootNgrokUrl ?? 'https://semiconical-shela-loftily.ngrok-free.dev';
+    final base = _springBootNgrokUrl!;
     if (base.startsWith('https://')) {
       return base.replaceFirst('https://', 'wss://') + '/ws/speed';
     } else {
@@ -84,15 +88,23 @@ class UrlConfig {
   }
 
   // ========================================================================
-  // 🔹 FastAPI Base URL
+  // 🔹 FastAPI Base URL (OCR, 레벨 테스트)
   // ========================================================================
 
   static String get fastApiBaseUrl {
-    return _fastApiNgrokUrl ?? 'https://cibarian-unmeditatively-rosalina.ngrok-free.dev';
+    return _fastApiNgrokUrl!;
   }
 
   // ========================================================================
-  // 🔹 엔드포인트 헬퍼
+  // 🔹 ⭐ FastAPI Base URL (채팅 + 팟캐스트 전용)
+  // ========================================================================
+
+  static String get fastApiChatPodcastBaseUrl {
+    return _fastApiChatPodcastNgrokUrl;
+  }
+
+  // ========================================================================
+  // 🔹 일반 엔드포인트 헬퍼
   // ========================================================================
 
   static String springBootEndpoint(String path) {
@@ -103,5 +115,11 @@ class UrlConfig {
   static String fastApiEndpoint(String path) {
     final normalized = path.startsWith('/') ? path : '/$path';
     return '$fastApiBaseUrl$normalized';
+  }
+
+  // ⭐ 채팅/팟캐스트 전용 헬퍼
+  static String fastApiChatPodcastEndpoint(String path) {
+    final normalized = path.startsWith('/') ? path : '/$path';
+    return '$fastApiChatPodcastBaseUrl$normalized';
   }
 }

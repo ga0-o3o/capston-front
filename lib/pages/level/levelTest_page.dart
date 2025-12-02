@@ -268,7 +268,6 @@ class _LevelTestPageState extends State<LevelTestPage> {
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (mounted) _scrollToBottom();
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
@@ -340,11 +339,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
   // -----------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _scrollToBottom();
-    });
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       backgroundColor: const Color(0xFFF6F0E9),
       body: Column(
         children: [
@@ -453,12 +448,7 @@ class _LevelTestPageState extends State<LevelTestPage> {
 
     return ListView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 80, // 키보드 공간 확보
-      ),
+      padding: const EdgeInsets.all(16),
       itemCount: _messages.length,
       itemBuilder: (_, i) => _buildMessageBubble(_messages[i]),
     );
@@ -520,10 +510,10 @@ class _LevelTestPageState extends State<LevelTestPage> {
   }
 
   Widget _buildInputArea() {
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(color: Colors.white),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(color: Colors.white),
+      child: SafeArea(
         child: Row(
           children: [
             Expanded(
