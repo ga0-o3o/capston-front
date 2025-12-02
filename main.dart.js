@@ -57886,8 +57886,10 @@ a=A.w(b).i("cy<1,2>")
 a=A.kH(new A.cy(b,a),new A.aKX(),a.i("A.E"),t.GU)
 d=A.Z(a,A.w(a).i("A.E"))
 h=d
-n.B(new A.aKY(n,h))
-if(J.aK(h)===0){n.B(new A.aKZ(n))
+if(n.c==null){s=1
+break}n.B(new A.aKY(n,h))
+if(J.aK(h)===0){if(n.c==null){s=1
+break}n.B(new A.aKZ(n))
 A.dW(B.eM,new A.aL_(n),t.P)
 s=1
 break}p=2
@@ -58000,6 +58002,7 @@ o=!m.CW&&!m.cx?m.gyq():l
 return A.dS(k,B.aL,new A.aX(B.an,A.aT(A.a([j,B.aA,q,B.au,p,B.au,A.c1(A.a([n,B.cu,A.cb(!1,B.o1,l,l,l,l,l,l,o,l,A.c4(l,l,B.v,l,l,l,l,l,l,B.h,l,B.dA,l,l,new A.b1(A.aw(0),B.ah),l,l,l,l,l))],r),B.m,B.q,B.t,0)],r),B.m,B.q,B.t),l),l,l,l,l,l)}}
 A.aLh.prototype={
 $0(){var s=this.a
+if(s.c==null)return
 s.B(new A.aLg(s))},
 $S:0}
 A.aLg.prototype={
@@ -58009,6 +58012,7 @@ s.ZT()},
 $S:0}
 A.aLi.prototype={
 $0(){var s=this.a
+if(s.c==null)return
 s.B(new A.aLe(s))
 A.dW(B.eM,new A.aLf(s),t.P)},
 $S:8}
@@ -58019,6 +58023,7 @@ s.cx=!0},
 $S:0}
 A.aLf.prototype={
 $0(){var s=this.a
+if(s.c==null)return
 s.B(new A.aLd(s))},
 $S:8}
 A.aLd.prototype={
@@ -58073,7 +58078,8 @@ if(q.ch>0){s=q.z
 s===$&&A.b()
 s=s.bF
 r=!(s.length!==0&&new A.ae(s,new A.aL7(q),A.a9(s).i("ae<1,K>")).mI(0,B.kZ)>450)}else r=!1
-q.ZU(r)}q.B(new A.aL8())},
+q.ZU(r)}if(q.c==null){a.ad(0)
+return}q.B(new A.aL8())},
 $S:29}
 A.aL7.prototype={
 $1(a){var s=a.b,r=this.a.z
@@ -58182,38 +58188,39 @@ s.a6$=$.aE()
 s.O$=0
 this.e.l()
 this.aB()},
-x9(){var s=0,r=A.v(t.H),q=1,p=[],o=[],n=this,m,l,k,j,i
-var $async$x9=A.q(function(a,b){if(a===1){p.push(b)
-s=q}for(;;)switch(s){case 0:n.B(new A.aMK(n))
-q=3
-s=6
-return A.l(A.bO(),$async$x9)
-case 6:m=b
-k=A.eg(J.S(m.a,"server_dialog_num"))
-n.r=k==null?0:k
-k=A.ar(J.S(m.a,"user_rank"))
-n.w=k==null?"Beginner":k
+x9(){var s=0,r=A.v(t.H),q,p=2,o=[],n=[],m=this,l,k,j,i,h
+var $async$x9=A.q(function(a,b){if(a===1){o.push(b)
+s=p}for(;;)switch(s){case 0:m.B(new A.aMK(m))
+p=4
 s=7
-return A.l(n.tM(),$async$x9)
-case 7:A.z("[LOAD] Loaded "+n.f.length+" messages")
-o.push(5)
-s=4
+return A.l(A.bO(),$async$x9)
+case 7:l=b
+j=A.eg(J.S(l.a,"server_dialog_num"))
+m.r=j==null?0:j
+j=A.ar(J.S(l.a,"user_rank"))
+m.w=j==null?"Beginner":j
+s=8
+return A.l(m.tM(),$async$x9)
+case 8:A.z("[LOAD] Loaded "+m.f.length+" messages")
+n.push(6)
+s=5
 break
-case 3:q=2
-i=p.pop()
-l=A.a_(i)
-A.z("[ERROR] Failed to load messages: "+A.k(l))
-o.push(5)
-s=4
+case 4:p=3
+h=o.pop()
+k=A.a_(h)
+A.z("[ERROR] Failed to load messages: "+A.k(k))
+n.push(6)
+s=5
 break
-case 2:o=[1]
-case 4:q=1
-n.B(new A.aML(n))
-n.LF()
-s=o.pop()
+case 3:n=[2]
+case 5:p=2
+if(m.c==null){s=1
+break}m.B(new A.aML(m))
+m.LF()
+s=n.pop()
 break
-case 5:return A.t(null,r)
-case 1:return A.r(p.at(-1),r)}})
+case 6:case 1:return A.t(q,r)
+case 2:return A.r(o.at(-1),r)}})
 return A.u($async$x9,r)},
 tM(){var s=0,r=A.v(t.H),q,p=2,o=[],n=this,m,l,k,j
 var $async$tM=A.q(function(a,b){if(a===1){o.push(b)
@@ -58243,28 +58250,29 @@ break
 case 6:case 1:return A.t(q,r)
 case 2:return A.r(o.at(-1),r)}})
 return A.u($async$tM,r)},
-CD(){var s=0,r=A.v(t.H),q=1,p=[],o=this,n,m,l,k,j,i
-var $async$CD=A.q(function(a,b){if(a===1){p.push(b)
-s=q}for(;;)switch(s){case 0:q=3
-s=6
+CD(){var s=0,r=A.v(t.H),q,p=2,o=[],n=this,m,l,k,j,i,h
+var $async$CD=A.q(function(a,b){if(a===1){o.push(b)
+s=p}for(;;)switch(s){case 0:p=4
+s=7
 return A.l(A.bO(),$async$CD)
-case 6:n=b
-m=A.ar(J.S(n.a,"level_test_messages"))
-if(m!=null){l=B.z.dj(0,m,null)
-o.B(new A.aMI(o,l))
-A.z("[LOCAL_LOAD] Loaded "+o.f.length+" messages")}q=1
-s=5
+case 7:m=b
+l=A.ar(J.S(m.a,"level_test_messages"))
+if(l!=null){k=B.z.dj(0,l,null)
+if(n.c==null){s=1
+break}n.B(new A.aMI(n,k))
+A.z("[LOCAL_LOAD] Loaded "+n.f.length+" messages")}p=2
+s=6
 break
-case 3:q=2
-i=p.pop()
-k=A.a_(i)
-A.z("[LOCAL_LOAD] Failed to load local: "+A.k(k))
-s=5
+case 4:p=3
+h=o.pop()
+j=A.a_(h)
+A.z("[LOCAL_LOAD] Failed to load local: "+A.k(j))
+s=6
 break
-case 2:s=1
+case 3:s=2
 break
-case 5:return A.t(null,r)
-case 1:return A.r(p.at(-1),r)}})
+case 6:case 1:return A.t(q,r)
+case 2:return A.r(o.at(-1),r)}})
 return A.u($async$CD,r)},
 oi(){var s=0,r=A.v(t.H),q=1,p=[],o=this,n,m,l,k,j,i,h
 var $async$oi=A.q(function(a,b){if(a===1){p.push(b)
@@ -58306,7 +58314,9 @@ break}m=f
 g.fP(0,B.bE)
 if(n.r>=100){n.aux()
 s=1
-break}n.B(new A.aMP(n,new A.jz(m,!0,new A.f5(Date.now(),0,!1),null)))
+break}g=Date.now()
+if(n.c==null){s=1
+break}n.B(new A.aMP(n,new A.jz(m,!0,new A.f5(g,0,!1),null)))
 n.LF()
 p=4
 s=7
@@ -58368,20 +58378,21 @@ LF(){$.ao.p3$.push(new A.aMO(this))},
 aux(){var s=this.c
 s.toString
 A.eo(null,!1,new A.aMU(this),s,t.z)},
-oo(){var s=0,r=A.v(t.H),q=this,p
+oo(){var s=0,r=A.v(t.H),q,p=this,o
 var $async$oo=A.q(function(a,b){if(a===1)return A.r(b,r)
-for(;;)switch(s){case 0:s=2
+for(;;)switch(s){case 0:s=3
 return A.l(A.bO(),$async$oo)
-case 2:p=b
-s=3
-return A.l(p.G(0,"level_test_messages"),$async$oo)
-case 3:s=4
-return A.l(p.G(0,"server_dialog_num"),$async$oo)
+case 3:o=b
+s=4
+return A.l(o.G(0,"level_test_messages"),$async$oo)
 case 4:s=5
-return A.l(p.G(0,"user_rank"),$async$oo)
-case 5:q.B(new A.aMM(q))
+return A.l(o.G(0,"server_dialog_num"),$async$oo)
+case 5:s=6
+return A.l(o.G(0,"user_rank"),$async$oo)
+case 6:if(p.c==null){s=1
+break}p.B(new A.aMM(p))
 A.z("[RESTART] Test restarted")
-return A.t(null,r)}})
+case 1:return A.t(q,r)}})
 return A.u($async$oo,r)},
 I(a){var s=this,r=null,q=t.p,p=A.b0(r,A.hG(!0,A.bS(A.dr(B.aJ,A.a([A.bK(A.ac("LevelTest",r,r,r,r,A.aZ6().$2$color$fontSize(B.h,30),r,r),r,r),A.rW(r,A.h1(r,r,B.Pf,r,r,s.gauF(),r,r,r),r,r,r,6,15,r)],q),B.p,B.ac),70,r),B.Y,!0),B.o,B.c9,r,r,r,r,r,r,r,r,r,1/0),o=A.ac("Level: "+s.w,r,r,r,r,r,r,r),n=A.aw(12)
 n=A.b0(r,A.m6(B.bY,A.a([B.rR,o,A.b0(r,A.ac("Dialog "+s.r+"/100",r,r,r,r,r,r,r),B.o,r,r,new A.bl(B.K4,r,r,n,r,r,B.D),r,r,r,r,B.qN,r,r,r)],q),B.cg,0,10),B.o,r,r,B.p8,r,r,r,r,B.qI,r,r,r)
@@ -58457,10 +58468,13 @@ A.aMR.prototype={
 $0(){return this.a.y=!1},
 $S:0}
 A.aMO.prototype={
-$1(a){var s=this.a.e,r=s.f
-if(r.length!==0){r=B.b.gaX(r).Q
-r.toString
-s.jK(r,B.c2,B.bh)}},
+$1(a){var s,r=this.a
+if(r.c==null)return
+r=r.e
+s=r.f
+if(s.length!==0){s=B.b.gaX(s).Q
+s.toString
+r.jK(s,B.c2,B.bh)}},
 $S:6}
 A.aMU.prototype={
 $1(a){var s=null,r=this.a,q=t.p,p=A.aT(A.a([B.Px,B.au,A.ac("You have completed all 100 turns!",s,s,s,s,s,s,s),B.aA,A.ac("Your Final Level: "+r.w,s,s,s,s,B.c7,s,s)],q),B.m,B.q,B.S)
