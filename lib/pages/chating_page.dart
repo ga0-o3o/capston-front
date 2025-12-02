@@ -511,7 +511,12 @@ class _ChatingPageState extends State<ChatingPage> {
                               minLines: 1, // 한 줄에서 시작
                               maxLines: 5, // 최대 5줄까지 자동 확장 → 이후 내부 스크롤
                               decoration: InputDecoration(
-                                hintText: '영어로 메시지를 입력하세요...',
+                                hintText:
+                                    '영어로 채팅하여 학습하세요.\n한국어로 입력 시 앱 메뉴얼이 나옵니다.',
+                                hintStyle: TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.grey,
+                                ),
                                 filled: true,
                                 fillColor: Colors.white,
                                 contentPadding: const EdgeInsets.symmetric(
