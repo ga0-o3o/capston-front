@@ -364,4 +364,49 @@ class WordApi {
 
     return meanings;
   }
+
+  // 🔥 랜덤 단어 조회 (로딩 화면용)
+  static Future<Map<String, String>> fetchRandomWords() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token') ?? '';
+
+      if (token.isEmpty) {
+        throw Exception('로그인이 필요합니다.');
+      }
+
+      final url = Uri.parse(
+        "$baseUrl/api/words/download-random",
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'ngrok-skip-browser-warning': 'true',
+        },
+      );
+
+      // 🧨 서버가 HTML 반환하는 경우 (토큰 문제/보안 문제/ngrok 문제)
+      if (response.body.startsWith("<")) {
+        print("❌ HTML 반환됨 — 인증 문제 또는 서버 오류");
+        print("HTML 내용: ${response.body}");
+        return {};
+      }
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data =
+            jsonDecode(utf8.decode(response.bodyBytes));
+
+        // 🔥 Map<String, dynamic> → Map<String, String>
+        return data.map((k, v) => MapEntry(k.toString(), v.toString()));
+      } else {
+        print("❌ 랜덤 단어 조회 실패: ${response.statusCode}");
+        return {};
+      }
+    } catch (e) {
+      print("❌ 랜덤 단어 오류: $e");
+      return {};
+    }
+  }
 }

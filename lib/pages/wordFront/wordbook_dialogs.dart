@@ -36,8 +36,7 @@ Future<String?> showWordbookNameDialog(BuildContext context,
             TextField(
               controller: controller,
               maxLength: 12,
-              maxLengthEnforcement:
-                  MaxLengthEnforcement.enforced, // ★ 실제로 입력 차단
+              maxLengthEnforcement: MaxLengthEnforcement.enforced,
               decoration: const InputDecoration(
                 counterText: "",
                 labelText: '단어장 이름',
